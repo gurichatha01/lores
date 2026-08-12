@@ -28,7 +28,11 @@ export function AwardBadge({
         {emoji}
       </span>
       <div className="min-w-0">
-        <div className="text-[13px] font-extrabold uppercase leading-tight">{label}</div>
+        <div
+          className={`text-[13px] font-extrabold leading-tight ${treatment === "soft" ? "normal-case" : "uppercase"}`}
+        >
+          {label}
+        </div>
         {detail ? (
           <div className={`text-[11px] font-semibold leading-snug ${highlighted && treatment === "editorial" ? "text-white/85" : "text-ink/55"}`}>
             {detail}

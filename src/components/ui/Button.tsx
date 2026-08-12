@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "accent";
+type ButtonVariant = "primary" | "secondary" | "accent" | "sweetheart";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -12,6 +12,7 @@ const variants: Record<ButtonVariant, string> = {
   primary: "border-2 border-ink bg-ink text-surface",
   secondary: "border-2 border-ink bg-surface text-ink",
   accent: "border-2 border-pink bg-pink text-white",
+  sweetheart: "rounded-full border-2 border-sweetheart bg-sweetheart text-white",
 };
 
 export function Button({

@@ -35,6 +35,21 @@ describe("generateReport", () => {
     expect(JSON.stringify(body)).not.toContain("server-secret");
     expect(JSON.stringify(body)).not.toContain("rawChat");
     expect(body.generationConfig.responseMimeType).toBe("application/json");
+    expect(body.generationConfig).not.toHaveProperty("temperature");
+    expect(body.generationConfig).not.toHaveProperty("top_p");
+    expect(body.generationConfig).not.toHaveProperty("top_k");
+    expect(body.contents.at(-1)?.role).toBe("user");
+  });
+
+  it("keeps the Gemini model independently swappable", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubEnv("LLM_MODEL", "gemini-3.5-flash-lite");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateReport(createTestGenerateInput());
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/models/gemini-3.5-flash-lite:generateContent");
   });
 
   it("retries exactly once when Gemini returns invalid report JSON", async () => {

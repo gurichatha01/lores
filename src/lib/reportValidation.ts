@@ -57,8 +57,8 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
     throw new ReportValidationError("Phase 3 only supports Sweetheart mode.");
   }
 
-  const stats = parseStats(input.stats);
-  const awards = asArray(input.awards, "awards").map(parseAward);
+  const stats = parseReportStats(input.stats);
+  const awards = parseAwards(input.awards);
   const sample = asArray(input.sample, "sample").map(parseSampleMessage);
   const people = new Set(stats.people.map((person) => person.name));
 
@@ -132,7 +132,7 @@ export function parseReportContent(value: unknown): ReportContent {
   };
 }
 
-function parseStats(value: unknown): ReportStats {
+export function parseReportStats(value: unknown): ReportStats {
   const stats = asRecord(value, "stats");
   assertExactKeys(stats, STATS_KEYS, "stats");
   const people = asArray(stats.people, "stats.people").map(parsePerson);
@@ -164,6 +164,10 @@ function parseStats(value: unknown): ReportStats {
     messagesByHour,
     messagesByWeekday,
   };
+}
+
+export function parseAwards(value: unknown): Award[] {
+  return asArray(value, "awards").map(parseAward);
 }
 
 function parsePerson(value: unknown, index: number): PersonStats {

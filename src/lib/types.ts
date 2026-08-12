@@ -82,3 +82,11 @@ export interface GenerateReportInput {
   awards: Award[];
   sample: ReportSampleMessage[];
 }
+
+export interface ReportSessionData {
+  mode: ReportMode;
+  subtype: string;
+  stats: ReportStats;
+  awards: Award[];
+  content: ReportContent;
+}

@@ -7,14 +7,14 @@ Last agent: codex   Last updated: 2026-08-12
 - [x] Phase 1 — parser
 - [x] Phase 2 — stats & awards
 - [x] Phase 3 — LLM layer (Sweetheart, placeholder prompt)
-- [ ] Phase 4 — report render (CHECKPOINT: show human)
+- [x] Phase 4 — report render (CHECKPOINT: show human)
 - [ ] Phase 5 — all modes + share cards
 - [ ] Phase 6 — PDF
 - [ ] Phase 7 — full funnel UX
 - [ ] Phase 8 — LATER: payments/pricing/credibility
 
 ## Where the next agent should start
-Start Phase 4 — render the full Sweetheart report from a real upload, then stop at the required human checkpoint and show the report before continuing.
+STOP at the Phase 4 human checkpoint. Review the real Sweetheart output before authorizing Phase 5; do not tune prompts or start additional modes yet.
 
 ## Decisions & deviations
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
@@ -34,6 +34,10 @@ Start Phase 4 — render the full Sweetheart report from a real upload, then sto
 - Sample curation selects 25 messages per person by longest-message, laughter, keyword, and deterministic pseudo-random time-spread heuristics (configurable only within the planned 20–30 range).
 - The LLM provider switch implements Gemini 3.5 Flash with a server-only key, structured JSON schema, strict runtime validation, code-fence stripping, and exactly one retry for invalid output. The Sweetheart prompt is intentionally a placeholder.
 - The real Phase 3 route check used all 125 parsed messages to compute stats, curated 50 messages (25 per person), and returned valid `ReportContent` through a mocked provider response; no Gemini key is configured locally, so no live provider call was made.
+- Gemini 3.5 compatibility is regression-tested: generation requests contain no `temperature`, `top_p`, or `top_k`, always end on a `user` turn, and keep `LLM_MODEL` independently swappable (including `gemini-3.5-flash-lite`).
+- Phase 4 adds a minimal `/create` → `/report` browser flow. ZIP/TXT parsing, stats, awards, and curation stay client-side; only the serialized derived payload reaches `/api/generate`. The saved report session drops the curated sample and user context after generation.
+- The Sweetheart full-state report follows the locked Round 2 soft treatment: rose accent, four rounded deterministic stat cards, pill awards with AI lines, message-bubble highlights, narrative, and local calendar date labels. Share cards and PDF actions remain deferred.
+- The first live Gemini run completed through the real route using the private 125-message export and rendered `The Cozy Rhythm of Late Nights & Location Pins`. The browser showed no console warnings/errors at 390px or desktop width. This is the required human quality checkpoint.
 
 ## Known issues / TODO
-- None currently.
+- Human review of the first real Sweetheart report is pending. Do not continue to Phase 5 until the output is approved.

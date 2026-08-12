@@ -16,8 +16,8 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "lore — design system",
-  description: "The lore editorial design system.",
+  title: "lore — the story inside your chats",
+  description: "Private, personal reports from the chats that matter.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
