@@ -161,9 +161,25 @@ export function getAwardMetricValue(
   return AWARDS.find((award) => award.id === awardId)?.score(person);
 }
 
-export function getAwardLineDirectionError(awardId: string, line: string): string | null {
+export function getAwardLineDirectionError(
+  awardId: string,
+  line: string,
+  options: { tied?: boolean } = {},
+): string | null {
   const definition = AWARDS.find((award) => award.id === awardId);
   if (!definition) return `Unknown award id: ${awardId}.`;
+  if (options.tied) {
+    const acknowledgesTie = /\b(?:tie|tied|both|share|shared|equal|same|joint|co-winner|co-winners|matching|matched|identical|neither|everyone|each)\b/iu.test(line);
+    if (definition.oppositeDirection?.test(line)) {
+      return `${definition.label} line describes the opposite metric direction.`;
+    }
+    if (/\b(?:but|yet|however|still|tie-break|tiebreak)\b.{0,100}\b(?:longer|shorter|more|most|less|least|highest|lowest|slow|slower|slowest|fast|faster|fastest|large|larger|largest|small|smaller|smallest|few|fewer|fewest|lead|leader|led|beat|beats|won|winner|dominated|dominates|owned)\b/iu.test(line)) {
+      return `${definition.label} line claims a strict winner even though the metric is tied.`;
+    }
+    return acknowledgesTie
+      ? null
+      : `${definition.label} line must explicitly acknowledge that the winning metric is tied.`;
+  }
   if (definition.oppositeDirection?.test(line)) {
     return `${definition.label} line describes the opposite metric direction.`;
   }

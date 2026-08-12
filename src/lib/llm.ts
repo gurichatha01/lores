@@ -60,17 +60,17 @@ const REPORT_SCHEMA = {
 
 export const MODE_VOICE_BLOCKS: Record<ReportMode, string> = {
   sweetheart:
-    "💕 sweetheart (partner) — Warm, but earned — tender through specific shared details, never through love-language clichés. Teasing is welcome; you know them well enough to roast them a little. Read whether it's giddy-new or comfortable-old from the data and match it. Example award line: \"replies in 90 seconds flat, unless it's 'we need to talk' — then, suddenly, offline.\" Avoid: anything that sounds like a Hallmark card.",
+    "💕 sweetheart (partner) — Warm, soft, and tender when the source messages are soft — always earned through specific shared details, never through love-language clichés. Take the cue from the material: if the chat is affectionate, write with genuine affection and let that softness lead; do not default to banter, savagery, sarcasm, or a roast in disguise. Tease only when the messages themselves clearly support it. Read whether it's giddy-new or comfortable-old from the data and match it. Example award line: \"replies in 90 seconds flat, unless it's 'we need to talk' — then, suddenly, offline.\" Profanity: keep this gift-and-print mode one notch cleaner than the source and use no hard profanity; soften or omit hard language even when it appears in the chat. Avoid: anything that sounds like a Hallmark card.",
   "ride-or-die":
-    "👯 ride or die (best friend) — Hype + roast-with-love, best-man-speech energy. Inside jokes, the dumb stuff, unhinged loyalty shown through real receipts. You'd take a bullet for them and also expose them in the group chat. Example: \"has said 'i'm 5 min away' 47 times. has never once been 5 min away.\" Avoid: sentimentality without a joke attached.",
+    "👯 ride or die (best friend) — Hype + roast-with-love, best-man-speech energy. Inside jokes, the dumb stuff, unhinged loyalty shown through real receipts. You'd take a bullet for them and also expose them in the group chat. Example: \"has said 'i'm 5 min away' 47 times. has never once been 5 min away.\" Profanity: match the chat's own language and level; do not sanitize language the source naturally uses. Avoid: sentimentality without a joke attached.",
   group:
-    "🏆 group wrapped (group) — Competitive, punchy, scoreboard energy. Call out the group's dynamics — the main character, the ghost, the one who only shows up to send a bill reminder. Rank, compare, stir the pot. Example: \"contributed 58% of all messages. this isn't a group chat, it's their podcast with guests.\" Avoid: treating everyone equally — the fun is in the differences.",
+    "🏆 group wrapped (group) — Competitive, punchy, scoreboard energy. Call out the group's dynamics — the main character, the ghost, the one who only shows up to send a bill reminder. Rank, compare, stir the pot. Example: \"contributed 58% of all messages. this isn't a group chat, it's their podcast with guests.\" Profanity: match the chat's own language and level; do not sanitize language the source naturally uses. Avoid: treating everyone equally — the fun is in the differences.",
   family:
-    "👨‍👩‍👧 family — Gentle and warm, lightly wry about family logistics (\"ok beta\", the forwarded good-mornings, the endless plan-coordination). Fond, never a roast. Respect the relationships while noticing the funny patterns. Example: \"sent 214 good-morning messages. read receipts: unconfirmed.\" Avoid: anything cutting; keep it affectionate.",
+    "👨‍👩‍👧 family — Gentle and warm, lightly wry about family logistics (\"ok beta\", the forwarded good-mornings, the endless plan-coordination). Fond, never a roast. Respect the relationships while noticing the funny patterns. Example: \"sent 214 good-morning messages. read receipts: unconfirmed.\" Profanity: keep this gift-and-print mode one notch cleaner than the source and use no hard profanity; soften or omit hard language even when it appears in the chat. Avoid: anything cutting; keep it affectionate.",
   work:
-    "💼 work / team — Dry, deadpan, office-in-joke. Observe work patterns — who carries the thread, the after-hours pings, the \"quick sync\" that never was. Professional enough to share with the team, witty enough that they screenshot it. Example: \"sent 61 messages after 9pm. work-life balance: a rumor.\" Avoid: warmth or emotion — this one runs cool.",
+    "💼 work / team — Dry, deadpan, office-in-joke. Observe work patterns — who carries the thread, the after-hours pings, the \"quick sync\" that never was. Professional enough to share with the team, witty enough that they screenshot it. Example: \"sent 61 messages after 9pm. work-life balance: a rumor.\" Profanity: match the chat's own language and level; do not sanitize language the source naturally uses. Avoid: warmth or emotion — this one runs cool.",
   roast:
-    "🔥 roast — Savage but precise. The burn always comes from a real receipt or a real number — never from insults, slurs, appearance, or anything cruel about who someone is. You're roasting behavior the data proves, and specific-and-true hits ten times harder than mean-and-generic. Example: \"texts first 71% of the time and still gets left on read for a median of 3 hours. the delusion is the main character here.\" Hard rule: if a line would sting even if it weren't true, cut it. It has to earn the laugh with evidence.",
+    "🔥 roast — Savage but precise. The burn always comes from a real receipt or a real number — never from insults, slurs, appearance, or anything cruel about who someone is. You're roasting behavior the data proves, and specific-and-true hits ten times harder than mean-and-generic. Example: \"texts first 71% of the time and still gets left on read for a median of 3 hours. the delusion is the main character here.\" Profanity: match the chat's own language and level; do not sanitize language the source naturally uses. Hard rule: if a line would sting even if it weren't true, cut it. It has to earn the laugh with evidence.",
 };
 
 export function buildSystemPrompt(input: GenerateReportInput): string {
@@ -302,7 +302,14 @@ function assertAwardLinesUseWinnerMetrics(
         `${award.label} line must use its winner's computed detail: ${award.detail}.`,
       );
     }
-    const directionError = getAwardLineDirectionError(award.id, line);
+    const winner = input.stats.people.find((person) => person.name === award.who);
+    const winnerValue = winner ? getAwardMetricValue(award.id, winner) : undefined;
+    const tied =
+      winnerValue !== undefined &&
+      input.stats.people.filter(
+        (person) => getAwardMetricValue(award.id, person) === winnerValue,
+      ).length > 1;
+    const directionError = getAwardLineDirectionError(award.id, line, { tied });
     if (directionError) throw new LlmOutputError(directionError);
   }
 }
@@ -319,7 +326,7 @@ function formatAwardWiring(input: GenerateReportInput): string {
       );
       const tieContext =
         tiedPeople.length > 1
-          ? ` Tie context: ${tiedPeople.map((person) => `"${person.name}"`).join(" and ")} share this metric value; deterministic participant-order tie-break selected "${award.who}". Do not claim a strict lead.`
+          ? ` TIE RULE — MANDATORY FOR THIS LINE: ${tiedPeople.map((person) => `"${person.name}"`).join(" and ")} share this metric value. Explicitly use "tied", "shared", or "matched" in the line. Deterministic participant-order tie-break selected "${award.who}" only for display; it does NOT mean they were actually slower, faster, higher, lower, better, or worse. Treat the award label as ceremonial and never claim a strict lead.`
           : "";
       return `- ${award.label} (${award.id}): winner "${award.who}" has the ${rule.selection.toUpperCase()} ${rule.metric}, meaning ${rule.meaning}. Use numeric detail "${award.detail}". ${rule.lineInstruction}${tieContext}`;
     })

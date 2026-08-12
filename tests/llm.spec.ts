@@ -55,7 +55,7 @@ describe("generateReport", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("/models/gemini-3.5-flash-lite:generateContent");
   });
 
-  it("injects the selected v1 voice block without model prefilling", async () => {
+  it("injects the selected mode voice block without model prefilling", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(geminiResponse(VALID_REPORT)));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
@@ -70,6 +70,29 @@ describe("generateReport", () => {
       expect(body.generationConfig).not.toHaveProperty("top_p");
       expect(body.generationConfig).not.toHaveProperty("top_k");
     }
+  });
+
+  it("keeps gift modes cleaner while other modes match the chat's language", () => {
+    for (const mode of ["sweetheart", "family"] as const) {
+      expect(MODE_VOICE_BLOCKS[mode]).toContain("one notch cleaner");
+      expect(MODE_VOICE_BLOCKS[mode]).toContain("no hard profanity");
+    }
+    for (const mode of ["ride-or-die", "group", "work", "roast"] as const) {
+      expect(MODE_VOICE_BLOCKS[mode]).toContain("match the chat's own language and level");
+      expect(MODE_VOICE_BLOCKS[mode]).not.toContain("no hard profanity");
+    }
+  });
+
+  it("lets an affectionate Sweetheart source lead with genuine softness", () => {
+    expect(MODE_VOICE_BLOCKS.sweetheart).toContain(
+      "if the chat is affectionate, write with genuine affection and let that softness lead",
+    );
+    expect(MODE_VOICE_BLOCKS.sweetheart).toContain(
+      "do not default to banter, savagery, sarcasm, or a roast in disguise",
+    );
+    expect(MODE_VOICE_BLOCKS.sweetheart).toContain(
+      "Tease only when the messages themselves clearly support it",
+    );
   });
 
   it("uses the specificity rules, all three few-shots, guardrails, and strict output shape", () => {
@@ -105,7 +128,7 @@ describe("generateReport", () => {
       'The Initiator (the-initiator): winner "A" has the HIGHEST conversation-start count',
     );
     expect(prompt).toContain(
-      'Tie context: "A" and "B" share this metric value; deterministic participant-order tie-break selected "A". Do not claim a strict lead.',
+      'TIE RULE — MANDATORY FOR THIS LINE: "A" and "B" share this metric value. Explicitly use "tied", "shared", or "matched" in the line.',
     );
   });
 
@@ -203,6 +226,55 @@ describe("generateReport", () => {
     const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(repairRequest.contents[0].parts[0].text).toContain(
       "Main Character line must use its winner's computed detail",
+    );
+  });
+
+  it("rejects a tied award line that claims the tie-break winner truly led", async () => {
+    const input = createTestGenerateInput();
+    const ignoresTie = {
+      ...VALID_REPORT,
+      awardLines: VALID_REPORT.awardLines.map((awardLine) =>
+        awardLine.awardId === "main-character"
+          ? { ...awardLine, line: "Shared a tied 50%, but still dominated all messages." }
+          : awardLine,
+      ),
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(ignoresTie))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(input)).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "Main Character line claims a strict winner even though the metric is tied",
+    );
+  });
+
+  it("requires a tied award line to say the metric is tied, shared, or matched", async () => {
+    const noTieContext = {
+      ...VALID_REPORT,
+      awardLines: VALID_REPORT.awardLines.map((awardLine) =>
+        awardLine.awardId === "main-character"
+          ? { ...awardLine, line: "Accounted for 50% of all messages." }
+          : awardLine,
+      ),
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(noTieContext))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "Main Character line must explicitly acknowledge that the winning metric is tied",
     );
   });
 
