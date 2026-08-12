@@ -86,6 +86,46 @@ describe("parseWhatsAppText", () => {
     expect([android.timestamp.getDate(), android.timestamp.getHours()]).toEqual([18, 23]);
   });
 
+  it("normalizes U+202F and parses newer lowercase 12-hour Android exports", async () => {
+    const raw = await fixture("android-newer-12-hour.txt");
+    expect(raw).toContain("\u202f");
+
+    const result = parseWhatsAppText(raw);
+    const nbspResult = parseWhatsAppText(raw.replace("\u202f", "\u00a0"));
+    const singleDigitUppercase = parseWhatsAppText(
+      raw.trimEnd() + "\n1/9/2025, 1:02 AM - Name: uppercase variant",
+    );
+
+    expect(result.messages).toHaveLength(1);
+    expect(nbspResult.messages).toHaveLength(1);
+    expect(singleDigitUppercase.messages).toHaveLength(2);
+    expect(result.messages[0]).toMatchObject({
+      sender: "Name",
+      text: "newer export works",
+    });
+    expect([
+      result.messages[0].timestamp.getFullYear(),
+      result.messages[0].timestamp.getMonth(),
+      result.messages[0].timestamp.getDate(),
+      result.messages[0].timestamp.getHours(),
+      result.messages[0].timestamp.getMinutes(),
+    ]).toEqual([2025, 8, 15, 12, 1]);
+    expect(singleDigitUppercase.messages[1].timestamp.getHours()).toBe(1);
+  });
+
+  it("prefers the frequent sender over a repeated colon-prefixed message fragment", () => {
+    const result = parseWhatsAppText(
+      "15/09/2025, 1:00 pm - Name: Update: first\n" +
+        "15/09/2025, 1:01 pm - Name: Update: second\n" +
+        "15/09/2025, 1:02 pm - Name: final\n" +
+        "15/09/2025, 1:03 pm - Other: reply",
+    );
+
+    expect(new Set(result.messages.map((message) => message.sender))).toEqual(
+      new Set(["Name", "Other"]),
+    );
+  });
+
   it("uses explicit participants for a one-off colon-containing sender", () => {
     const raw = "15/08/2024, 08:30 - Ops: Night: one-off handover: all green";
     const result = parseWhatsAppText(raw, { participants: ["Ops: Night"] });

@@ -39,8 +39,11 @@ interface SenderSplit {
 }
 
 const INVISIBLE_DIRECTIONAL_MARKS = /[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/gu;
+const INVISIBLE_SPACES = /[\u00a0\u202f]/gu;
 const IOS_HEADER =
   /^\[(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4}),\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]\.?m\.?)?\]\s*(.*)$/iu;
+const ANDROID_12_HOUR_DASH_HEADER =
+  /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]\.?m\.?)\s*-\s*(.*)$/iu;
 const ANDROID_HEADER =
   /^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]\.?m\.?)?\s*(?:-|–|—)\s*(.*)$/iu;
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
@@ -189,8 +192,9 @@ function parseTextDetails(source: string, options: ParseWhatsAppOptions): TextPa
 function collectEntries(source: string): RawEntry[] {
   const entries: RawEntry[] = [];
   let current: RawEntry | undefined;
+  const normalizedSource = source.replace(INVISIBLE_SPACES, " ");
 
-  for (const originalLine of source.replace(/^\ufeff/u, "").split(/\r?\n/u)) {
+  for (const originalLine of normalizedSource.replace(/^\ufeff/u, "").split(/\r?\n/u)) {
     const line = stripDirectionalMarks(originalLine);
     const header = parseHeader(line);
 
@@ -209,7 +213,10 @@ function collectEntries(source: string): RawEntry[] {
 }
 
 function parseHeader(line: string): HeaderParts | undefined {
-  const match = IOS_HEADER.exec(line) ?? ANDROID_HEADER.exec(line);
+  const match =
+    IOS_HEADER.exec(line) ??
+    ANDROID_12_HOUR_DASH_HEADER.exec(line) ??
+    ANDROID_HEADER.exec(line);
   if (!match) {
     return undefined;
   }
@@ -368,7 +375,11 @@ function splitSender(
 
   const repeatedCandidates = candidates
     .filter((candidate) => (frequency.get(candidate.sender) ?? 0) >= 2)
-    .sort((left, right) => right.sender.length - left.sender.length);
+    .sort(
+      (left, right) =>
+        (frequency.get(right.sender) ?? 0) - (frequency.get(left.sender) ?? 0) ||
+        right.sender.length - left.sender.length,
+    );
 
   return repeatedCandidates[0] ?? candidates[0];
 }
