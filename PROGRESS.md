@@ -11,11 +11,11 @@ Last agent: codex   Last updated: 2026-08-13
 - [x] Phase 5 — all modes + share cards
 - [x] Phase 6 — the Wrapped share card
 - [x] Phase 7 — PDF
-- [ ] Phase 8 — full funnel UX
+- [x] Phase 8 — full funnel UX
 - [ ] Phase 9 — LATER: payments/pricing/credibility
 
 ## Where the next agent should start
-Start Phase 8 — full funnel UX. Preserve the six locked mode treatments and do not tune prompts or touch pricing.
+Stop until the human explicitly starts Phase 9. Payments, pricing, real credibility, analytics, and launch work remain deferred; do not tune prompts as part of that phase unless separately requested.
 
 ## Decisions & deviations
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
@@ -50,6 +50,10 @@ Start Phase 8 — full funnel UX. Preserve the six locked mode treatments and do
 - Reply-time PDF buckets use the Phase 2 definition: only an immediate sender change within six hours counts. The six labels are `<1m`, `1-5m`, `5-30m`, `30m-2h`, `2-4h`, and `4-6h`; overnight and >6h gaps remain conversation starts and never appear as replies.
 - The PDF is generated client-side with `jspdf` from high-resolution canvases and exports as printable A4. Its per-mode accent comes from the existing mode preset. The document includes cover, complete engine-backed metrics/charts, all computed awards, per-person top words (with continuation pages for large groups), optional deterministic milestones, paginated `ReportContent.chapters`/narrative, and the dark closing keepsake page.
 - The generated five-page QA PDF was reopened, confirmed as A4, rasterized, and visually inspected page by page with no clipping, overlap, or unreadable chart labels. A deterministic browser preview completed the PDF download action with no console warnings/errors. Live Gemini generation was unavailable during the final browser check, so the browser download used the engine-backed test fixture; the production PDF code path is identical.
+- Phase 8 replaces the Phase 0 component gallery with the locked high-voltage editorial landing: real CTA, all six mode previews, explicit local-parsing reassurance, and three visibly empty credibility placeholders. No testimonial, trust mark, price, or payment behavior is fabricated.
+- The `/create` funnel is a five-step client flow: mode plus the design-specified Sweetheart partner chips, optional 500-character context, WhatsApp source, switchable iOS/Android export help with phone diagrams and without-media guidance, then ZIP/TXT upload. Parsing and stats stay client-side; the existing derived payload is the only generation request.
+- `/report` now opens in the free teaser state. The exact hero remains sharp; deterministic stat and award sections are blurred under lock labels, one LLM receipt is teased, only the first narrative sentence is visible, and a sticky unlock bar exposes a clearly inert “coming soon” button with no price. The existing full report, PDF, and Wrapped components remain intact for a later real unlock.
+- Phase 8 browser verification covered the 390×844 landing and every funnel step, both platform guides, file selection, the generating state, session navigation, locked receipt/narrative treatment, sticky bar, and the payment stub. A temporary deterministic API response was used only to prove the complete client/session handoff and was reverted; the configured Gemini endpoint still returned the known 502 during the live attempt. Added `allowedDevOrigins: ["127.0.0.1"]` to remove the Next.js development warning shown when testing through that host.
 
 ## Known issues / TODO
 - All six mode prompts are intentionally placeholders. Prompt tuning remains deferred.

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { parseReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
 import type { ReportSessionData } from "@/lib/types";
 
-import { ModeReport } from "./ModeReport";
+import { LockedReport } from "./LockedReport";
 
 export function ReportPageClient() {
   const [report, setReport] = useState<ReportSessionData | null>(null);
@@ -26,7 +26,7 @@ export function ReportPageClient() {
   }, []);
 
   if (report) {
-    return <ModeReport report={report} />;
+    return <LockedReport report={report} />;
   }
 
   return (

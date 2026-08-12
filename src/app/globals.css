@@ -35,3 +35,24 @@ button {
   background: var(--acid);
   color: var(--ink);
 }
+
+@keyframes lore-generating {
+  0%, 100% {
+    opacity: 0.25;
+    transform: translateY(5px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+}
+
+.lore-generating-mark {
+  animation: lore-generating 1.1s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lore-generating-mark {
+    animation: none;
+  }
+}
