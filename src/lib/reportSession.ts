@@ -9,6 +9,13 @@ import {
 
 export const REPORT_SESSION_KEY = "lore.generated-report.v1";
 
+/**
+ * Set only after the server verifies a Razorpay payment signature. The trust
+ * boundary is the /api/verify HMAC check; this flag just keeps the report
+ * unlocked across refreshes within the same browser session.
+ */
+export const REPORT_UNLOCK_KEY = "lore.report-unlocked.v1";
+
 export function createReportSession(
   input: GenerateReportInput,
   content: ReportContent,

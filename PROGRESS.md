@@ -1,6 +1,6 @@
 # LORE — Build Progress
 
-Last agent: codex   Last updated: 2026-08-13
+Last agent: claude-code   Last updated: 2026-08-13
 
 ## Status
 - [x] Phase 0 — scaffold & design system
@@ -12,10 +12,11 @@ Last agent: codex   Last updated: 2026-08-13
 - [x] Phase 6 — the Wrapped share card
 - [x] Phase 7 — PDF
 - [x] Phase 8 — full funnel UX
-- [ ] Phase 9 — LATER: payments/pricing/credibility
+- [x] Phase 9 — payments (Razorpay, dynamic currency, test mode)
+- [ ] Phase 10 — LATER: landing credibility, launch
 
 ## Where the next agent should start
-Stop until the human explicitly starts Phase 9. Payments, pricing, real credibility, analytics, and launch work remain deferred. Prompt pass v1 is complete; further prompt tuning still requires a separate request.
+Phase 9 (Razorpay unlock, test mode) is built and gated behind env. To exercise the real payment flow end-to-end, add Razorpay **Test Mode** keys to `.env.local` (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`) and restart. Without keys the unlock button degrades gracefully (503 → "payments aren't switched on yet"). USD is INR-only until `RAZORPAY_INTERNATIONAL_ENABLED=true`. Do not start Phase 10 (real landing credibility, analytics, launch) until the human asks.
 
 ## Decisions & deviations
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
@@ -65,5 +66,14 @@ Stop until the human explicitly starts Phase 9. Payments, pricing, real credibil
 - The alternate pool adds Perfectly In Sync when participant reply medians are within 5 minutes, Two-Way Street when no participant exceeds 60% of messages, and The Metronome for an all-participant streak of at least 7 days. Shared alternates name the full participant set and use only engine-owned values in their detail and prompt grounding.
 - The 6,375-message real-export regression now produces five fitting awards: 3AM Overthinker (259 late-night messages), Comedian (143 laugh-messages), Perfectly In Sync (matching 1-minute median replies), Two-Way Street (53% / 47% split), and The Metronome (11-day all-participant streak). Certified Ghost, Main Character, One-Word Warrior, and The Initiator are correctly absent.
 
+- Phase 9 puts all pricing in one `src/lib/pricing.ts` `PRICING` config: India ₹149 (INR, 14900 paise) / everyone else $2.99 (USD, 299 cents). The two are an intentional India-specific price, not a currency conversion. One unlock unlocks everything (full report + PDF + Wrapped card).
+- Country → price is decided server-side only, from geo headers (`x-vercel-ip-country`, `cf-ipcountry`, `x-country-code`); the client never sends amount, currency, or country. `DEV_COUNTRY_OVERRIDE` forces a country for local testing where no geo header exists. VPN anti-abuse is intentionally not built (₹100 stakes).
+- USD/international path is gated behind `RAZORPAY_INTERNATIONAL_ENABLED` (default false → everyone quoted INR), since accepting foreign cards on Razorpay needs International Payments approved on the account. Flip the env to switch USD on later; no code change and no launch block.
+- Endpoints: `GET /api/pricing` (quote-only for the teaser button display, no order, no keys needed), `POST /api/order` (server creates the Razorpay order for the detected country — returns orderId + publishable keyId, secret stays server-side), `POST /api/verify` (recomputes the HMAC-SHA256 of `order_id|payment_id` with the key secret, constant-time compare — the only thing that unlocks). All three use the Node runtime.
+- Order creation and signature verification call the Razorpay REST API / Node `crypto` directly (no `razorpay` npm dependency added). Verified with a local HMAC round-trip: correct signature matches, tampered signature rejected.
+- Client flow lives in `LockedReport.tsx` + `lib/razorpayCheckout.ts`: it loads the hosted Checkout script, opens it with the server order, and unlocks only after `/api/verify` returns `{verified:true}`. `ReportPageClient` swaps the teaser → `ModeReport` (the existing full report) on verified unlock and persists the unlock flag in sessionStorage for this session. Failure, cancel (modal dismiss), unconfigured (503), and script-load errors all surface a graceful message and never unlock.
+- No persistent server-side per-report unlock store exists (reports live only in the browser session, and the server never receives a report id). The security boundary is the server-side HMAC verification; the sessionStorage flag only keeps the report open across refreshes and is not itself trusted for anything.
+
 ## Known issues / TODO
 - No open award-eligibility follow-up remains from prompt pass v2.
+- Phase 9 has not been run against live Razorpay test keys in this environment (none configured). The order/verify code paths are exercised by the unconfigured (503) and bad-signature (400) responses and a local HMAC round-trip; a real UPI/test-card unlock still needs a one-time run with test keys in `.env.local`.

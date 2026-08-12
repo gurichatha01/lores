@@ -1,19 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { narrativeFirstLine } from "@/lib/funnel";
 import { getModePreset } from "@/lib/modePresets";
+import {
+  loadRazorpayScript,
+  openRazorpayCheckout,
+  type RazorpayHandlerResponse,
+} from "@/lib/razorpayCheckout";
 import { buildModeStatCards, formatCount, formatSpanLabel } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
 
 interface LockedReportProps {
   report: ReportSessionData;
+  onUnlocked: () => void;
 }
 
-export function LockedReport({ report }: LockedReportProps) {
-  const [stubMessage, setStubMessage] = useState(false);
+type UnlockStatus =
+  | "idle"
+  | "starting"
+  | "checkout"
+  | "verifying"
+  | "cancelled"
+  | "unavailable"
+  | "error";
+
+interface OrderResponse {
+  orderId: string;
+  amount: number;
+  currency: string;
+  display: string;
+  keyId: string;
+}
+
+export function LockedReport({ report, onUnlocked }: LockedReportProps) {
+  const [status, setStatus] = useState<UnlockStatus>("idle");
+  const [message, setMessage] = useState<string | null>(null);
+  const [priceDisplay, setPriceDisplay] = useState<string | null>(null);
   const { awards, content, stats } = report;
   const preset = getModePreset(report.mode);
   const soft = preset.treatment === "soft";
@@ -21,6 +46,113 @@ export function LockedReport({ report }: LockedReportProps) {
   const names = stats.people.map((person) => person.name).join(" & ");
   const cards = buildModeStatCards(report.mode, stats);
   const receipt = content.highlights.find((highlight) => highlight.bubble) ?? content.highlights[0];
+  const busy = status === "starting" || status === "checkout" || status === "verifying";
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/pricing")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (active && body && typeof body.display === "string") {
+          setPriceDisplay(body.display);
+        }
+      })
+      .catch(() => {
+        /* Price is a nicety on the button; failing to fetch it is non-fatal. */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function verifyPayment(response: RazorpayHandlerResponse): Promise<void> {
+    setStatus("verifying");
+    try {
+      const verifyResponse = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(response),
+      });
+      const verifyBody = (await verifyResponse.json().catch(() => null)) as
+        | { verified?: boolean }
+        | null;
+      if (verifyResponse.ok && verifyBody?.verified) {
+        onUnlocked();
+        return;
+      }
+      setStatus("error");
+      setMessage("We couldn't verify that payment. If you were charged, nothing was unlocked — please contact support.");
+    } catch {
+      setStatus("error");
+      setMessage("We couldn't reach the server to verify the payment. Please try again.");
+    }
+  }
+
+  async function startUnlock(): Promise<void> {
+    if (busy) return;
+    setStatus("starting");
+    setMessage(null);
+
+    let order: OrderResponse;
+    try {
+      const orderResponse = await fetch("/api/order", { method: "POST" });
+      if (orderResponse.status === 503) {
+        setStatus("unavailable");
+        setMessage("Payments aren't switched on yet — nothing was charged.");
+        return;
+      }
+      if (!orderResponse.ok) {
+        setStatus("error");
+        setMessage("We couldn't start checkout. Please try again.");
+        return;
+      }
+      order = (await orderResponse.json()) as OrderResponse;
+    } catch {
+      setStatus("error");
+      setMessage("We couldn't reach the server to start checkout. Please try again.");
+      return;
+    }
+
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      setStatus("error");
+      setMessage("We couldn't load the payment window. Check your connection and try again.");
+      return;
+    }
+
+    setStatus("checkout");
+    const opened = openRazorpayCheckout({
+      key: order.keyId,
+      order_id: order.orderId,
+      amount: order.amount,
+      currency: order.currency,
+      name: "lore_",
+      description: "Unlock the full report · PDF keepsake · Wrapped card",
+      theme: { color: preset.accent },
+      handler: (response) => {
+        void verifyPayment(response);
+      },
+      modal: {
+        ondismiss: () => {
+          setStatus((previous) => (previous === "checkout" ? "cancelled" : previous));
+          setMessage((previous) =>
+            previous ?? "Checkout closed — no charge. Your report is still here whenever you're ready.",
+          );
+        },
+      },
+    });
+
+    if (!opened) {
+      setStatus("error");
+      setMessage("We couldn't open the payment window. Please try again.");
+    }
+  }
+
+  const buttonLabel = busy
+    ? status === "verifying"
+      ? "verifying payment…"
+      : "opening checkout…"
+    : `unlock · ${priceDisplay ?? "full lore"}`;
 
   return (
     <main className="min-h-screen px-0 py-0 sm:px-6 sm:py-10" style={{ background: dark ? "#080706" : "#dcdcd7" }}>
@@ -92,15 +224,29 @@ export function LockedReport({ report }: LockedReportProps) {
         <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)]" aria-label="Unlock report">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lore</p>
+              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lore{priceDisplay ? ` · ${priceDisplay}` : ""}</p>
               <p className="mt-1 font-mono text-[9px] leading-relaxed text-white/55">full report · PDF keepsake · Wrapped card</p>
             </div>
             <div className="text-xl font-black">lore<span style={{ color: preset.accent }}>_</span></div>
           </div>
-          <button type="button" onClick={() => setStubMessage(true)} className={`mt-3 min-h-[52px] w-full px-4 py-3 text-[14px] font-extrabold uppercase text-white ${soft ? "rounded-full" : "rounded-[3px]"}`} style={{ background: preset.accent }}>
-            unlock · coming soon
+          <button
+            type="button"
+            onClick={startUnlock}
+            disabled={busy}
+            aria-busy={busy}
+            className={`mt-3 min-h-[52px] w-full px-4 py-3 text-[14px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
+            style={{ background: preset.accent }}
+          >
+            {buttonLabel}
           </button>
-          {stubMessage ? <p role="status" className="mt-2 text-center font-mono text-[9px] uppercase text-acid">payment opens in phase 9 · nothing charged</p> : null}
+          {message ? (
+            <p
+              role="status"
+              className={`mt-2 text-center font-mono text-[9px] uppercase ${status === "error" ? "text-roast" : "text-acid"}`}
+            >
+              {message}
+            </p>
+          ) : null}
         </aside>
       </article>
     </main>

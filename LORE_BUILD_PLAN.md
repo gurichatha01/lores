@@ -226,8 +226,34 @@ export interface ReportContent {
 **Tasks:** landing (hero + CTA + credibility slots as placeholders); "who's this chat with?" mode picker + partner sub-type chips; optional freeform **context box**; source = WhatsApp; **export-instructions screen** with clear platform-specific (Android/iOS) steps + images (this is the drop-off cliff — make it easy); upload with privacy reassurance; generating/loading state; the **teaser/locked report state** (hero sharp, rest blurred with lock pills, receipt teased, narrative cut to line one, sticky unlock bar). Payment button is a stub for now.
 **Done when:** a user can go landing → pick mode → export help → upload → generate → see teaser, all on-brand.
 
-### PHASE 9 — LATER (do not build until told): payments, pricing, credibility, launch
-Deferred by decision. Razorpay/UPI unlock at the reveal; pricing tiers TBD (digital unlock vs gift edition — undecided, don't hardcode ₹149 as final); populate landing credibility with **real** proof only; analytics; ad funnel.
+### PHASE 9 — Payments (Razorpay, dynamic currency)
+**Goal:** unlock the full report + PDF + Wrapped card after a real payment, with India priced in INR and everyone else in USD.
+
+**Pricing (single source of truth — put in one config object, never scatter):**
+```ts
+export const PRICING = {
+  IN: { currency: 'INR', amount: 14900, display: '₹149' }, // amount in paise
+  US: { currency: 'USD', amount: 299,   display: '$2.99' }, // amount in cents
+} as const;
+// India → INR; everyone else → USD. One unlock, unlocks everything.
+```
+Note the two aren't equal ($2.99 ≈ ₹249) — that's an intentional India-specific price, not a bug.
+
+**PREREQUISITE — verify before building the USD path:** accepting non-INR/foreign cards on Razorpay requires **International Payments enabled on the account** (extra KYC/approval). If it's not yet approved, build **INR-only now** and gate the USD path behind a flag so it switches on later — do NOT block launch on international approval.
+
+**Country → price:** detect country server-side (request geo / IP header). India → INR config, else → USD config. Don't over-engineer anti-VPN logic — for a ₹149 product the stakes are cents; a VPN saving ₹100 doesn't matter.
+
+**Flow (the critical part — never trust the client that payment succeeded):**
+1. Client requests unlock → **server** creates a Razorpay **order** with the amount+currency for the detected country (server decides the price, never the client).
+2. Razorpay Checkout opens; user pays (UPI/cards).
+3. On success, Razorpay returns a payment id + signature → **server verifies the signature** (HMAC with the key secret). Only a verified signature unlocks. A client saying "I paid" means nothing without server verification.
+4. On verified payment, mark that report unlocked and serve the full report + PDF + Wrapped card.
+
+**Tasks:** `PRICING` config; `/api/order` (server-side order creation, country→price); Razorpay Checkout on the teaser's unlock button; `/api/verify` (signature verification, server-side); flip the teaser → full report on verified unlock; keys in env (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`), secret never exposed to client. Handle failure/cancel states gracefully.
+**Done when:** an Indian user pays ₹149 via UPI and unlocks everything; a non-India user is quoted $2.99 (or, if international isn't approved yet, the USD path is cleanly flagged off); payment is verified server-side; no client-side price or unlock trust.
+
+### PHASE 10 — LATER (do not build until told): landing credibility, launch
+Populate landing credibility with **real** proof only (no fabricated logos/testimonials/counts); analytics; ad funnel. Do the deferred **prompt tuning** passes and **award-fit thresholds** if not already done.
 
 ---
 

@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { parseReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
+import { parseReportSession, REPORT_SESSION_KEY, REPORT_UNLOCK_KEY } from "@/lib/reportSession";
 import type { ReportSessionData } from "@/lib/types";
 
 import { LockedReport } from "./LockedReport";
+import { ModeReport } from "./ModeReport";
 
 export function ReportPageClient() {
   const [report, setReport] = useState<ReportSessionData | null>(null);
+  const [unlocked, setUnlocked] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -20,13 +22,23 @@ export function ReportPageClient() {
     }
     try {
       setReport(parseReportSession(saved));
+      setUnlocked(window.sessionStorage.getItem(REPORT_UNLOCK_KEY) === "true");
     } catch {
       setFailed(true);
     }
   }, []);
 
+  function handleUnlocked(): void {
+    window.sessionStorage.setItem(REPORT_UNLOCK_KEY, "true");
+    setUnlocked(true);
+  }
+
   if (report) {
-    return <LockedReport report={report} />;
+    return unlocked ? (
+      <ModeReport report={report} />
+    ) : (
+      <LockedReport report={report} onUnlocked={handleUnlocked} />
+    );
   }
 
   return (
