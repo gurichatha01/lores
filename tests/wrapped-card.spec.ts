@@ -31,4 +31,15 @@ describe("Wrapped card content", () => {
 
     expect(() => buildWrappedCard(report)).toThrow("computed award");
   });
+
+  it("hides zero novels and uses the singular label for one novel", () => {
+    const report = createReportSession(createTestGenerateInput(), VALID_REPORT);
+    expect(buildWrappedCard(report).heroDetail).toBe(
+      `${report.stats.totalWords.toLocaleString("en-US")} words`,
+    );
+
+    report.stats.totalWords = 80_000;
+    report.stats.novelsEquivalent = 1;
+    expect(buildWrappedCard(report).heroDetail).toBe("80,000 words · ≈ 1 novel");
+  });
 });

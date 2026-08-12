@@ -10,7 +10,12 @@ import {
   openRazorpayCheckout,
   type RazorpayHandlerResponse,
 } from "@/lib/razorpayCheckout";
-import { buildModeStatCards, formatCount, formatSpanLabel } from "@/lib/reportPresentation";
+import {
+  buildModeStatCards,
+  formatCount,
+  formatNovelsComparison,
+  formatSpanLabel,
+} from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
 
 interface LockedReportProps {
@@ -45,6 +50,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const dark = preset.treatment === "dark";
   const names = stats.people.map((person) => person.name).join(" & ");
   const cards = buildModeStatCards(report.mode, stats);
+  const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
   const receipt = content.highlights.find((highlight) => highlight.bubble) ?? content.highlights[0];
   const busy = status === "starting" || status === "checkout" || status === "verifying";
 
@@ -174,7 +180,15 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: preset.muted }}>total messages · {formatSpanLabel(stats.spanDays)}</p>
           <h1 id="teaser-hero" className="mt-2 text-[clamp(4.3rem,20vw,5.7rem)] font-black leading-[0.82] tracking-[-4px]" style={{ color: dark ? preset.accent : preset.text }}>{formatCount(stats.totalMessages)}</h1>
           <p className="mt-4 text-base font-semibold leading-[1.35]">
-            {formatCount(stats.totalWords)} words · <span className="px-1.5" style={{ background: dark ? preset.accentSoft : "#ccff00" }}>≈ {formatCount(stats.novelsEquivalent)} novels</span>
+            {formatCount(stats.totalWords)} words
+            {novelsComparison ? (
+              <>
+                {" · "}
+                <span className="px-1.5" style={{ background: dark ? preset.accentSoft : "#ccff00" }}>
+                  {novelsComparison}
+                </span>
+              </>
+            ) : null}
           </p>
           <p className="mt-3 text-[15px] font-medium leading-relaxed" style={{ color: preset.muted }}>{content.heroLine}</p>
           <div className="mt-4 inline-block border-2 px-3 py-2 font-mono text-[10px] font-bold" style={{ background: preset.card, borderColor: preset.text }}>↓ free · your trailer</div>

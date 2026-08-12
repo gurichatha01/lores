@@ -7,6 +7,7 @@ import {
   buildModeStatCards,
   formatCount,
   formatLocalReportDate,
+  formatNovelsComparison,
   formatSpanLabel,
 } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
@@ -23,6 +24,7 @@ export function ModeReport({ report }: ModeReportProps) {
   const names = stats.people.map((person) => person.name);
   const awardLines = new Map(content.awardLines.map((line) => [line.awardId, line.line]));
   const cards = buildModeStatCards(report.mode, stats);
+  const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
 
   return (
     <main
@@ -71,6 +73,7 @@ export function ModeReport({ report }: ModeReportProps) {
           <p className="mt-4 text-base font-semibold leading-[1.35]">
             <span className="px-1.5" style={{ background: preset.accentSoft }}>
               {formatCount(stats.totalWords)} words
+              {novelsComparison ? ` · ${novelsComparison}` : ""}
             </span>
             {" · "}
             {formatCount(stats.spanDays)} days of showing up in the chat.

@@ -3,6 +3,7 @@ import {
   buildModeStatCards,
   formatCount,
   formatSpanLabel,
+  formatWordCountWithNovels,
   type ModeStatCard,
 } from "./reportPresentation";
 import type { Award, ReportMode, ReportSessionData } from "./types";
@@ -42,7 +43,10 @@ export function buildWrappedCard(report: ReportSessionData): WrappedCardContent 
     relationshipLine: `${report.stats.people.map((person) => person.name).join(" & ")} · ${span}`,
     heroLabel: "total messages",
     heroValue: formatCount(report.stats.totalMessages),
-    heroDetail: `${formatCount(report.stats.totalWords)} words`,
+    heroDetail: formatWordCountWithNovels(
+      report.stats.totalWords,
+      report.stats.novelsEquivalent,
+    ),
     stats: [stats[0], stats[1], stats[2], stats[3]],
     headlineAward: { ...headlineAward },
     punchLine: report.content.wrappedLine,

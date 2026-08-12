@@ -26,6 +26,8 @@ describe("PDF keepsake", () => {
 
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
     const report = createReportSession(createTestGenerateInput("work"), VALID_REPORT);
+    report.stats.totalWords = 80_000;
+    report.stats.novelsEquivalent = 1;
     const pdf = createReportPdf(
       report,
       (width, height) => createCanvas(width, height) as unknown as PdfCanvas,

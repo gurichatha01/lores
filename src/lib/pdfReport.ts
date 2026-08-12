@@ -1,5 +1,10 @@
 import { getModePreset } from "./modePresets";
-import { formatCount, formatLocalReportDate, formatSpanLabel } from "./reportPresentation";
+import {
+  formatCount,
+  formatLocalReportDate,
+  formatSpanLabel,
+  formatWordCountWithNovels,
+} from "./reportPresentation";
 import type { PersonStats, ReportSessionData } from "./types";
 
 export const PDF_PAGE_WIDTH = 1240;
@@ -336,7 +341,14 @@ function drawClosing(context: CanvasRenderingContext2D, data: PdfDocumentData, p
   context.fillStyle = "rgba(243,243,239,.72)";
   archivo(context, 38, 700);
   context.fillText(`${formatCount(data.report.stats.totalMessages)} messages.`, PDF_PAGE_WIDTH / 2, 915);
-  context.fillText(`${formatCount(data.report.stats.totalWords)} words.`, PDF_PAGE_WIDTH / 2, 970);
+  context.fillText(
+    `${formatWordCountWithNovels(
+      data.report.stats.totalWords,
+      data.report.stats.novelsEquivalent,
+    )}.`,
+    PDF_PAGE_WIDTH / 2,
+    970,
+  );
   context.fillText(`${data.span} of showing up.`, PDF_PAGE_WIDTH / 2, 1025);
   context.fillStyle = PAPER;
   archivo(context, 34, 700);

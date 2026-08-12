@@ -15,6 +15,22 @@ export function formatCount(value: number): string {
   return integer.format(value);
 }
 
+export function formatNovelsComparison(novelsEquivalent: number): string | null {
+  if (novelsEquivalent < 1) return null;
+  return `≈ ${formatCount(novelsEquivalent)} ${
+    novelsEquivalent === 1 ? "novel" : "novels"
+  }`;
+}
+
+export function formatWordCountWithNovels(
+  totalWords: number,
+  novelsEquivalent: number,
+): string {
+  const words = `${formatCount(totalWords)} words`;
+  const comparison = formatNovelsComparison(novelsEquivalent);
+  return comparison ? `${words} · ${comparison}` : words;
+}
+
 export function formatReplyTime(minutes: number): string {
   if (minutes <= 0) return "—";
   if (minutes < 60) return `${Math.round(minutes)}m`;
@@ -114,7 +130,7 @@ function buildStatCard(metric: StatMetric, stats: ReportStats): ModeStatCard {
       return {
         label: "word count",
         value: formatCount(stats.totalWords),
-        detail: stats.novelsEquivalent > 0 ? `about ${stats.novelsEquivalent} novels` : "concise and on record",
+        detail: formatNovelsComparison(stats.novelsEquivalent) ?? "concise and on record",
       };
     case "silence":
       return {

@@ -5,6 +5,7 @@ import {
   buildSweetheartStatCards,
   formatCount,
   formatLocalReportDate,
+  formatNovelsComparison,
   formatSpanLabel,
 } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
@@ -18,6 +19,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
   const names = stats.people.map((person) => person.name);
   const awardLines = new Map(content.awardLines.map((line) => [line.awardId, line.line]));
   const cards = buildSweetheartStatCards(stats);
+  const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
 
   return (
     <main className="min-h-screen bg-[#dcdcd7] px-0 py-0 sm:px-6 sm:py-10">
@@ -39,7 +41,10 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
             {formatCount(stats.totalMessages)}
           </h1>
           <p className="mt-4 text-base font-semibold leading-[1.35]">
-            <span className="rounded bg-[#ffd9e6] px-1.5">{formatCount(stats.totalWords)} words</span>
+            <span className="rounded bg-[#ffd9e6] px-1.5">
+              {formatCount(stats.totalWords)} words
+              {novelsComparison ? ` · ${novelsComparison}` : ""}
+            </span>
             {" · "}{formatCount(stats.spanDays)} days of showing up in the chat.
           </p>
           <p className="mt-3 text-[15px] font-medium leading-relaxed text-ink/70">{content.heroLine}</p>

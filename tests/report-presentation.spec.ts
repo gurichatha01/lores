@@ -4,8 +4,10 @@ import {
   buildModeStatCards,
   buildSweetheartStatCards,
   formatLocalReportDate,
+  formatNovelsComparison,
   formatReplyTime,
   formatSpanLabel,
+  formatWordCountWithNovels,
 } from "../src/lib/reportPresentation";
 import { REPORT_MODES } from "../src/lib/modePresets";
 import { createTestGenerateInput } from "./reportTestData";
@@ -44,5 +46,13 @@ describe("Sweetheart report presentation", () => {
     expect(formatSpanLabel(90)).toBe("3 months, in messages");
     expect(formatReplyTime(0)).toBe("—");
     expect(formatReplyTime(90)).toBe("1.5h");
+  });
+
+  it("hides sub-novel comparisons and handles singular and plural labels", () => {
+    expect(formatNovelsComparison(0)).toBeNull();
+    expect(formatNovelsComparison(1)).toBe("≈ 1 novel");
+    expect(formatNovelsComparison(2)).toBe("≈ 2 novels");
+    expect(formatWordCountWithNovels(40_000, 0)).toBe("40,000 words");
+    expect(formatWordCountWithNovels(80_000, 1)).toBe("80,000 words · ≈ 1 novel");
   });
 });
