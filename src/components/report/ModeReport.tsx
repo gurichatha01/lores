@@ -211,7 +211,7 @@ export function ModeReport({ report }: ModeReportProps) {
               <br />built from a locally parsed export
             </p>
             <div className="text-2xl font-black tracking-[-1px]">
-              lore<span style={{ color: preset.accent }}>_</span>
+              lores<span style={{ color: preset.accent }}>_</span>
             </div>
           </div>
         </footer>

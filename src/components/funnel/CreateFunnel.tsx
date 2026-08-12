@@ -128,7 +128,7 @@ export function CreateFunnel() {
       >
         <header className="flex items-center justify-between border-b-2 pb-3" style={{ borderColor: preset.text }}>
           <Link href="/" className="text-2xl font-black tracking-[-1px]">
-            lore<span style={{ color: preset.accent }}>_</span>
+            lores<span style={{ color: preset.accent }}>_</span>
           </Link>
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: preset.accent }}>
             {String(STEP_NUMBER[step]).padStart(2, "0")} / 05
@@ -174,7 +174,7 @@ export function CreateFunnel() {
           ) : null}
           {step === "upload" ? (
             <FunnelButton accent={preset.accent} disabled={!file} onClick={generate}>
-              make my {preset.label.toLowerCase()} lore →
+              make my {preset.label.toLowerCase()} lores →
             </FunnelButton>
           ) : null}
           {step !== "mode" ? (
@@ -270,7 +270,7 @@ function ContextStep({ value, onChange }: { value: string; onChange: (value: str
 function SourceStep() {
   return (
     <>
-      <StepIntro eyebrow="source · one place for now" title="where’s the chat?" body="Lore currently reads WhatsApp exports. You’ll make the export yourself, then bring the file back here." />
+      <StepIntro eyebrow="source · one place for now" title="where’s the chat?" body="lores currently reads WhatsApp exports. You’ll make the export yourself, then bring the file back here." />
       <div className="mt-8 border-2 border-ink bg-white p-5 shadow-[7px_7px_0_#25d366]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -314,7 +314,7 @@ function InstructionsStep({ platform, onPlatform }: { platform: ExportPlatform; 
           </ol>
         </div>
       </div>
-      <div className="mt-5 border-2 border-ink bg-acid p-3 font-mono text-[10px] font-bold leading-relaxed">Choose WITHOUT MEDIA. Lore still counts omitted media markers, and the export stays small.</div>
+      <div className="mt-5 border-2 border-ink bg-acid p-3 font-mono text-[10px] font-bold leading-relaxed">Choose WITHOUT MEDIA. lores still counts omitted media markers, and the export stays small.</div>
       <p className="mt-3 text-[11px] font-semibold text-ink/50">{guide.result}</p>
     </>
   );
@@ -363,7 +363,7 @@ function GeneratingScreen({ mode, stage }: { mode: ReportMode; stage: Generation
           <span className="lore-generating-mark text-5xl font-black" style={{ color: preset.accent }}>_</span>
         </div>
         <p className="mt-9 font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: preset.accent }}>{preset.emoji} {preset.label} edition</p>
-        <h1 className="mt-3 text-[42px] font-black leading-[0.92] tracking-[-2px]">{stage === "reading" ? "counting everything." : "writing your lore."}</h1>
+        <h1 className="mt-3 text-[42px] font-black leading-[0.92] tracking-[-2px]">{stage === "reading" ? "counting everything." : "writing your lores."}</h1>
         <p className="mx-auto mt-4 max-w-sm text-sm font-medium leading-relaxed" style={{ color: preset.muted }}>{stage === "reading" ? "Messages, streaks, replies, late nights, and every tiny pattern the chat forgot." : "The numbers are locked. The writer is turning them into a story now."}</p>
         <div className="mx-auto mt-8 max-w-xs border-y-2 py-3 font-mono text-[9px] uppercase leading-loose tracking-[0.08em]" style={{ borderColor: preset.text, color: preset.muted }}>parsed on this device<br />full chat never sent<br />please keep this tab open</div>
       </section>

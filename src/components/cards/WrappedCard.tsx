@@ -215,7 +215,7 @@ function drawWrappedCard(canvas: HTMLCanvasElement, content: WrappedCardContent)
   context.fillStyle = preset.accent;
   context.font = "700 25px 'Space Mono', monospace";
   context.letterSpacing = "3px";
-  context.fillText(content.mode === "roast" ? "THE VERDICT" : "THE LORE", PADDING, 1502);
+  context.fillText(content.mode === "roast" ? "THE VERDICT" : "THE LORES", PADDING, 1502);
   context.letterSpacing = "0px";
   context.fillStyle = foreground;
   context.font = "800 45px Archivo, Arial, sans-serif";
@@ -223,13 +223,13 @@ function drawWrappedCard(canvas: HTMLCanvasElement, content: WrappedCardContent)
 
   context.fillStyle = muted;
   context.font = "400 27px 'Space Mono', monospace";
-  context.fillText(content.mode === "roast" ? "get roasted →\nlore.app" : "get yours →\nlore.app", PADDING, 1762);
+  context.fillText(content.mode === "roast" ? "get roasted →\nlores.in" : "get yours →\nlores.in", PADDING, 1762);
   context.fillStyle = foreground;
   context.font = "900 70px Archivo, Arial, sans-serif";
-  context.fillText("lore", 810, 1756);
-  const logoWidth = context.measureText("lore").width;
+  context.fillText("lores", 770, 1756);
+  const logoWidth = context.measureText("lores").width;
   context.fillStyle = preset.accent;
-  context.fillText("_", 810 + logoWidth, 1756);
+  context.fillText("_", 770 + logoWidth, 1756);
 }
 
 function fitAndDrawText(

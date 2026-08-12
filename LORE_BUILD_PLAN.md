@@ -1,4 +1,4 @@
-# LORE — Master Build Plan
+# LORES — Master Build Plan
 _Agent-agnostic. Works for Codex **and** Claude Code. Build phase by phase._
 
 This doc + the `/design` folder are the complete source of truth. Read both fully before writing any code.
@@ -25,7 +25,7 @@ You may be **Codex or Claude Code**, and the human switches between us mid-build
 
 A mobile-first web app. A user uploads their exported WhatsApp chat and gets a **report about a relationship or group** — real stats no one remembers, plus a narrative written in the AI's voice. It's built to be **screenshot-shared** and **gifted** (birthdays, anniversaries). One engine, several **modes** (Sweetheart, Ride or Die, Group Wrapped, Family, Work, Roast) that swing from sweet keepsake to savage roast.
 
-Product name: **lore** (lowercase).
+Product name: **lores** (lowercase).
 
 **The value = real numbers + a witty/warm read that feels handcrafted.** The design already sets the copy quality bar; the build's job is to hit it.
 
@@ -97,7 +97,7 @@ PROGRESS.md              # handoff log (see §9)
   | Family | `#e8940c` amber | light, cozy |
   | Work | `#0f8f8f` teal | light, cool |
   | Roast | `#e11400` red | **dark** bg, heat, warning-tape |
-- **Share cards:** dark base `#0b0b0c` (roast `#120a08`), 9:16, `lore_` watermark (underscore in accent).
+- **Share cards:** dark base `#0b0b0c` (roast `#120a08`), 9:16, `lores_` watermark (underscore in accent).
 - **Report has two states:** `teaser` (locked/blurred + sticky unlock bar) and `full` (paid).
 
 ---
@@ -199,7 +199,7 @@ export interface ReportContent {
 
 ### PHASE 5 — All modes + share cards
 **Goal:** mode presets + the viral unit.
-**Tasks:** turn mode into a preset (which stats surface + which system prompt/voice) for all six modes, each with a placeholder prompt. Build the report in each mode's treatment (soft for Sweetheart/Family, dark/heat for Roast, etc.). Build the **9:16 dark share-card** renderer with image export; generate a set (hero stat, each award, a savage line); `lore_` watermark.
+**Tasks:** turn mode into a preset (which stats surface + which system prompt/voice) for all six modes, each with a placeholder prompt. Build the report in each mode's treatment (soft for Sweetheart/Family, dark/heat for Roast, etc.). Build the **9:16 dark share-card** renderer with image export; generate a set (hero stat, each award, a savage line); `lores_` watermark.
 **Done when:** every mode renders; share cards export as images that match `/design`.
 
 ### PHASE 6 — The Wrapped share card ⭐ (the ONE share surface)
@@ -212,7 +212,7 @@ export interface ReportContent {
   - 3–4 tightest stats (e.g. texts-first %, streak, late-nights, reply time)
   - the headline award (one, with badge)
   - ONE punchy line — the sweet or savage one-liner for the mode
-  - `lore_` watermark + `get yours → lore.app`
+  - `lores_` watermark + `get yours → lores.in`
 - This single card is the whole share surface. All values come from the engine; the one-liner comes from `ReportContent`.
 **Done when:** one Wrapped card exports as a clean 9:16 PNG per mode, readable as a self-contained story; the old per-stat share cards are gone; the report-page stat cards are untouched.
 
@@ -268,7 +268,7 @@ Populate landing credibility with **real** proof only (no fabricated logos/testi
 ## 9. `PROGRESS.md` TEMPLATE (create in Phase 0, update every phase)
 
 ```markdown
-# LORE — Build Progress
+# LORES — Build Progress
 
 Last agent: <codex|claude-code>   Last updated: <date>
 

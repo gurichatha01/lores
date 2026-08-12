@@ -46,7 +46,7 @@ export function ReportPageClient() {
       <section className="w-full max-w-[430px] rounded-[32px] bg-[#f5f2f0] p-8 text-center shadow-editorial">
         <div className="text-3xl" aria-hidden="true">💕</div>
         <h1 className="mt-4 text-3xl font-black tracking-[-1px]">
-          {failed ? "no report found" : "opening your lore…"}
+          {failed ? "no report found" : "opening your lores…"}
         </h1>
         {failed ? (
           <>

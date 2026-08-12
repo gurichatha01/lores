@@ -27,17 +27,17 @@ export default function LandingPage() {
               the story hiding in your messages
             </p>
             <h1 className="mt-4 text-[clamp(5.8rem,27vw,10rem)] font-black leading-[0.75] tracking-[-7px] sm:tracking-[-9px]">
-              lore<span className="text-group">_</span>
+              lores<span className="text-group">_</span>
             </h1>
             <p className="mt-7 max-w-xl text-[clamp(1.4rem,5vw,2.25rem)] font-semibold leading-[1.12] tracking-[-1px]">
               upload your chat.<br />
-              get the <span className="bg-pink px-1.5 text-white">lore</span> — every stat nobody remembers.
+              get <span className="bg-pink px-1.5 text-white">lores</span> — every stat nobody remembers.
             </p>
             <Link
               href="/create"
               className="mt-8 flex min-h-16 w-full max-w-md items-center justify-center bg-ink px-6 text-[17px] font-extrabold uppercase tracking-[0.02em] text-surface transition-transform hover:-translate-y-0.5"
             >
-              get my lore <span className="ml-2 font-mono text-acid">→</span>
+              get my lores <span className="ml-2 font-mono text-acid">→</span>
             </Link>
             <p className="mt-3 max-w-md text-center font-mono text-[11px] text-ink/50">
               🔒 your full chat never leaves your phone
@@ -104,7 +104,7 @@ export default function LandingPage() {
           <p className="max-w-md font-mono text-[9px] uppercase leading-relaxed tracking-[0.08em] text-ink/45">
             parsed locally · only derived stats and a small curated sample reach the writer
           </p>
-          <div className="text-2xl font-black tracking-[-1px]">lore<span className="text-pink">_</span></div>
+          <div className="text-2xl font-black tracking-[-1px]">lores<span className="text-pink">_</span></div>
         </div>
       </footer>
     </main>

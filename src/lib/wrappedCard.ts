@@ -46,6 +46,6 @@ export function buildWrappedCard(report: ReportSessionData): WrappedCardContent 
     stats: [stats[0], stats[1], stats[2], stats[3]],
     headlineAward: { ...headlineAward },
     punchLine: report.content.wrappedLine,
-    fileName: `lore-${report.mode}-wrapped.png`,
+    fileName: `lores-${report.mode}-wrapped.png`,
   };
 }

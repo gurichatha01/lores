@@ -21,7 +21,7 @@ describe("Wrapped card content", () => {
         input.awards.find((award) => award.id === "main-character") ?? input.awards[0],
       );
       expect(card.punchLine).toBe(VALID_REPORT.wrappedLine);
-      expect(card.fileName).toBe(`lore-${mode}-wrapped.png`);
+      expect(card.fileName).toBe(`lores-${mode}-wrapped.png`);
     }
   });
 

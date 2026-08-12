@@ -128,7 +128,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
               <br />built from a locally parsed export
             </p>
             <div className="text-2xl font-black tracking-[-1px]">
-              lore<span className="text-pink">_</span>
+              lores<span className="text-pink">_</span>
             </div>
           </div>
         </footer>

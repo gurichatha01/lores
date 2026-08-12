@@ -29,5 +29,5 @@ export function createReportPdf(report: ReportSessionData, createCanvas: PdfCanv
 }
 
 export function pdfFileName(report: ReportSessionData): string {
-  return `lore-${report.mode}-keepsake.pdf`;
+  return `lores-${report.mode}-keepsake.pdf`;
 }

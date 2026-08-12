@@ -126,7 +126,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
       order_id: order.orderId,
       amount: order.amount,
       currency: order.currency,
-      name: "lore_",
+      name: "lores_",
       description: "Unlock the full report · PDF keepsake · Wrapped card",
       theme: { color: preset.accent },
       handler: (response) => {
@@ -152,7 +152,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     ? status === "verifying"
       ? "verifying payment…"
       : "opening checkout…"
-    : `unlock · ${priceDisplay ?? "full lore"}`;
+    : `unlock · ${priceDisplay ?? "full lores"}`;
 
   return (
     <main className="min-h-screen px-0 py-0 sm:px-6 sm:py-10" style={{ background: dark ? "#080706" : "#dcdcd7" }}>
@@ -224,10 +224,10 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)]" aria-label="Unlock report">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lore{priceDisplay ? ` · ${priceDisplay}` : ""}</p>
+              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lores{priceDisplay ? ` · ${priceDisplay}` : ""}</p>
               <p className="mt-1 font-mono text-[9px] leading-relaxed text-white/55">full report · PDF keepsake · Wrapped card</p>
             </div>
-            <div className="text-xl font-black">lore<span style={{ color: preset.accent }}>_</span></div>
+            <div className="text-xl font-black">lores<span style={{ color: preset.accent }}>_</span></div>
           </div>
           <button
             type="button"

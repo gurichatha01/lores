@@ -96,7 +96,7 @@ function drawCover(context: CanvasRenderingContext2D, data: PdfDocumentData): vo
 
   context.fillStyle = data.accent;
   mono(context, 28, 700, 4);
-  context.fillText(`${data.modeLabel.toUpperCase()} - THE LORE OF`, PAGE_MARGIN, 510);
+  context.fillText(`${data.modeLabel.toUpperCase()} - THE LORES OF`, PAGE_MARGIN, 510);
   context.letterSpacing = "0px";
 
   context.fillStyle = INK;
@@ -328,7 +328,7 @@ function drawClosing(context: CanvasRenderingContext2D, data: PdfDocumentData, p
   context.textAlign = "center";
   context.fillStyle = data.accent;
   mono(context, 26, 700, 4);
-  context.fillText("THE LORE OF", PDF_PAGE_WIDTH / 2, 490);
+  context.fillText("THE LORES OF", PDF_PAGE_WIDTH / 2, 490);
   context.letterSpacing = "0px";
   context.fillStyle = PAPER;
   archivo(context, 88, 900);
@@ -350,7 +350,7 @@ function drawClosing(context: CanvasRenderingContext2D, data: PdfDocumentData, p
   context.stroke();
   context.fillStyle = "rgba(243,243,239,.5)";
   mono(context, 21, 400);
-  context.fillText("MADE WITH LORE.APP", PAGE_MARGIN, 1625);
+  context.fillText("MADE WITH LORES.IN", PAGE_MARGIN, 1625);
   drawLogo(context, PDF_PAGE_WIDTH - PAGE_MARGIN - 120, 1610, data.accent, true);
   drawPageNumber(context, pageNumber, data.accent, true);
 }
@@ -570,8 +570,8 @@ function fillPage(context: CanvasRenderingContext2D, color: string): void {
 function drawLogo(context: CanvasRenderingContext2D, x: number, y: number, accent: string, dark: boolean): void {
   context.fillStyle = dark ? PAPER : INK;
   archivo(context, 46, 900);
-  context.fillText("lore", x, y);
-  const width = context.measureText("lore").width;
+  context.fillText("lores", x, y);
+  const width = context.measureText("lores").width;
   context.fillStyle = accent;
   context.fillText("_", x + width, y);
 }
@@ -580,7 +580,7 @@ function drawPageNumber(context: CanvasRenderingContext2D, page: number, accent:
   context.fillStyle = dark ? "rgba(243,243,239,.42)" : MUTED;
   mono(context, 17, 400);
   context.textAlign = "right";
-  context.fillText(`${String(page).padStart(2, "0")} - lore`, PDF_PAGE_WIDTH - PAGE_MARGIN, 1680);
+  context.fillText(`${String(page).padStart(2, "0")} - lores`, PDF_PAGE_WIDTH - PAGE_MARGIN, 1680);
   context.fillStyle = accent;
   context.fillText("_", PDF_PAGE_WIDTH - PAGE_MARGIN + 8, 1680);
   context.textAlign = "left";

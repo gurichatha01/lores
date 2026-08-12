@@ -21,7 +21,7 @@ describe("PDF keepsake", () => {
     expect(data.report.stats.replyTimeDistribution).toEqual(report.stats.replyTimeDistribution);
     expect(data.report.stats.topEmojis).toEqual(report.stats.topEmojis);
     expect(data.storyPages.flat()).toEqual(VALID_REPORT.chapters);
-    expect(pdfFileName(report)).toBe("lore-sweetheart-keepsake.pdf");
+    expect(pdfFileName(report)).toBe("lores-sweetheart-keepsake.pdf");
   });
 
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
