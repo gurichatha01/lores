@@ -36,7 +36,15 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
       awards,
       sample,
     });
-    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(VALID_REPORT));
+    const expectedReport = {
+      ...VALID_REPORT,
+      highlights: VALID_REPORT.highlights.map(({ bubble: _bubble, ...highlight }) => highlight),
+      awardLines: awards.map((award) => ({
+        awardId: award.id,
+        line: testAwardLine(award.id, award.detail),
+      })),
+    };
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(expectedReport));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
@@ -52,7 +60,7 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
     const providerInput = JSON.parse(providerRequest.contents[0].parts[0].text);
 
     expect(response.status).toBe(200);
-    expect(report).toEqual(VALID_REPORT);
+    expect(report).toEqual(expectedReport);
     expect(sample.length).toBeLessThan(parsed.messages.length);
     expect(Object.keys(providerInput).sort()).toEqual(
       ["mode", "subtype", "userContext", "stats", "awards", "sample"].sort(),
@@ -75,3 +83,18 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
     });
   });
 });
+
+function testAwardLine(awardId: string, detail: string): string {
+  const suffix: Record<string, string> = {
+    "certified-ghost": "kept everyone waiting as the slowest reply.",
+    "main-character": "took the largest message share.",
+    "3am-overthinker": "landed after midnight in the late-night shift.",
+    "one-word-warrior": "kept every message short and concise.",
+    comedian: "kept the laughs coming.",
+    "the-initiator": "opened and restarted the chat.",
+    "perfectly-in-sync": "kept the reply rhythm matched.",
+    "two-way-street": "kept the message split balanced.",
+    "the-metronome": "kept the consecutive-day streak moving.",
+  };
+  return `${detail}; ${suffix[awardId]}`;
+}

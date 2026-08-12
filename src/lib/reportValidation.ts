@@ -71,6 +71,7 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   const awards = parseAwards(input.awards);
   const sample = asArray(input.sample, "sample").map(parseSampleMessage);
   const people = new Set(stats.people.map((person) => person.name));
+  const collectiveRecipient = stats.people.map((person) => person.name).join(" & ");
 
   if (sample.length === 0 || sample.length > Math.min(stats.totalMessages, stats.people.length * 30)) {
     throw new ReportValidationError("sample must contain at most 30 curated messages per person.");
@@ -78,8 +79,10 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   if (sample.some((message) => !people.has(message.sender))) {
     throw new ReportValidationError("Every sample sender must exist in stats.people.");
   }
-  if (awards.some((award) => !people.has(award.who))) {
-    throw new ReportValidationError("Every award winner must exist in stats.people.");
+  if (awards.some((award) => !people.has(award.who) && award.who !== collectiveRecipient)) {
+    throw new ReportValidationError(
+      "Every award recipient must be a participant or the full participant set.",
+    );
   }
 
   return {
@@ -292,7 +295,7 @@ function parseAward(value: unknown, index: number): Award {
     id: asString(award.id, `awards[${index}].id`, 100),
     label: asString(award.label, `awards[${index}].label`, 160),
     emoji: asString(award.emoji, `awards[${index}].emoji`, 32),
-    who: asString(award.who, `awards[${index}].who`, 100),
+    who: asString(award.who, `awards[${index}].who`, 1_000),
     detail: asString(award.detail, `awards[${index}].detail`, 200),
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assignAwards } from "../src/lib/assignAwards";
+import { assignAwards, AWARD_THRESHOLDS } from "../src/lib/assignAwards";
 import { computeStats, REPLY_GAP_CAP_MIN } from "../src/lib/computeStats";
 import { parseWhatsAppText } from "../src/lib/parseWhatsApp";
 import type { Message } from "../src/lib/types";
@@ -250,18 +250,37 @@ describe("computeStats", () => {
 });
 
 describe("assignAwards", () => {
-  it("maps each deterministic metric to the expected award winner", () => {
-    const stats = computeStats([
-      message("2024-06-01T00:30:00", "A", "lol 😂"),
-      message("2024-06-01T00:35:00", "B", "ok"),
-      message("2024-06-01T01:00:00", "A", "hahaha project update"),
-      message("2024-06-01T01:45:00", "B", "k"),
-      message("2024-06-01T02:00:00", "A", "rofl project update details"),
-      message("2024-06-01T05:50:00", "B", "sure"),
-      message("2024-06-01T12:00:00", "A", "starting again after lunch"),
-      message("2024-06-01T12:01:00", "B", "yes"),
-      message("2024-06-02T12:00:00", "A", "starting the next day"),
+  it("maps every qualifying primary metric to the expected winner and detail", () => {
+    const computed = computeStats([
+      message("2024-06-01T09:00:00", "A"),
+      message("2024-06-01T09:01:00", "B"),
     ]);
+    const stats = {
+      ...computed,
+      people: computed.people.map((candidate) =>
+        candidate.name === "A"
+          ? {
+              ...candidate,
+              messageCount: 70,
+              messageShare: 0.7,
+              avgWordsPerMessage: 8,
+              medianReplyTimeMin: 5,
+              conversationStarts: 70,
+              lateNightCount: 30,
+              laughCount: 40,
+            }
+          : {
+              ...candidate,
+              messageCount: 30,
+              messageShare: 0.3,
+              avgWordsPerMessage: 2,
+              medianReplyTimeMin: 45,
+              conversationStarts: 20,
+              lateNightCount: 5,
+              laughCount: 3,
+            },
+      ),
+    };
 
     const awards = assignAwards(stats);
     expect(Object.fromEntries(awards.map((award) => [award.id, award.who]))).toEqual({
@@ -273,12 +292,12 @@ describe("assignAwards", () => {
       "the-initiator": "A",
     });
     expect(Object.fromEntries(awards.map((award) => [award.id, award.detail]))).toEqual({
-      "certified-ghost": "median reply 25m",
-      "main-character": "56% of all messages",
-      "3am-overthinker": "3 late-night messages",
-      "one-word-warrior": "1 word per message",
-      comedian: "4 laugh-messages",
-      "the-initiator": "3 conversation starts",
+      "certified-ghost": "median reply 45m",
+      "main-character": "70% of all messages",
+      "3am-overthinker": "30 late-night messages",
+      "one-word-warrior": "2 words per message",
+      comedian: "40 laugh-messages",
+      "the-initiator": "70 conversation starts",
     });
     expect(person(stats, "B").medianReplyTimeMin).toBeGreaterThan(
       person(stats, "A").medianReplyTimeMin,
@@ -292,6 +311,104 @@ describe("assignAwards", () => {
     expect(person(stats, "A").conversationStarts).toBeGreaterThan(
       person(stats, "B").conversationStarts,
     );
+  });
+
+  it("omits primary awards at their exact boundaries and fills with fitting alternates", () => {
+    const computed = computeStats([
+      message("2024-06-01T09:00:00", "A"),
+      message("2024-06-01T09:01:00", "B"),
+      message("2024-06-02T09:00:00", "A"),
+      message("2024-06-02T09:01:00", "B"),
+    ]);
+    const stats = {
+      ...computed,
+      longestStreakDays: AWARD_THRESHOLDS.metronomeMinStreakDays,
+      people: computed.people.map((candidate, index) => ({
+        ...candidate,
+        messageCount: 50,
+        messageShare: 0.5,
+        avgWordsPerMessage: AWARD_THRESHOLDS.oneWordMaxAverageExclusive,
+        medianReplyTimeMin: AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive,
+        conversationStarts: 3,
+        lateNightCount: AWARD_THRESHOLDS.lateNightMinMessagesExclusive,
+        laughCount: AWARD_THRESHOLDS.comedianMinLaughMessagesExclusive,
+        name: index === 0 ? "A" : "B",
+      })),
+    };
+
+    const awards = assignAwards(stats);
+    expect(awards.map((award) => award.id)).toEqual([
+      "perfectly-in-sync",
+      "two-way-street",
+      "the-metronome",
+    ]);
+    expect(awards).toEqual([
+      {
+        id: "perfectly-in-sync",
+        label: "Perfectly In Sync",
+        emoji: "🫶",
+        who: "A & B",
+        detail: "matching 30m median replies",
+      },
+      {
+        id: "two-way-street",
+        label: "Two-Way Street",
+        emoji: "↔️",
+        who: "A & B",
+        detail: "50% / 50% message split",
+      },
+      {
+        id: "the-metronome",
+        label: "The Metronome",
+        emoji: "⏱️",
+        who: "A & B",
+        detail: "7-day all-participant streak",
+      },
+    ]);
+  });
+
+  it("omits non-fitting real-like primaries instead of forcing all six", () => {
+    const computed = computeStats([
+      message("2024-06-01T09:00:00", "Guri"),
+      message("2024-06-01T09:01:00", "Sanj"),
+      message("2024-06-02T09:00:00", "Guri"),
+      message("2024-06-02T09:01:00", "Sanj"),
+    ]);
+    const stats = {
+      ...computed,
+      longestStreakDays: 11,
+      people: computed.people.map((candidate) =>
+        candidate.name === "Guri"
+          ? {
+              ...candidate,
+              messageCount: 53,
+              messageShare: 0.53,
+              avgWordsPerMessage: 5.1,
+              medianReplyTimeMin: 1,
+              conversationStarts: 174,
+              lateNightCount: 259,
+              laughCount: 143,
+            }
+          : {
+              ...candidate,
+              messageCount: 47,
+              messageShare: 0.47,
+              avgWordsPerMessage: 4.2,
+              medianReplyTimeMin: 1,
+              conversationStarts: 140,
+              lateNightCount: 152,
+              laughCount: 121,
+            },
+      ),
+    };
+
+    expect(assignAwards(stats).map((award) => award.id)).toEqual([
+      "3am-overthinker",
+      "comedian",
+      "perfectly-in-sync",
+      "two-way-street",
+      "the-metronome",
+    ]);
   });
 
   it("keeps addresses, phone numbers, links, and filler out of top words", () => {
@@ -308,12 +425,21 @@ describe("assignAwards", () => {
     expect(stats.people.find((person) => person.name === "B")?.topWords).toContain("whale");
   });
 
-  it("resolves tied metrics by participant appearance order", () => {
-    const stats = computeStats([
+  it("resolves qualifying tied primary metrics by participant appearance order", () => {
+    const computed = computeStats([
       message("2024-07-01T10:00:00", "First", "hello"),
       message("2024-07-01T10:01:00", "Second", "hello"),
     ]);
+    const stats = {
+      ...computed,
+      people: computed.people.map((candidate) => ({
+        ...candidate,
+        medianReplyTimeMin: 45,
+      })),
+    };
 
-    expect(assignAwards(stats).find((award) => award.id === "main-character")?.who).toBe("First");
+    expect(assignAwards(stats).find((award) => award.id === "certified-ghost")?.who).toBe(
+      "First",
+    );
   });
 });

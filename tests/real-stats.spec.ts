@@ -29,7 +29,8 @@ describe.skipIf(!realExportPath)("real WhatsApp stats sanity check", () => {
     expect(stats.replyTimeDistribution.reduce((sum, bucket) => sum + bucket.count, 0)).toBeGreaterThan(0);
     expect(stats.busiestDay.count).toBeGreaterThan(0);
     expect(stats.spanDays).toBeGreaterThan(365);
-    expect(awards.length).toBe(6);
+    expect(awards.length).toBeGreaterThanOrEqual(3);
+    expect(awards.length).toBeLessThanOrEqual(6);
 
     console.info(JSON.stringify({ stats, awards }, null, 2));
   });

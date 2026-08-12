@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "../src/app/api/generate/route";
-import { createTestGenerateInput, geminiResponse, VALID_REPORT } from "./reportTestData";
+import {
+  ALTERNATE_REPORT,
+  createAlternateGenerateInput,
+  createTestGenerateInput,
+  geminiResponse,
+  VALID_REPORT,
+} from "./reportTestData";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -25,6 +31,16 @@ describe("POST /api/generate", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual(VALID_REPORT);
+  });
+
+  it("accepts deterministic shared recipients for alternate awards", async () => {
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(geminiResponse(ALTERNATE_REPORT)));
+
+    const response = await POST(request(createAlternateGenerateInput()));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(ALTERNATE_REPORT);
   });
 
   it("rejects an extra raw-chat field before contacting the provider", async () => {

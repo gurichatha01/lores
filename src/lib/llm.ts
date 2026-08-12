@@ -321,9 +321,12 @@ function formatAwardWiring(input: GenerateReportInput): string {
       if (!rule) return `- ${award.id}: unsupported award; do not write a line.`;
       const winner = input.stats.people.find((person) => person.name === award.who);
       const winnerValue = winner ? getAwardMetricValue(award.id, winner) : undefined;
-      const tiedPeople = input.stats.people.filter(
-        (person) => getAwardMetricValue(award.id, person) === winnerValue,
-      );
+      const tiedPeople =
+        winnerValue === undefined
+          ? []
+          : input.stats.people.filter(
+              (person) => getAwardMetricValue(award.id, person) === winnerValue,
+            );
       const tieContext =
         tiedPeople.length > 1
           ? ` TIE RULE — MANDATORY FOR THIS LINE: ${tiedPeople.map((person) => `"${person.name}"`).join(" and ")} share this metric value. Explicitly use "tied", "shared", or "matched" in the line. Deterministic participant-order tie-break selected "${award.who}" only for display; it does NOT mean they were actually slower, faster, higher, lower, better, or worse. Treat the award label as ceremonial and never claim a strict lead.`

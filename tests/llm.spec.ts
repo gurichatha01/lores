@@ -11,7 +11,15 @@ import {
   MODE_VOICE_BLOCKS,
 } from "../src/lib/llm";
 import { REPORT_MODES } from "../src/lib/modePresets";
-import { createTestGenerateInput, geminiResponse, VALID_REPORT } from "./reportTestData";
+import {
+  ALTERNATE_REPORT,
+  createAlternateGenerateInput,
+  createTestGenerateInput,
+  createTiedGenerateInput,
+  geminiResponse,
+  TIED_REPORT,
+  VALID_REPORT,
+} from "./reportTestData";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -127,9 +135,23 @@ describe("generateReport", () => {
     expect(prompt).toContain(
       'The Initiator (the-initiator): winner "A" has the HIGHEST conversation-start count',
     );
-    expect(prompt).toContain(
+    const tiedPrompt = buildSystemPrompt(createTiedGenerateInput("sweetheart"));
+    expect(tiedPrompt).toContain(
       'TIE RULE — MANDATORY FOR THIS LINE: "A" and "B" share this metric value. Explicitly use "tied", "shared", or "matched" in the line.',
     );
+  });
+
+  it("passes qualifying alternate awards through the prompt and output validator", async () => {
+    const input = createAlternateGenerateInput();
+    const prompt = buildSystemPrompt(input);
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(ALTERNATE_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(prompt).toContain("Perfectly In Sync (perfectly-in-sync)");
+    expect(prompt).toContain("Two-Way Street (two-way-street)");
+    expect(prompt).toContain("The Metronome (the-metronome)");
+    await expect(generateReport(input)).resolves.toEqual(ALTERNATE_REPORT);
   });
 
   it("rejects award winners or details that do not match the person metrics", async () => {
@@ -186,7 +208,7 @@ describe("generateReport", () => {
       ...VALID_REPORT,
       awardLines: VALID_REPORT.awardLines.map((awardLine) =>
         awardLine.awardId === "certified-ghost"
-          ? { ...awardLine, line: "A rapid-fire 5m reply kept the chat moving." }
+          ? { ...awardLine, line: "A rapid-fire 45m reply kept the chat moving." }
           : awardLine,
       ),
     };
@@ -230,51 +252,52 @@ describe("generateReport", () => {
   });
 
   it("rejects a tied award line that claims the tie-break winner truly led", async () => {
-    const input = createTestGenerateInput();
+    const input = createTiedGenerateInput();
     const ignoresTie = {
-      ...VALID_REPORT,
-      awardLines: VALID_REPORT.awardLines.map((awardLine) =>
-        awardLine.awardId === "main-character"
-          ? { ...awardLine, line: "Shared a tied 50%, but still dominated all messages." }
+      ...TIED_REPORT,
+      awardLines: TIED_REPORT.awardLines.map((awardLine) =>
+        awardLine.awardId === "certified-ghost"
+          ? { ...awardLine, line: "Shared a tied 45m, but still won as the slower replier." }
           : awardLine,
       ),
     };
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(geminiResponse(ignoresTie))
-      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+      .mockResolvedValueOnce(geminiResponse(TIED_REPORT));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(generateReport(input)).resolves.toEqual(VALID_REPORT);
+    await expect(generateReport(input)).resolves.toEqual(TIED_REPORT);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(repairRequest.contents[0].parts[0].text).toContain(
-      "Main Character line claims a strict winner even though the metric is tied",
+      "Certified Ghost line claims a strict winner even though the metric is tied",
     );
   });
 
   it("requires a tied award line to say the metric is tied, shared, or matched", async () => {
+    const input = createTiedGenerateInput();
     const noTieContext = {
-      ...VALID_REPORT,
-      awardLines: VALID_REPORT.awardLines.map((awardLine) =>
-        awardLine.awardId === "main-character"
-          ? { ...awardLine, line: "Accounted for 50% of all messages." }
+      ...TIED_REPORT,
+      awardLines: TIED_REPORT.awardLines.map((awardLine) =>
+        awardLine.awardId === "certified-ghost"
+          ? { ...awardLine, line: "Waited through a median reply of 45m." }
           : awardLine,
       ),
     };
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(geminiResponse(noTieContext))
-      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+      .mockResolvedValueOnce(geminiResponse(TIED_REPORT));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    await expect(generateReport(input)).resolves.toEqual(TIED_REPORT);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(repairRequest.contents[0].parts[0].text).toContain(
-      "Main Character line must explicitly acknowledge that the winning metric is tied",
+      "Certified Ghost line must explicitly acknowledge that the winning metric is tied",
     );
   });
 

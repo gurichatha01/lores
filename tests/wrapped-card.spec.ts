@@ -18,7 +18,7 @@ describe("Wrapped card content", () => {
       expect(card.heroDetail).toBe(`${input.stats.totalWords.toLocaleString("en-US")} words`);
       expect(card.stats).toHaveLength(4);
       expect(card.headlineAward).toEqual(
-        input.awards.find((award) => award.id === "main-character"),
+        input.awards.find((award) => award.id === "main-character") ?? input.awards[0],
       );
       expect(card.punchLine).toBe(VALID_REPORT.wrappedLine);
       expect(card.fileName).toBe(`lore-${mode}-wrapped.png`);
