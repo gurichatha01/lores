@@ -68,6 +68,14 @@ describe("computeStats", () => {
     expect(person(stats, "B").medianReplyTimeMin).toBe(12.5);
     expect(person(stats, "A").conversationStarts).toBe(1);
     expect(person(stats, "B").conversationStarts).toBe(1);
+    expect(stats.replyTimeDistribution).toEqual([
+      { label: "<1m", count: 0 },
+      { label: "1-5m", count: 1 },
+      { label: "5-30m", count: 3 },
+      { label: "30m-2h", count: 0 },
+      { label: "2-4h", count: 0 },
+      { label: "4-6h", count: 0 },
+    ]);
   });
 
   it("requires every participant on consecutive days for the longest streak", () => {
@@ -127,6 +135,8 @@ describe("computeStats", () => {
       mediaCount: 4,
       spanDays: 4,
       longestSilenceDays: 2,
+      goodMorningCount: 1,
+      iLoveYouCount: 0,
     });
     expect(stats.messagesByHour).toHaveLength(24);
     expect(stats.messagesByHour[0]).toBe(1);
@@ -134,6 +144,17 @@ describe("computeStats", () => {
     expect(stats.messagesByHour[23]).toBe(1);
     expect(stats.messagesByWeekday).toHaveLength(7);
     expect(stats.messagesByWeekday.reduce((sum, count) => sum + count, 0)).toBe(4);
+    expect(stats.messagesByMonth).toEqual([{ month: "2024-04", count: 4 }]);
+    expect(stats.topEmojis).toEqual([
+      { emoji: "👍", count: 2 },
+      { emoji: "😂", count: 1 },
+      { emoji: "💀", count: 1 },
+    ]);
+    expect(stats.firstLateNightDate?.getHours()).toBe(0);
+    expect(stats.firstRelationshipTalkDate).toBeNull();
+    expect(stats.longestSilenceRange).toMatchObject({ days: 2 });
+    expect(stats.longestSilenceRange?.startDate.getDate()).toBe(2);
+    expect(stats.longestSilenceRange?.endDate.getDate()).toBe(3);
     expect(person(stats, "A")).toMatchObject({
       messageCount: 2,
       messageShare: 0.5,
@@ -179,6 +200,52 @@ describe("computeStats", () => {
 
     expect(person(stats, "A").topWords).toEqual(["project"]);
     expect(person(stats, "B").topWords).toEqual(["launch"]);
+  });
+
+  it("fills zero-message months and computes phrase and milestone counts from message text", () => {
+    const stats = computeStats([
+      message("2024-01-31T09:00:00", "A", "Good morning, I love you"),
+      message("2024-03-02T02:15:00", "B", "what are we"),
+      message("2024-03-02T02:20:00", "A", "love you too"),
+    ]);
+
+    expect(stats.messagesByMonth).toEqual([
+      { month: "2024-01", count: 1 },
+      { month: "2024-02", count: 0 },
+      { month: "2024-03", count: 2 },
+    ]);
+    expect(stats.goodMorningCount).toBe(1);
+    expect(stats.iLoveYouCount).toBe(2);
+    expect(stats.firstLateNightDate?.getDate()).toBe(2);
+    expect(stats.firstRelationshipTalkDate?.getHours()).toBe(2);
+  });
+
+  it("buckets every qualifying reply boundary and excludes gaps over six hours", () => {
+    const stats = computeStats([
+      message("2024-01-01T00:00:00", "A"),
+      message("2024-01-01T00:00:30", "B"),
+      message("2024-01-02T00:00:00", "A"),
+      message("2024-01-02T00:05:00", "B"),
+      message("2024-01-03T00:00:00", "A"),
+      message("2024-01-03T00:06:00", "B"),
+      message("2024-01-04T00:00:00", "A"),
+      message("2024-01-04T02:00:00", "B"),
+      message("2024-01-05T00:00:00", "A"),
+      message("2024-01-05T04:00:00", "B"),
+      message("2024-01-06T00:00:00", "A"),
+      message("2024-01-06T06:00:00", "B"),
+      message("2024-01-07T00:00:00", "A"),
+      message("2024-01-07T06:00:01", "B"),
+    ]);
+
+    expect(stats.replyTimeDistribution).toEqual([
+      { label: "<1m", count: 1 },
+      { label: "1-5m", count: 1 },
+      { label: "5-30m", count: 1 },
+      { label: "30m-2h", count: 1 },
+      { label: "2-4h", count: 1 },
+      { label: "4-6h", count: 1 },
+    ]);
   });
 });
 

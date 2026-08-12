@@ -11,6 +11,8 @@ describe("report transport", () => {
     expect(input.stats.busiestDay.date).toBe("2024-08-12");
     expect(input.sample[0].timestamp).toBe("2024-08-12T00:15:00");
     expect(input.sample[0].timestamp).not.toContain("Z");
+    expect(input.stats.firstLateNightDate).toBe("2024-08-12T00:15:00");
+    expect(input.stats.firstRelationshipTalkDate).toBeNull();
     expect(parseGenerateReportInput(JSON.parse(JSON.stringify(input)))).toEqual(input);
   });
 

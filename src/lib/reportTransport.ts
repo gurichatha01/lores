@@ -57,8 +57,22 @@ function serializeStats(stats: ChatStats): ReportStats {
       date: formatLocalDate(stats.busiestDay.date),
       count: stats.busiestDay.count,
     },
+    firstLateNightDate: stats.firstLateNightDate ? formatLocalDateTime(stats.firstLateNightDate) : null,
+    firstRelationshipTalkDate: stats.firstRelationshipTalkDate
+      ? formatLocalDateTime(stats.firstRelationshipTalkDate)
+      : null,
+    longestSilenceRange: stats.longestSilenceRange
+      ? {
+          startDate: formatLocalDate(stats.longestSilenceRange.startDate),
+          endDate: formatLocalDate(stats.longestSilenceRange.endDate),
+          days: stats.longestSilenceRange.days,
+        }
+      : null,
     messagesByHour: [...stats.messagesByHour],
     messagesByWeekday: [...stats.messagesByWeekday],
+    messagesByMonth: stats.messagesByMonth.map((entry) => ({ ...entry })),
+    replyTimeDistribution: stats.replyTimeDistribution.map((entry) => ({ ...entry })),
+    topEmojis: stats.topEmojis.map((entry) => ({ ...entry })),
   };
 }
 

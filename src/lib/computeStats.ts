@@ -1,4 +1,10 @@
-import type { ChatStats, Message, ParsedWhatsAppExport, PersonStats } from "./types";
+import type {
+  ChatStats,
+  Message,
+  ParsedWhatsAppExport,
+  PersonStats,
+  ReplyTimeBucket,
+} from "./types";
 
 export const REPLY_GAP_CAP_MIN = 6 * 60;
 
@@ -23,6 +29,17 @@ const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
 const URL = /(?:https?:\/\/|www\.)\S+/giu;
 const LAUGH_TOKEN =
   /(?:\b(?:ha(?:ha)+|he(?:he)+|hi(?:hi)+|lol+|lmao+|lmfao+|rofl+|hehe|bahaha+)\b|😂|🤣|💀)/giu;
+const GOOD_MORNING = /\b(?:good\s*mornings?|gmorning|gud\s*morning|morning)\b/giu;
+const I_LOVE_YOU = /\b(?:i\s+love\s+you|love\s+you|ily)\b/giu;
+const RELATIONSHIP_TALK = /\bwhat\s+are\s+we\b/iu;
+const REPLY_BUCKETS: ReplyTimeBucket[] = [
+  { label: "<1m", count: 0 },
+  { label: "1-5m", count: 0 },
+  { label: "5-30m", count: 0 },
+  { label: "30m-2h", count: 0 },
+  { label: "2-4h", count: 0 },
+  { label: "4-6h", count: 0 },
+];
 
 const STOP_WORDS = new Set([
   "a",
@@ -172,7 +189,13 @@ export function computeStats(
   const lastMessageByDay = new Map<number, Message>();
   const messagesByHour = Array<number>(24).fill(0);
   const messagesByWeekday = Array<number>(7).fill(0);
+  const chatEmojis = new Map<string, number>();
+  const replyTimesMin: number[] = [];
   let totalWords = 0;
+  let goodMorningCount = 0;
+  let iLoveYouCount = 0;
+  let firstLateNightDate: Date | null = null;
+  let firstRelationshipTalkDate: Date | null = null;
   let previous: Message | undefined;
 
   for (const message of messages) {
@@ -192,16 +215,25 @@ export function computeStats(
 
     if (timestamp.getHours() < 4) {
       person.lateNightCount += 1;
+      firstLateNightDate ??= new Date(timestamp.getTime());
     }
 
     person.laughCount += message.text.match(LAUGH_TOKEN)?.length ?? 0;
     countEmojis(person.emojis, message.emojis);
+    countEmojis(chatEmojis, message.emojis);
     countWords(person.words, message.text);
+    goodMorningCount += message.text.match(GOOD_MORNING)?.length ?? 0;
+    iLoveYouCount += message.text.match(I_LOVE_YOU)?.length ?? 0;
+    if (!firstRelationshipTalkDate && RELATIONSHIP_TALK.test(message.text)) {
+      firstRelationshipTalkDate = new Date(timestamp.getTime());
+    }
 
     if (!previous || elapsedMinutes(previous, message) > REPLY_GAP_CAP_MIN) {
       person.conversationStarts += 1;
     } else if (previous.sender !== message.sender) {
-      person.replyTimesMin.push(elapsedMinutes(previous, message));
+      const replyTime = elapsedMinutes(previous, message);
+      person.replyTimesMin.push(replyTime);
+      replyTimesMin.push(replyTime);
     }
 
     previous = message;
@@ -230,6 +262,7 @@ export function computeStats(
   const first = messages[0].timestamp;
   const last = messages.at(-1)!.timestamp;
   const busiest = findBusiestDay(dailyCounts);
+  const longestSilenceRange = findLongestSilenceRange(activeDays);
 
   return {
     isGroup: participantCount > 2,
@@ -246,9 +279,17 @@ export function computeStats(
       count: busiest.count,
     },
     longestStreakDays: findLongestStreak(dailyParticipants, participantCount),
-    longestSilenceDays: findLongestSilence(activeDays),
+    longestSilenceDays: longestSilenceRange?.days ?? 0,
     messagesByHour,
     messagesByWeekday,
+    messagesByMonth: buildMonthlyCounts(messages),
+    replyTimeDistribution: buildReplyTimeDistribution(replyTimesMin),
+    topEmojis: topEntries(chatEmojis, TOP_EMOJI_LIMIT).map(([emoji, count]) => ({ emoji, count })),
+    goodMorningCount,
+    iLoveYouCount,
+    firstLateNightDate,
+    firstRelationshipTalkDate,
+    longestSilenceRange,
   };
 }
 
@@ -376,12 +417,58 @@ function findLongestStreak(
   return longest;
 }
 
-function findLongestSilence(activeDays: readonly number[]): number {
-  let longest = 0;
+function findLongestSilenceRange(activeDays: readonly number[]): ChatStats["longestSilenceRange"] {
+  let winner: ChatStats["longestSilenceRange"] = null;
   for (let index = 1; index < activeDays.length; index += 1) {
-    longest = Math.max(longest, activeDays[index] - activeDays[index - 1] - 1);
+    const days = activeDays[index] - activeDays[index - 1] - 1;
+    if (days > 0 && (!winner || days > winner.days)) {
+      winner = {
+        startDate: dateFromLocalDayNumber(activeDays[index - 1] + 1),
+        endDate: dateFromLocalDayNumber(activeDays[index] - 1),
+        days,
+      };
+    }
   }
-  return longest;
+  return winner;
+}
+
+function buildMonthlyCounts(messages: readonly Message[]): ChatStats["messagesByMonth"] {
+  const counts = new Map<string, number>();
+  for (const message of messages) {
+    const key = monthKey(message.timestamp.getFullYear(), message.timestamp.getMonth());
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const first = messages[0].timestamp;
+  const last = messages.at(-1)!.timestamp;
+  const months: ChatStats["messagesByMonth"] = [];
+  let year = first.getFullYear();
+  let month = first.getMonth();
+
+  while (year < last.getFullYear() || (year === last.getFullYear() && month <= last.getMonth())) {
+    const key = monthKey(year, month);
+    months.push({ month: key, count: counts.get(key) ?? 0 });
+    month += 1;
+    if (month === 12) {
+      month = 0;
+      year += 1;
+    }
+  }
+  return months;
+}
+
+function buildReplyTimeDistribution(replyTimes: readonly number[]): ReplyTimeBucket[] {
+  const buckets = REPLY_BUCKETS.map((bucket) => ({ ...bucket }));
+  for (const minutes of replyTimes) {
+    const index =
+      minutes < 1 ? 0 : minutes <= 5 ? 1 : minutes <= 30 ? 2 : minutes <= 120 ? 3 : minutes <= 240 ? 4 : 5;
+    buckets[index].count += 1;
+  }
+  return buckets;
+}
+
+function monthKey(year: number, zeroBasedMonth: number): string {
+  return `${year}-${String(zeroBasedMonth + 1).padStart(2, "0")}`;
 }
 
 function localDayNumber(date: Date): number {

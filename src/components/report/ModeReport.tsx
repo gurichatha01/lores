@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { WrappedCard } from "@/components/cards/WrappedCard";
+import { ReportPdfDownload } from "@/components/pdf/ReportPdfDownload";
 import { getModePreset } from "@/lib/modePresets";
 import {
   buildModeStatCards,
@@ -195,6 +196,7 @@ export function ModeReport({ report }: ModeReportProps) {
           <p className="mt-4 whitespace-pre-line text-[15px] font-medium leading-[1.6]">{content.narrative}</p>
         </section>
 
+        <ReportPdfDownload report={report} />
         <WrappedCard report={report} />
 
         <footer className="mt-8 border-t pt-4" style={{ borderColor: preset.border }}>

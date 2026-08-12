@@ -24,7 +24,16 @@ const STATS_KEYS = [
   "longestSilenceDays",
   "messagesByHour",
   "messagesByWeekday",
+  "messagesByMonth",
+  "replyTimeDistribution",
+  "topEmojis",
+  "goodMorningCount",
+  "iLoveYouCount",
+  "firstLateNightDate",
+  "firstRelationshipTalkDate",
+  "longestSilenceRange",
 ] as const;
+const REPLY_LABELS = ["<1m", "1-5m", "5-30m", "30m-2h", "2-4h", "4-6h"] as const;
 const PERSON_KEYS = [
   "name",
   "messageCount",
@@ -143,8 +152,45 @@ export function parseReportStats(value: unknown): ReportStats {
 
   const messagesByHour = numberArray(stats.messagesByHour, "stats.messagesByHour", 24);
   const messagesByWeekday = numberArray(stats.messagesByWeekday, "stats.messagesByWeekday", 7);
+  const messagesByMonth = asArray(stats.messagesByMonth, "stats.messagesByMonth").map(
+    (value, index) => {
+      const entry = asRecord(value, `stats.messagesByMonth[${index}]`);
+      assertExactKeys(entry, ["month", "count"], `stats.messagesByMonth[${index}]`);
+      const month = asString(entry.month, `stats.messagesByMonth[${index}].month`, 7);
+      if (!/^\d{4}-(?:0[1-9]|1[0-2])$/u.test(month)) {
+        throw new ReportValidationError(`stats.messagesByMonth[${index}].month must be YYYY-MM.`);
+      }
+      return { month, count: asNonNegativeInteger(entry.count, `stats.messagesByMonth[${index}].count`) };
+    },
+  );
+  const replyTimeDistribution = asArray(
+    stats.replyTimeDistribution,
+    "stats.replyTimeDistribution",
+  ).map((value, index) => {
+    const entry = asRecord(value, `stats.replyTimeDistribution[${index}]`);
+    assertExactKeys(entry, ["label", "count"], `stats.replyTimeDistribution[${index}]`);
+    if (entry.label !== REPLY_LABELS[index]) {
+      throw new ReportValidationError("stats.replyTimeDistribution labels are invalid.");
+    }
+    return {
+      label: REPLY_LABELS[index],
+      count: asNonNegativeInteger(entry.count, `stats.replyTimeDistribution[${index}].count`),
+    };
+  });
+  if (replyTimeDistribution.length !== REPLY_LABELS.length) {
+    throw new ReportValidationError(`stats.replyTimeDistribution must contain ${REPLY_LABELS.length} entries.`);
+  }
+  const topEmojis = asArray(stats.topEmojis, "stats.topEmojis").map((value, index) => {
+    const entry = asRecord(value, `stats.topEmojis[${index}]`);
+    assertExactKeys(entry, ["emoji", "count"], `stats.topEmojis[${index}]`);
+    return {
+      emoji: asString(entry.emoji, `stats.topEmojis[${index}].emoji`, 32),
+      count: asNonNegativeInteger(entry.count, `stats.topEmojis[${index}].count`),
+    };
+  });
   const busiestDay = asRecord(stats.busiestDay, "stats.busiestDay");
   assertExactKeys(busiestDay, ["date", "count"], "stats.busiestDay");
+  const longestSilenceRange = parseOptionalSilenceRange(stats.longestSilenceRange);
 
   return {
     isGroup: asBoolean(stats.isGroup, "stats.isGroup"),
@@ -164,6 +210,28 @@ export function parseReportStats(value: unknown): ReportStats {
     longestSilenceDays: asNonNegativeInteger(stats.longestSilenceDays, "stats.longestSilenceDays"),
     messagesByHour,
     messagesByWeekday,
+    messagesByMonth,
+    replyTimeDistribution,
+    topEmojis,
+    goodMorningCount: asNonNegativeInteger(stats.goodMorningCount, "stats.goodMorningCount"),
+    iLoveYouCount: asNonNegativeInteger(stats.iLoveYouCount, "stats.iLoveYouCount"),
+    firstLateNightDate: asOptionalLocalDateTime(stats.firstLateNightDate, "stats.firstLateNightDate"),
+    firstRelationshipTalkDate: asOptionalLocalDateTime(
+      stats.firstRelationshipTalkDate,
+      "stats.firstRelationshipTalkDate",
+    ),
+    longestSilenceRange,
+  };
+}
+
+function parseOptionalSilenceRange(value: unknown): ReportStats["longestSilenceRange"] {
+  if (value === null) return null;
+  const range = asRecord(value, "stats.longestSilenceRange");
+  assertExactKeys(range, ["startDate", "endDate", "days"], "stats.longestSilenceRange");
+  return {
+    startDate: asLocalDate(range.startDate, "stats.longestSilenceRange.startDate"),
+    endDate: asLocalDate(range.endDate, "stats.longestSilenceRange.endDate"),
+    days: asNonNegativeInteger(range.days, "stats.longestSilenceRange.days"),
   };
 }
 
@@ -336,6 +404,10 @@ function asLocalDateTime(value: unknown, label: string): string {
     throw new ReportValidationError(`${label} must be a local wall-clock timestamp without a UTC suffix.`);
   }
   return dateTime;
+}
+
+function asOptionalLocalDateTime(value: unknown, label: string): string | null {
+  return value === null ? null : asLocalDateTime(value, label);
 }
 
 function isCalendarDate(year: number, month: number, day: number): boolean {

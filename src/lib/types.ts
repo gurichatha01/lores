@@ -27,6 +27,22 @@ export interface PersonStats {
   topWords: string[];
 }
 
+export interface MonthlyMessageCount {
+  month: string; // local YYYY-MM
+  count: number;
+}
+
+export interface ReplyTimeBucket {
+  label: "<1m" | "1-5m" | "5-30m" | "30m-2h" | "2-4h" | "4-6h";
+  count: number;
+}
+
+export interface SilenceRange {
+  startDate: Date;
+  endDate: Date;
+  days: number;
+}
+
 export interface ChatStats {
   isGroup: boolean;
   people: PersonStats[];
@@ -42,6 +58,14 @@ export interface ChatStats {
   longestSilenceDays: number;
   messagesByHour: number[];
   messagesByWeekday: number[];
+  messagesByMonth: MonthlyMessageCount[];
+  replyTimeDistribution: ReplyTimeBucket[];
+  topEmojis: { emoji: string; count: number }[];
+  goodMorningCount: number;
+  iLoveYouCount: number;
+  firstLateNightDate: Date | null;
+  firstRelationshipTalkDate: Date | null;
+  longestSilenceRange: SilenceRange | null;
 }
 
 export interface Award {
@@ -69,10 +93,21 @@ export interface ReportContent {
 }
 
 /** ChatStats serialized without converting local wall-clock dates to UTC. */
-export interface ReportStats extends Omit<ChatStats, "firstMessageDate" | "lastMessageDate" | "busiestDay"> {
+export interface ReportStats extends Omit<
+  ChatStats,
+  | "firstMessageDate"
+  | "lastMessageDate"
+  | "busiestDay"
+  | "firstLateNightDate"
+  | "firstRelationshipTalkDate"
+  | "longestSilenceRange"
+> {
   firstMessageDate: string;
   lastMessageDate: string;
   busiestDay: { date: string; count: number };
+  firstLateNightDate: string | null;
+  firstRelationshipTalkDate: string | null;
+  longestSilenceRange: { startDate: string; endDate: string; days: number } | null;
 }
 
 /** A curated Message serialized without converting its local timestamp to UTC. */

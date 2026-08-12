@@ -10,12 +10,12 @@ Last agent: codex   Last updated: 2026-08-13
 - [x] Phase 4 — report render (CHECKPOINT: show human)
 - [x] Phase 5 — all modes + share cards
 - [x] Phase 6 — the Wrapped share card
-- [ ] Phase 7 — PDF
+- [x] Phase 7 — PDF
 - [ ] Phase 8 — full funnel UX
 - [ ] Phase 9 — LATER: payments/pricing/credibility
 
 ## Where the next agent should start
-Start Phase 7 — PDF. Preserve the six locked mode treatments and do not tune prompts or touch pricing.
+Start Phase 8 — full funnel UX. Preserve the six locked mode treatments and do not tune prompts or touch pricing.
 
 ## Decisions & deviations
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
@@ -46,7 +46,11 @@ Start Phase 7 — PDF. Preserve the six locked mode treatments and do not tune p
 - Phase 6 replaces the Phase 5 share-card set with exactly one `WrappedCard` per report. The report-page stat cards are unchanged; the Wrapped poster reuses the four deterministic stats already selected by each mode preset.
 - The Wrapped card combines participant framing and span, engine-owned message and word totals, four engine-owned stats, the computed Main Character award, and `ReportContent.heroLine` as its sole authored one-liner. It exports as `lore-<mode>-wrapped.png` at 1080×1920 with the mode accent, `lore_`, and `lore.app`; Roast retains its warning tape.
 - Browser verification ran the real 125-message export through all six modes. Each rendered exactly one Wrapped canvas and one download action, with no legacy hero/award/verdict share buttons and no browser warnings or errors. The Work download completed successfully; Work, Sweetheart, and Roast were visually inspected at story size.
+- Phase 7 audited every metric shown in the PDF mock before implementation. Existing engine fields cover participants, dates/span, volume, hour/weekday distributions, busiest day, awards, per-person words, streak, and silence duration. Added deterministic month buckets (including empty months), capped reply-time buckets, chat-wide top emoji totals, good-morning and “love you” counts, first late-night and exact “what are we” milestones, plus the longest-silence date range.
+- Reply-time PDF buckets use the Phase 2 definition: only an immediate sender change within six hours counts. The six labels are `<1m`, `1-5m`, `5-30m`, `30m-2h`, `2-4h`, and `4-6h`; overnight and >6h gaps remain conversation starts and never appear as replies.
+- The PDF is generated client-side with `jspdf` from high-resolution canvases and exports as printable A4. Its per-mode accent comes from the existing mode preset. The document includes cover, complete engine-backed metrics/charts, all computed awards, per-person top words (with continuation pages for large groups), optional deterministic milestones, paginated `ReportContent.chapters`/narrative, and the dark closing keepsake page.
+- The generated five-page QA PDF was reopened, confirmed as A4, rasterized, and visually inspected page by page with no clipping, overlap, or unreadable chart labels. A deterministic browser preview completed the PDF download action with no console warnings/errors. Live Gemini generation was unavailable during the final browser check, so the browser download used the engine-backed test fixture; the production PDF code path is identical.
 
 ## Known issues / TODO
 - All six mode prompts are intentionally placeholders. Prompt tuning remains deferred.
-- Live Gemini structured output occasionally exhausted its one retry during the browser sweep; retrying the unchanged request succeeded. Prompt tuning and broader generation UX remain deferred.
+- Live Gemini structured output returned invalid output throughout the Phase 7 browser run, including for a small fixture, after having been intermittent in Phase 6. The PDF renderer itself is provider-independent and passed deterministic browser and file-level verification; prompt/provider diagnosis remains outside this phase.

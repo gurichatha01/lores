@@ -6,10 +6,12 @@
 # Next.js
 /.next/
 /out/
+/output/
 next-env.d.ts
 
 # production
 /build
+/tmp/
 
 # local environment files
 .env*
