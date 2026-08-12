@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#e6e6e2;font-family:'Space Grotesk',system-ui,sans-serif}
+  a{color:inherit}
+  .dv-turn{padding:44px 48px 40px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+  .dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+  .dv-tid{font:700 10px 'Space Mono',monospace;padding:3px 7px;background:#111;color:#fff;border-radius:4px;text-decoration:none}
+  .dv-tname{font:600 13px/1.2 'Space Grotesk',sans-serif;color:#1a1a1a}
+  .dv-sub{margin:0 0 26px;font:13px/1.5 'Space Grotesk',sans-serif;color:rgba(0,0,0,.5);max-width:640px}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}
+  .dv-olabel{display:flex;align-items:baseline;gap:9px;font:400 12px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.6)}
+  .dv-oid{font:700 10.5px 'Space Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.09);color:#1a1a1a;border-radius:5px;text-decoration:none}
+  .dv-opt:target .dv-oid{background:#2b2bef;color:#fff}
+  .dv-tag{font:400 11px 'Space Mono',monospace;color:rgba(0,0,0,.4)}
+  .dv-card{background:#cfcfca;border-radius:20px;padding:26px;display:flex;gap:26px;align-items:flex-start}
+  .dv-cap{font:700 10px 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin:0 0 10px 6px}
+  .dv-cap.dk{color:rgba(0,0,0,.4)}
+  .dv-col{display:flex;flex-direction:column}
+  .dv-next{margin:26px 0 0;font:12px/1.7 'Space Grotesk',sans-serif;color:rgba(0,0,0,.5)}
+  .ph{width:390px;position:relative;overflow:hidden;border-radius:44px}
+  .sb{display:flex;justify-content:space-between;align-items:center;padding:14px 30px 4px;font:600 14px 'Space Grotesk',sans-serif}
+  .notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:26px;border-radius:14px;z-index:5}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  .cur{animation:blink 1.05s steps(1) infinite}
+  .noscroll::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">lore — hero directions</span></div>
+  <p class="dv-sub">Two lanes, each showing the two screens that set the whole tone: the <b>landing</b> and one finished <b>report</b> (situationship mode). Pick a lane and I'll build the design system + all 10 screens in it. Both dodge the cream-paper / elegant-serif look on purpose.</p>
+  <div class="dv-opts">
+
+    <!-- ===================== OPTION 1a — DARK & LOUD ===================== -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a><b style="color:#1a1a1a">dark &amp; loud</b><span class="dv-tag">recommended · near-black · Anton condensed · acid-lime</span></div>
+      <div class="dv-card" style="background:#161617">
+        <div class="dv-col">
+          <p class="dv-cap">landing</p>
+          <!-- DARK LANDING -->
+          <div class="ph" style="height:844px;background:#0b0b0c;border:1px solid #232326;box-shadow:0 30px 60px -22px rgba(0,0,0,.7);color:#f5f5f2;font-family:'Space Grotesk',sans-serif">
+            <div class="notch" style="background:#0b0b0c"></div>
+            <div class="sb" style="color:#f5f5f2"><span>9:41</span><span style="font:700 12px 'Space Mono',monospace;color:#ccff00">● rec</span></div>
+            <div style="padding:26px 28px 0">
+              <div style="font:700 11px 'Space Mono',monospace;letter-spacing:.2em;color:#6f6f6a;text-transform:uppercase">the lore of your chats</div>
+              <div style="font-family:'Anton',sans-serif;font-size:118px;line-height:.8;letter-spacing:-3px;margin:16px 0 0;color:#f5f5f2">lore<span class="cur" style="color:#ccff00">_</span></div>
+              <div style="font-size:20px;line-height:1.35;color:#b7b7b1;margin:20px 0 0;max-width:300px">upload your chat.<br>get the <span style="color:#ccff00;font-weight:700">lore.</span> the stats nobody remembers, told back to you.</div>
+              <div style="background:#ccff00;color:#0b0b0c;font-weight:700;border-radius:100px;padding:17px;text-align:center;font-size:17px;margin:26px 0 12px;display:flex;align-items:center;justify-content:center;gap:8px">get my lore <span style="font-family:'Space Mono'">→</span></div>
+              <div style="text-align:center;font:400 12px 'Space Mono',monospace;color:#6f6f6a">🔒 your chat never leaves your phone</div>
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.15em;color:#6f6f6a;text-transform:uppercase;margin:30px 0 12px">a taste of the range ↓</div>
+            </div>
+            <div style="display:flex;gap:12px;padding:0 0 0 28px;overflow:hidden">
+              <div style="flex:none;width:158px;background:#151517;border:1px solid #26262a;border-radius:20px;padding:15px">
+                <div style="font:700 10px 'Space Mono',monospace;color:#ff7ab0;text-transform:uppercase;letter-spacing:.08em">situationship</div>
+                <div style="font-family:'Anton',sans-serif;font-size:40px;line-height:.9;margin:12px 0 4px;color:#f5f5f2">11 days</div>
+                <div style="font-size:12px;color:#8a8a86">last dry spell 💀</div>
+              </div>
+              <div style="flex:none;width:158px;background:#151517;border:1px solid #26262a;border-radius:20px;padding:15px">
+                <div style="font:700 10px 'Space Mono',monospace;color:#ccff00;text-transform:uppercase;letter-spacing:.08em">group wrapped</div>
+                <div style="font-family:'Anton',sans-serif;font-size:40px;line-height:.9;margin:12px 0 4px;color:#f5f5f2">#1 rhea</div>
+                <div style="font-size:12px;color:#8a8a86">most unread 🥇</div>
+              </div>
+              <div style="flex:none;width:158px;background:#151517;border:1px solid #26262a;border-radius:20px;padding:15px">
+                <div style="font:700 10px 'Space Mono',monospace;color:#ffbf47;text-transform:uppercase;letter-spacing:.08em">family</div>
+                <div style="font-family:'Anton',sans-serif;font-size:40px;line-height:.9;margin:12px 0 4px;color:#f5f5f2">mom</div>
+                <div style="font-size:12px;color:#8a8a86">texts first, always 💛</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-col">
+          <p class="dv-cap">situationship report</p>
+          <!-- DARK REPORT -->
+          <div class="ph" style="height:1244px;background:#0b0b0c;border:1px solid #232326;box-shadow:0 30px 60px -22px rgba(0,0,0,.7);color:#f5f5f2;font-family:'Space Grotesk',sans-serif">
+            <div class="notch" style="background:#0b0b0c"></div>
+            <div class="sb" style="color:#f5f5f2"><span>9:41</span><span style="font:700 12px 'Space Mono',monospace;color:#6f6f6a">← back</span></div>
+            <div style="padding:14px 26px 0">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="font:700 11px 'Space Mono',monospace;letter-spacing:.14em;color:#ff7ab0;text-transform:uppercase">💕 situationship · you &amp; ___</div>
+                <div style="font:700 12px 'Space Mono',monospace;color:#ccff00">↗ share</div>
+              </div>
+              <!-- HERO STAT -->
+              <div style="margin:22px 0 0">
+                <div style="font-family:'Anton',sans-serif;font-size:88px;line-height:.82;letter-spacing:-2px;color:#ccff00">47,812</div>
+                <div style="font-size:16px;color:#b7b7b1;margin:4px 0 0">messages. <b style="color:#f5f5f2">1.1M words.</b> basically <b style="color:#f5f5f2">14 novels</b> about will-they-won't-they.</div>
+              </div>
+              <!-- STAT GRID -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:22px 0 0">
+                <div style="background:#151517;border:1px solid #26262a;border-radius:18px;padding:14px">
+                  <div style="font:700 10px 'Space Mono',monospace;color:#8a8a86;text-transform:uppercase;letter-spacing:.06em">texts first</div>
+                  <div style="font-family:'Anton',sans-serif;font-size:30px;margin:8px 0 2px">you · 68%</div>
+                  <div style="font-size:11px;color:#ff7ab0">bro. some dignity.</div>
+                </div>
+                <div style="background:#151517;border:1px solid #26262a;border-radius:18px;padding:14px">
+                  <div style="font:700 10px 'Space Mono',monospace;color:#8a8a86;text-transform:uppercase;letter-spacing:.06em">avg reply</div>
+                  <div style="font-family:'Anton',sans-serif;font-size:30px;margin:8px 0 2px">4m / 2h</div>
+                  <div style="font-size:11px;color:#8a8a86">you / them</div>
+                </div>
+                <div style="background:#151517;border:1px solid #26262a;border-radius:18px;padding:14px">
+                  <div style="font:700 10px 'Space Mono',monospace;color:#8a8a86;text-transform:uppercase;letter-spacing:.06em">longest streak</div>
+                  <div style="font-family:'Anton',sans-serif;font-size:30px;margin:8px 0 2px">58 days</div>
+                  <div style="font-size:11px;color:#8a8a86">then he "got busy"</div>
+                </div>
+                <div style="background:#151517;border:1px solid #26262a;border-radius:18px;padding:14px">
+                  <div style="font:700 10px 'Space Mono',monospace;color:#8a8a86;text-transform:uppercase;letter-spacing:.06em">3am club</div>
+                  <div style="font-family:'Anton',sans-serif;font-size:30px;margin:8px 0 2px">him 🌙</div>
+                  <div style="font-size:11px;color:#8a8a86">41 texts after 3am</div>
+                </div>
+              </div>
+              <!-- AWARDS -->
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.15em;color:#6f6f6a;text-transform:uppercase;margin:24px 0 12px">the awards 🏆</div>
+              <div style="display:flex;flex-direction:column;gap:9px">
+                <div style="display:flex;align-items:center;gap:12px;background:#151517;border:1px solid #26262a;border-radius:100px;padding:10px 16px"><span style="font-size:22px">👻</span><div><div style="font-weight:700;font-size:14px">Certified Ghost</div><div style="font-size:11px;color:#8a8a86">him — left on read 3 times</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;background:#151517;border:1px solid #26262a;border-radius:100px;padding:10px 16px"><span style="font-size:22px">🎭</span><div><div style="font-weight:700;font-size:14px">Main Character</div><div style="font-size:11px;color:#8a8a86">you — 3 paragraph essays at 2am</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;background:#151517;border:1px solid #26262a;border-radius:100px;padding:10px 16px"><span style="font-size:22px">🌙</span><div><div style="font-weight:700;font-size:14px">3AM Overthinker</div><div style="font-size:11px;color:#8a8a86">you both, tbh</div></div></div>
+              </div>
+              <!-- HIGHLIGHTS -->
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.15em;color:#6f6f6a;text-transform:uppercase;margin:24px 0 12px">the highlights</div>
+              <div style="background:#151517;border:1px solid #26262a;border-radius:18px;padding:15px">
+                <div style="font-size:11px;color:#8a8a86;margin-bottom:8px">running joke — sent 47 times</div>
+                <div style="display:inline-block;background:#1f6f4a;color:#e9ffe9;border-radius:16px 16px 16px 4px;padding:9px 14px;font-size:14px">"i'm omw" (he was not omw)</div>
+                <div style="border-top:1px solid #26262a;margin:14px 0;height:0"></div>
+                <div style="font-size:11px;color:#8a8a86;margin-bottom:6px">nickname map</div>
+                <div style="font-size:14px">you → <span style="color:#ff7ab0">"weirdo 🩷"</span> · him → <span style="color:#ff7ab0">"weirdo 🩷"</span></div>
+              </div>
+              <!-- NARRATIVE -->
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.15em;color:#ccff00;text-transform:uppercase;margin:24px 0 10px">the lore, in full</div>
+              <div style="font-size:15px;line-height:1.5;color:#d8d8d3">it started with a meme reply and spiraled into 11 months of "what are we." you double-texted, he "😭"-ed, and somehow neither of you said the thing. 47,812 messages and the biggest question mark of your year. iconic, honestly.</div>
+              <!-- ACTIONS -->
+              <div style="display:flex;gap:10px;margin:22px 0 4px">
+                <div style="flex:1;background:#ccff00;color:#0b0b0c;font-weight:700;border-radius:100px;padding:15px;text-align:center;font-size:15px">download pdf 🎁</div>
+                <div style="flex:1;background:transparent;color:#f5f5f2;border:1px solid #3a3a3e;font-weight:700;border-radius:100px;padding:15px;text-align:center;font-size:15px">share cards</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== OPTION 1b — HIGH-VOLTAGE EDITORIAL ===================== -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a><b style="color:#1a1a1a">high-voltage editorial</b><span class="dv-tag">alternate · stark light · Archivo wide · cobalt + hot-pink</span></div>
+      <div class="dv-card" style="background:#dededa">
+        <div class="dv-col">
+          <p class="dv-cap dk">landing</p>
+          <!-- EDITORIAL LANDING -->
+          <div class="ph" style="height:844px;background:#f3f3ef;border:1px solid #d4d4cd;box-shadow:0 30px 60px -22px rgba(0,0,0,.3);color:#0a0a0a;font-family:'Archivo',sans-serif">
+            <div class="notch" style="background:#f3f3ef"></div>
+            <div class="sb" style="color:#0a0a0a"><span>9:41</span><span style="font:700 12px 'Space Mono',monospace;color:#2b2bef">↑ upload</span></div>
+            <div style="padding:24px 26px 0">
+              <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0a0a0a;padding-bottom:10px">
+                <div style="font:700 11px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase">est. your chat · 20XX</div>
+                <div style="font:700 11px 'Space Mono',monospace;color:#2b2bef">no. 001</div>
+              </div>
+              <div style="font-family:'Archivo',sans-serif;font-weight:900;font-size:104px;line-height:.86;letter-spacing:-4px;margin:20px 0 0">lore</div>
+              <div style="display:flex;align-items:center;gap:8px;margin:6px 0 0"><div style="height:14px;flex:1;background:#2b2bef"></div><div style="font:700 11px 'Space Mono',monospace;color:#0a0a0a">™</div></div>
+              <div style="font-size:22px;line-height:1.3;font-weight:600;margin:22px 0 0;max-width:300px">upload your chat.<br>get the <span style="background:#ff2d78;color:#fff;padding:0 6px">lore</span> — every stat<br>nobody remembers.</div>
+              <div style="background:#0a0a0a;color:#f3f3ef;font-weight:800;border-radius:0;padding:18px;text-align:center;font-size:18px;margin:26px 0 12px;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em">GET MY LORE <span style="color:#ccff00;font-family:'Space Mono'">→</span></div>
+              <div style="text-align:center;font:400 12px 'Space Mono',monospace;color:#6a6a63">🔒 your chat never leaves your phone</div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid #0a0a0a;margin-top:28px;padding-top:8px"><div style="font:700 10px 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase">the range</div><div style="font:700 10px 'Space Mono',monospace;color:#6a6a63">03 modes ↓</div></div>
+            </div>
+            <div style="display:flex;gap:10px;padding:14px 0 0 26px;overflow:hidden">
+              <div style="flex:none;width:150px;background:#fff;border:2px solid #0a0a0a;padding:13px">
+                <div style="font:700 9px 'Space Mono',monospace;color:#ff2d78;text-transform:uppercase;letter-spacing:.06em">situationship</div>
+                <div style="font-family:'Archivo';font-weight:900;font-size:42px;line-height:.85;margin:10px 0 3px;letter-spacing:-1px">11d</div>
+                <div style="font-size:11px;font-weight:600">last dry spell</div>
+              </div>
+              <div style="flex:none;width:150px;background:#2b2bef;border:2px solid #0a0a0a;padding:13px;color:#fff">
+                <div style="font:700 9px 'Space Mono',monospace;color:#ccff00;text-transform:uppercase;letter-spacing:.06em">group</div>
+                <div style="font-family:'Archivo';font-weight:900;font-size:42px;line-height:.85;margin:10px 0 3px;letter-spacing:-1px">#1</div>
+                <div style="font-size:11px;font-weight:600">rhea, most unread</div>
+              </div>
+              <div style="flex:none;width:150px;background:#ffbf47;border:2px solid #0a0a0a;padding:13px">
+                <div style="font:700 9px 'Space Mono',monospace;text-transform:uppercase;letter-spacing:.06em">family</div>
+                <div style="font-family:'Archivo';font-weight:900;font-size:42px;line-height:.85;margin:10px 0 3px;letter-spacing:-1px">mom</div>
+                <div style="font-size:11px;font-weight:600">texts first, always</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-col">
+          <p class="dv-cap dk">situationship report</p>
+          <!-- EDITORIAL REPORT -->
+          <div class="ph" style="height:1244px;background:#f3f3ef;border:1px solid #d4d4cd;box-shadow:0 30px 60px -22px rgba(0,0,0,.3);color:#0a0a0a;font-family:'Archivo',sans-serif">
+            <div class="notch" style="background:#f3f3ef"></div>
+            <div class="sb" style="color:#0a0a0a"><span>9:41</span><span style="font:700 12px 'Space Mono',monospace;color:#6a6a63">← back</span></div>
+            <div style="padding:12px 26px 0">
+              <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0a0a0a;padding-bottom:10px">
+                <div style="font:700 11px 'Space Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#ff2d78">💕 situationship report</div>
+                <div style="font:700 11px 'Space Mono',monospace;color:#2b2bef">↗</div>
+              </div>
+              <!-- HERO -->
+              <div style="margin:20px 0 0">
+                <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#6a6a63">total messages</div>
+                <div style="font-family:'Archivo';font-weight:900;font-size:92px;line-height:.82;letter-spacing:-4px;margin:6px 0 0">47,812</div>
+                <div style="font-size:16px;font-weight:600;line-height:1.3;margin:10px 0 0">1.1M words · <span style="background:#ccff00;padding:0 5px">≈ 14 novels</span> of will-they-won't-they.</div>
+              </div>
+              <!-- STAT GRID -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin:22px 0 0;border:2px solid #0a0a0a">
+                <div style="padding:13px;border-right:2px solid #0a0a0a;border-bottom:2px solid #0a0a0a">
+                  <div style="font:700 9px 'Space Mono',monospace;color:#6a6a63;text-transform:uppercase;letter-spacing:.06em">texts first</div>
+                  <div style="font-family:'Archivo';font-weight:900;font-size:34px;line-height:1;margin:6px 0 2px;letter-spacing:-1px">68%</div>
+                  <div style="font-size:11px;font-weight:600;color:#ff2d78">you. bro.</div>
+                </div>
+                <div style="padding:13px;border-bottom:2px solid #0a0a0a">
+                  <div style="font:700 9px 'Space Mono',monospace;color:#6a6a63;text-transform:uppercase;letter-spacing:.06em">avg reply</div>
+                  <div style="font-family:'Archivo';font-weight:900;font-size:34px;line-height:1;margin:6px 0 2px;letter-spacing:-1px">4m/2h</div>
+                  <div style="font-size:11px;font-weight:600">you / them</div>
+                </div>
+                <div style="padding:13px;border-right:2px solid #0a0a0a">
+                  <div style="font:700 9px 'Space Mono',monospace;color:#6a6a63;text-transform:uppercase;letter-spacing:.06em">streak</div>
+                  <div style="font-family:'Archivo';font-weight:900;font-size:34px;line-height:1;margin:6px 0 2px;letter-spacing:-1px">58d</div>
+                  <div style="font-size:11px;font-weight:600">then "busy"</div>
+                </div>
+                <div style="padding:13px">
+                  <div style="font:700 9px 'Space Mono',monospace;color:#6a6a63;text-transform:uppercase;letter-spacing:.06em">3am club</div>
+                  <div style="font-family:'Archivo';font-weight:900;font-size:34px;line-height:1;margin:6px 0 2px;letter-spacing:-1px">him</div>
+                  <div style="font-size:11px;font-weight:600">41 texts 🌙</div>
+                </div>
+              </div>
+              <!-- AWARDS -->
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;margin:24px 0 12px;border-bottom:2px solid #0a0a0a;padding-bottom:6px">the awards</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:center;gap:12px;border:2px solid #0a0a0a;padding:9px 14px;background:#fff"><span style="font-size:22px">👻</span><div><div style="font-weight:800;font-size:14px">CERTIFIED GHOST</div><div style="font-size:11px;font-weight:600;color:#6a6a63">him — left on read ×3</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;border:2px solid #0a0a0a;padding:9px 14px;background:#ff2d78;color:#fff"><span style="font-size:22px">🎭</span><div><div style="font-weight:800;font-size:14px">MAIN CHARACTER</div><div style="font-size:11px;font-weight:600;opacity:.85">you — 2am essays</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;border:2px solid #0a0a0a;padding:9px 14px;background:#fff"><span style="font-size:22px">🌙</span><div><div style="font-weight:800;font-size:14px">3AM OVERTHINKER</div><div style="font-size:11px;font-weight:600;color:#6a6a63">you both, tbh</div></div></div>
+              </div>
+              <!-- HIGHLIGHTS -->
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;margin:24px 0 12px;border-bottom:2px solid #0a0a0a;padding-bottom:6px">the highlights</div>
+              <div style="border:2px solid #0a0a0a;padding:15px;background:#fff">
+                <div style="font:700 10px 'Space Mono',monospace;color:#6a6a63;margin-bottom:8px">RUNNING JOKE · ×47</div>
+                <div style="display:inline-block;background:#2b2bef;color:#fff;border-radius:14px 14px 14px 3px;padding:9px 14px;font-size:14px;font-weight:600">"i'm omw" (he was not omw)</div>
+                <div style="border-top:2px solid #0a0a0a;margin:14px 0"></div>
+                <div style="font:700 10px 'Space Mono',monospace;color:#6a6a63;margin-bottom:6px">NICKNAME MAP</div>
+                <div style="font-size:14px;font-weight:600">you → <span style="color:#ff2d78">"weirdo 🩷"</span> · him → <span style="color:#ff2d78">"weirdo 🩷"</span></div>
+              </div>
+              <!-- NARRATIVE -->
+              <div style="font:700 10px 'Space Mono',monospace;letter-spacing:.14em;text-transform:uppercase;margin:24px 0 10px;color:#2b2bef;border-bottom:2px solid #2b2bef;padding-bottom:6px">the lore, in full</div>
+              <div style="font-size:15px;line-height:1.5;font-weight:500">it started with a meme reply and spiraled into 11 months of "what are we." you double-texted, he "😭"-ed, and neither of you said the thing. 47,812 messages, one giant question mark. iconic.</div>
+              <!-- ACTIONS -->
+              <div style="display:flex;gap:10px;margin:22px 0 4px">
+                <div style="flex:1;background:#0a0a0a;color:#f3f3ef;font-weight:800;padding:15px;text-align:center;font-size:15px">DOWNLOAD PDF 🎁</div>
+                <div style="flex:1;background:#f3f3ef;color:#0a0a0a;border:2px solid #0a0a0a;font-weight:800;padding:15px;text-align:center;font-size:15px">SHARE CARDS</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "build everything in <a class="dv-oid" href="#1a">1a</a>" · "show <a class="dv-oid" href="#1a">1a</a> but with a hot-orange accent instead of lime" · "mix — <a class="dv-oid" href="#1b">1b</a>'s big numbers on <a class="dv-oid" href="#1a">1a</a>'s dark canvas" · "add a Y2K sticker direction"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

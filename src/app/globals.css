@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink: #0a0a0a;
+  --surface: #f3f3ef;
+  --card: #ffffff;
+  --hairline: #cfcfc8;
+  --pink: #ff2d78;
+  --acid: #ccff00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--surface);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-archivo), Arial, sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+::selection {
+  background: var(--acid);
+  color: var(--ink);
+}
