@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { WrappedCard } from "@/components/cards/WrappedCard";
 import { getModePreset } from "@/lib/modePresets";
 import {
   buildModeStatCards,
@@ -8,8 +9,6 @@ import {
   formatSpanLabel,
 } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
-
-import { ShareCardGallery } from "./ShareCardGallery";
 
 interface ModeReportProps {
   report: ReportSessionData;
@@ -196,7 +195,7 @@ export function ModeReport({ report }: ModeReportProps) {
           <p className="mt-4 whitespace-pre-line text-[15px] font-medium leading-[1.6]">{content.narrative}</p>
         </section>
 
-        <ShareCardGallery report={report} />
+        <WrappedCard report={report} />
 
         <footer className="mt-8 border-t pt-4" style={{ borderColor: preset.border }}>
           <div className="flex items-end justify-between gap-4">

@@ -9,12 +9,13 @@ Last agent: codex   Last updated: 2026-08-13
 - [x] Phase 3 — LLM layer (Sweetheart, placeholder prompt)
 - [x] Phase 4 — report render (CHECKPOINT: show human)
 - [x] Phase 5 — all modes + share cards
-- [ ] Phase 6 — PDF
-- [ ] Phase 7 — full funnel UX
-- [ ] Phase 8 — LATER: payments/pricing/credibility
+- [x] Phase 6 — the Wrapped share card
+- [ ] Phase 7 — PDF
+- [ ] Phase 8 — full funnel UX
+- [ ] Phase 9 — LATER: payments/pricing/credibility
 
 ## Where the next agent should start
-Start Phase 6 — PDF. Preserve the six locked mode treatments and do not tune prompts or touch pricing.
+Start Phase 7 — PDF. Preserve the six locked mode treatments and do not tune prompts or touch pricing.
 
 ## Decisions & deviations
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
@@ -42,6 +43,10 @@ Start Phase 6 — PDF. Preserve the six locked mode treatments and do not tune p
 - Sweetheart and Family use the soft treatment; Ride or Die, Group Wrapped, and Work use the sharp editorial treatment; Roast uses the dark red heat treatment with warning tape. The create and report screens derive their mode styling from the same preset source.
 - Every report produces a deterministic 9:16 PNG share set at 1080×1920: one hero, one card per computed award, and one verdict/line card. Cards use a dark canvas, mode-color glow, and `lore_` / `lore.app` watermarking; Roast cards also use warning tape.
 - Browser verification ran the private 125-message export through all six real Gemini routes. Every mode rendered its expected treatment and eight-card set, the canvas exporter initialized at 1080×1920, the download control completed, and the final sweep had no console warnings or errors.
+- Phase 6 replaces the Phase 5 share-card set with exactly one `WrappedCard` per report. The report-page stat cards are unchanged; the Wrapped poster reuses the four deterministic stats already selected by each mode preset.
+- The Wrapped card combines participant framing and span, engine-owned message and word totals, four engine-owned stats, the computed Main Character award, and `ReportContent.heroLine` as its sole authored one-liner. It exports as `lore-<mode>-wrapped.png` at 1080×1920 with the mode accent, `lore_`, and `lore.app`; Roast retains its warning tape.
+- Browser verification ran the real 125-message export through all six modes. Each rendered exactly one Wrapped canvas and one download action, with no legacy hero/award/verdict share buttons and no browser warnings or errors. The Work download completed successfully; Work, Sweetheart, and Roast were visually inspected at story size.
 
 ## Known issues / TODO
 - All six mode prompts are intentionally placeholders. Prompt tuning remains deferred.
+- Live Gemini structured output occasionally exhausted its one retry during the browser sweep; retrying the unchanged request succeeded. Prompt tuning and broader generation UX remain deferred.

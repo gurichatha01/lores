@@ -202,17 +202,31 @@ export interface ReportContent {
 **Tasks:** turn mode into a preset (which stats surface + which system prompt/voice) for all six modes, each with a placeholder prompt. Build the report in each mode's treatment (soft for Sweetheart/Family, dark/heat for Roast, etc.). Build the **9:16 dark share-card** renderer with image export; generate a set (hero stat, each award, a savage line); `lore_` watermark.
 **Done when:** every mode renders; share cards export as images that match `/design`.
 
-### PHASE 6 — PDF keepsake
+### PHASE 6 — The Wrapped share card ⭐ (the ONE share surface)
+**Why:** the per-stat share cards from Phase 5 are clutter — the stats already live on the report page and in the PDF, so a menu of shareables is friction for no benefit. There should be exactly **one** shareable card: a Spotify-Wrapped-style summary that condenses the whole report into one 9:16 image. A stranger seeing it on someone's story should get the whole story in one tap and think "I need mine." This is the app's main acquisition surface.
+**Tasks:**
+- **Delete** the per-stat share cards built in Phase 5 (the hero-number card, award card, roast/verdict card — the 9:16 PNG shareables). Do NOT touch the stat cards on the report page — those are the report, not shareables, and they stay.
+- Build ONE `WrappedCard` (9:16, 1080×1920 export, per-mode treatment) that packs, densely but designed like a poster (not a wall of text):
+  - relationship framing + span (e.g. `💕 Guri & Sanj · 2 years`)
+  - the hero number (messages / words)
+  - 3–4 tightest stats (e.g. texts-first %, streak, late-nights, reply time)
+  - the headline award (one, with badge)
+  - ONE punchy line — the sweet or savage one-liner for the mode
+  - `lore_` watermark + `get yours → lore.app`
+- This single card is the whole share surface. All values come from the engine; the one-liner comes from `ReportContent`.
+**Done when:** one Wrapped card exports as a clean 9:16 PNG per mode, readable as a self-contained story; the old per-stat share cards are gone; the report-page stat cards are untouched.
+
+### PHASE 7 — PDF keepsake
 **Goal:** the paid, printable artifact.
-**Tasks:** multi-page PDF matching `/design`: cover, deep-metrics page (month bars, hour heatmap, weekday, response distribution, emoji, busiest day), awards + per-person top words + milestones, month/theme **chapters** narrative (uses `ReportContent.chapters`), closing keepsake page. Printable A4/Letter.
+**Tasks:** multi-page PDF matching `/design`: cover, deep-metrics page (month bars, hour heatmap, weekday, response distribution, emoji, busiest day), awards + per-person top words + milestones, month/theme **chapters** narrative (uses `ReportContent.chapters`), closing keepsake page. Printable A4/Letter. **Note:** some design-mock stats aren't computed yet (e.g. good-mornings count, "I love you" count, reply-time distribution buckets) — list what the PDF shows that `computeStats` lacks and add those stats here.
 **Done when:** a report generates a downloadable PDF that looks like the design's PDF pages.
 
-### PHASE 7 — Full funnel UX
+### PHASE 8 — Full funnel UX
 **Goal:** the real user flow, incl. the teaser state.
 **Tasks:** landing (hero + CTA + credibility slots as placeholders); "who's this chat with?" mode picker + partner sub-type chips; optional freeform **context box**; source = WhatsApp; **export-instructions screen** with clear platform-specific (Android/iOS) steps + images (this is the drop-off cliff — make it easy); upload with privacy reassurance; generating/loading state; the **teaser/locked report state** (hero sharp, rest blurred with lock pills, receipt teased, narrative cut to line one, sticky unlock bar). Payment button is a stub for now.
 **Done when:** a user can go landing → pick mode → export help → upload → generate → see teaser, all on-brand.
 
-### PHASE 8 — LATER (do not build until told): payments, pricing, credibility, launch
+### PHASE 9 — LATER (do not build until told): payments, pricing, credibility, launch
 Deferred by decision. Razorpay/UPI unlock at the reveal; pricing tiers TBD (digital unlock vs gift edition — undecided, don't hardcode ₹149 as final); populate landing credibility with **real** proof only; analytics; ad funnel.
 
 ---
@@ -220,7 +234,7 @@ Deferred by decision. Razorpay/UPI unlock at the reveal; pricing tiers TBD (digi
 ## 8. DEFERRED — DO NOT SPEND EFFORT HERE YET
 
 - **LLM prompt quality.** Use simple placeholder prompts that return the schema. We tune wit/voice against real chats *after* Phase 4, as a dedicated pass. Just make the plumbing solid and the schema strict.
-- **Pricing & payments.** Undecided (likely two tiers). No hardcoded final price; keep the unlock a stub until Phase 8.
+- **Pricing & payments.** Undecided (likely two tiers). No hardcoded final price; keep the unlock a stub until Phase 9.
 - **Fake credibility.** Credibility slots are placeholders only; nothing fabricated ships.
 
 ---
