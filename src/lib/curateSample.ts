@@ -1,4 +1,5 @@
 import type { Message } from "./types";
+import { sanitizeEvidenceMessage } from "./evidenceHygiene";
 
 export const DEFAULT_SAMPLE_PER_PERSON = 25;
 export const MIN_SAMPLE_PER_PERSON = 20;
@@ -15,8 +16,8 @@ interface RankedMessage {
 }
 
 const LAUGH = /(?:\b(?:ha(?:ha)+|he(?:he)+|hi(?:hi)+|lol+|lmao+|lmfao+|rofl+|hehe|bahaha+)\b|😂|🤣|💀)/giu;
-const KEYWORD =
-  /\b(?:love|miss|sorry|remember|always|never|birthday|anniversary|fight|proud|morning|night|thank|please|together|relationship|date|marry|bestie|friend)\b/giu;
+const EMOTIONAL_OR_TOPIC =
+  /\b(?:love|miss|sorry|remember|always|never|birthday|anniversary|fight|proud|morning|night|thank|please|together|relationship|date|marry|bestie|friend|feel|felt|happy|sad|angry|upset|excited|scared|cry|cried|food|trip|plan|project|family|home|work)\b/giu;
 
 /**
  * Pick a compact, repeatable sample per person. Heuristics reserve room for
@@ -39,7 +40,8 @@ export function curateSample(
   }
 
   const chronological = messages
-    .map((message, sourceIndex) => ({ message, sourceIndex }))
+    .map((message, sourceIndex) => ({ message: sanitizeEvidenceMessage(message), sourceIndex }))
+    .filter((entry): entry is { message: Message; sourceIndex: number } => entry.message !== null)
     .filter(({ message }) => !Number.isNaN(message.timestamp.getTime()) && message.sender.trim())
     .sort(
       (left, right) =>
@@ -80,7 +82,7 @@ function selectForPerson(
   }
 
   const selected = new Set<number>();
-  const heuristicQuota = Math.max(1, Math.floor(target * 0.24));
+  const heuristicQuota = Math.max(1, Math.floor(target * 0.28));
   addRanked(
     entries.map((entry) => ({ ...entry, score: entry.message.text.length })),
     heuristicQuota,
@@ -93,7 +95,10 @@ function selectForPerson(
     true,
   );
   addRanked(
-    entries.map((entry) => ({ ...entry, score: scoreMatches(entry.message.text, KEYWORD) })),
+    entries.map((entry) => ({
+      ...entry,
+      score: scoreMatches(entry.message.text, EMOTIONAL_OR_TOPIC) * 10 + Math.min(entry.message.wordCount, 40),
+    })),
     heuristicQuota,
     selected,
     true,

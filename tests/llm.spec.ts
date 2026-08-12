@@ -2,13 +2,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_GEMINI_MODEL,
+  buildSystemPrompt,
   generateReport,
   LlmConfigurationError,
   LlmOutputError,
   LlmRequestError,
   stripCodeFences,
+  MODE_VOICE_BLOCKS,
 } from "../src/lib/llm";
-import { getModePreset, REPORT_MODES } from "../src/lib/modePresets";
+import { REPORT_MODES } from "../src/lib/modePresets";
 import { createTestGenerateInput, geminiResponse, VALID_REPORT } from "./reportTestData";
 
 afterEach(() => {
@@ -53,7 +55,7 @@ describe("generateReport", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("/models/gemini-3.5-flash-lite:generateContent");
   });
 
-  it("uses the selected mode's placeholder voice without model prefilling", async () => {
+  it("injects the selected v1 voice block without model prefilling", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(geminiResponse(VALID_REPORT)));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
@@ -61,13 +63,28 @@ describe("generateReport", () => {
     for (const mode of REPORT_MODES) {
       await generateReport(createTestGenerateInput(mode));
       const body = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
-      expect(body.systemInstruction.parts[0].text).toContain(getModePreset(mode).placeholderVoice);
+      expect(body.systemInstruction.parts[0].text).toContain(MODE_VOICE_BLOCKS[mode]);
       expect(body.contents).toHaveLength(1);
       expect(body.contents.at(-1)?.role).toBe("user");
       expect(body.generationConfig).not.toHaveProperty("temperature");
       expect(body.generationConfig).not.toHaveProperty("top_p");
       expect(body.generationConfig).not.toHaveProperty("top_k");
     }
+  });
+
+  it("uses the specificity rules, all three few-shots, guardrails, and strict output shape", () => {
+    const prompt = buildSystemPrompt(createTestGenerateInput("sweetheart"));
+
+    expect(prompt).toContain("THE ONE RULE: specificity");
+    expect(prompt).toContain("journey, bond, connection, sanctuary");
+    expect(prompt).toContain("143 messages that were pure keyboard-smash");
+    expect(prompt).toContain("murgh malai tikka vs dal roti");
+    expect(prompt).toContain("The Whale Phase");
+    expect(prompt).toContain("No insults about appearance, identity, intelligence");
+    expect(prompt).toContain("exactly 4");
+    expect(prompt).toContain('"wrappedLine"');
+    expect(prompt).not.toContain("[INJECT");
+    expect(prompt).not.toContain("[LENGTH]");
   });
 
   it("retries exactly once when Gemini returns invalid report JSON", async () => {
@@ -80,6 +97,28 @@ describe("generateReport", () => {
 
     await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries when a highlight bubble is not a verbatim sampled message", async () => {
+    const ungrounded = {
+      ...VALID_REPORT,
+      highlights: [{ ...VALID_REPORT.highlights[0], bubble: "a paraphrased message" }],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(ungrounded))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents).toHaveLength(1);
+    expect(repairRequest.contents[0].role).toBe("user");
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "Every highlight bubble must exactly match",
+    );
   });
 
   it("fails after two invalid outputs without adding more retries", async () => {

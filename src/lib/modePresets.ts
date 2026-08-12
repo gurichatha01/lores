@@ -31,7 +31,6 @@ export interface ModePreset {
   storyLabel: string;
   momentsLabel: string;
   statMetrics: readonly [StatMetric, StatMetric, StatMetric, StatMetric];
-  placeholderVoice: string;
 }
 
 export const REPORT_MODES: readonly ReportMode[] = [
@@ -61,7 +60,6 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     storyLabel: "your story, in full",
     momentsLabel: "the moments",
     statMetrics: ["conversation-starts", "reply-time", "streak", "late-night"],
-    placeholderVoice: "Warm, affectionate, and gently funny.",
   },
   "ride-or-die": {
     id: "ride-or-die",
@@ -80,7 +78,6 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     storyLabel: "the friendship lore",
     momentsLabel: "the evidence",
     statMetrics: ["message-share", "reply-time", "laughs", "late-night"],
-    placeholderVoice: "Energetic, loyal, chaotic, and unmistakably platonic.",
   },
   group: {
     id: "group",
@@ -99,7 +96,6 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     storyLabel: "the group lore",
     momentsLabel: "the leaderboard",
     statMetrics: ["message-share", "conversation-starts", "laughs", "last-of-day"],
-    placeholderVoice: "Fast, communal, scoreboard-like, and playful with every participant.",
   },
   family: {
     id: "family",
@@ -118,7 +114,6 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     storyLabel: "the family story",
     momentsLabel: "the keepsakes",
     statMetrics: ["conversation-starts", "reply-time", "media", "last-of-day"],
-    placeholderVoice: "Cozy, grateful, intergenerational, and never romantic.",
   },
   work: {
     id: "work",
@@ -137,7 +132,6 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     storyLabel: "the office lore",
     momentsLabel: "meeting notes",
     statMetrics: ["word-count", "reply-time", "busiest-day", "conversation-starts"],
-    placeholderVoice: "Dry, observant, workplace-safe, and lightly witty.",
   },
   roast: {
     id: "roast",
@@ -156,7 +150,6 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     storyLabel: "the verdict",
     momentsLabel: "the allegations",
     statMetrics: ["reply-time", "message-share", "late-night", "silence"],
-    placeholderVoice: "Sharp and playful, but never cruel, hateful, or invasive.",
   },
 };
 

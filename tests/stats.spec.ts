@@ -271,6 +271,28 @@ describe("assignAwards", () => {
       comedian: "A",
       "the-initiator": "A",
     });
+    expect(Object.fromEntries(assignAwards(stats).map((award) => [award.id, award.detail]))).toEqual({
+      "certified-ghost": "median reply 25m",
+      "main-character": "56% of all messages",
+      "3am-overthinker": "3 late-night messages",
+      "one-word-warrior": "1 word per message",
+      comedian: "4 laugh-messages",
+      "the-initiator": "3 conversation starts",
+    });
+  });
+
+  it("keeps addresses, phone numbers, links, and filler out of top words", () => {
+    const stats = computeStats([
+      message("2024-01-01T09:00:00", "A", "Sector 43 · Gurugram · Haryana 122003"),
+      message("2024-01-01T09:01:00", "B", "https://example.com 98765 43210"),
+      message("2024-01-01T09:02:00", "A", "haan"),
+      message("2024-01-01T09:03:00", "B", "whale project whale project"),
+    ]);
+
+    expect(stats.people.flatMap((person) => person.topWords)).not.toEqual(
+      expect.arrayContaining(["sector", "gurugram", "haryana", "haan", "example"]),
+    );
+    expect(stats.people.find((person) => person.name === "B")?.topWords).toContain("whale");
   });
 
   it("resolves tied metrics by participant appearance order", () => {

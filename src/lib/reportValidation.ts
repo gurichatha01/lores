@@ -49,7 +49,7 @@ const PERSON_KEYS = [
   "topWords",
 ] as const;
 const SAMPLE_KEYS = ["timestamp", "sender", "text", "wordCount", "hasEmoji", "emojis"] as const;
-const AWARD_KEYS = ["id", "label", "emoji", "who"] as const;
+const AWARD_KEYS = ["id", "label", "emoji", "who", "detail"] as const;
 const LOCAL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/u;
 const LOCAL_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/u;
 
@@ -96,9 +96,8 @@ export function parseReportContent(value: unknown): ReportContent {
   const content = asRecord(value, "report");
   assertExactKeys(
     content,
-    ["title", "heroLine", "highlights", "awardLines", "narrative", "chapters"],
+    ["title", "heroLine", "wrappedLine", "highlights", "awardLines", "narrative", "chapters"],
     "report",
-    ["chapters"],
   );
 
   const highlights = asArray(content.highlights, "report.highlights").map((value, index) => {
@@ -120,25 +119,26 @@ export function parseReportContent(value: unknown): ReportContent {
       line: asString(line.line, `report.awardLines[${index}].line`, 1_000),
     };
   });
-  const chapters =
-    content.chapters === undefined
-      ? undefined
-      : asArray(content.chapters, "report.chapters").map((value, index) => {
-          const chapter = asRecord(value, `report.chapters[${index}]`);
-          assertExactKeys(chapter, ["title", "body"], `report.chapters[${index}]`);
-          return {
-            title: asString(chapter.title, `report.chapters[${index}].title`, 160),
-            body: asString(chapter.body, `report.chapters[${index}].body`, 4_000),
-          };
-        });
+  const chapters = asArray(content.chapters, "report.chapters").map((value, index) => {
+    const chapter = asRecord(value, `report.chapters[${index}]`);
+    assertExactKeys(chapter, ["title", "body"], `report.chapters[${index}]`);
+    return {
+      title: asString(chapter.title, `report.chapters[${index}].title`, 160),
+      body: asString(chapter.body, `report.chapters[${index}].body`, 4_000),
+    };
+  });
+  if (chapters.length !== 4) {
+    throw new ReportValidationError("report.chapters must contain exactly 4 chapters.");
+  }
 
   return {
     title: asString(content.title, "report.title", 200),
     heroLine: asString(content.heroLine, "report.heroLine", 500),
+    wrappedLine: asString(content.wrappedLine, "report.wrappedLine", 500),
     highlights,
     awardLines,
     narrative: asString(content.narrative, "report.narrative", 8_000),
-    ...(chapters === undefined ? {} : { chapters }),
+    chapters,
   };
 }
 
@@ -293,6 +293,7 @@ function parseAward(value: unknown, index: number): Award {
     label: asString(award.label, `awards[${index}].label`, 160),
     emoji: asString(award.emoji, `awards[${index}].emoji`, 32),
     who: asString(award.who, `awards[${index}].who`, 100),
+    detail: asString(award.detail, `awards[${index}].detail`, 200),
   };
 }
 

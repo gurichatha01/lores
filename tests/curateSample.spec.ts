@@ -50,4 +50,28 @@ describe("curateSample", () => {
     expect(() => curateSample(messages, { perPerson: 19 })).toThrow("20");
     expect(() => curateSample(messages, { perPerson: 31 })).toThrow("30");
   });
+
+  it("strips private/noisy evidence and favors screenshot-worthy messages", () => {
+    const messages = Array.from({ length: 40 }, (_, index) =>
+      testMessage(new Date(2024, 0, index + 1, 9), "A", `ordinary update number ${index}`),
+    );
+    messages.push(
+      testMessage(new Date(2024, 2, 1, 9), "A", "ok"),
+      testMessage(new Date(2024, 2, 2, 9), "A", "Sector 43 · Gurugram · Haryana 122003"),
+      testMessage(new Date(2024, 2, 3, 9), "A", "Call me on +91 98765 43210 about the whale project"),
+      testMessage(new Date(2024, 2, 4, 9), "A", "This made me laugh so hard hahaha 😂"),
+      testMessage(new Date(2024, 2, 5, 9), "A", "I was honestly scared, then proud, and I will always remember this"),
+      testMessage(new Date(2024, 2, 6, 9), "A", "Read https://example.com/private then tell me what you think about the trip"),
+    );
+
+    const sample = curateSample(messages, { perPerson: 25 });
+    const text = sample.map((message) => message.text).join("\n");
+
+    expect(sample).toHaveLength(25);
+    expect(text).not.toMatch(/Gurugram|Haryana|98765|example\.com|^ok$/mu);
+    expect(text).toContain("whale project");
+    expect(text).toContain("hahaha");
+    expect(text).toContain("always remember");
+    expect(sample.every((message) => message.wordCount === (message.text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0))).toBe(true);
+  });
 });

@@ -7,7 +7,14 @@ import type { GenerateReportInput, Message, ReportContent, ReportMode } from "..
 export const VALID_REPORT: ReportContent = {
   title: "A tiny history of us",
   heroLine: "The conversation kept finding its way back.",
-  highlights: [{ label: "The vibe", body: "Warm, funny, and reliably present.", bubble: "hey you" }],
+  wrappedLine: "Two people, one tiny chat, and a very specific hello.",
+  highlights: [
+    {
+      label: "The vibe",
+      body: "Warm, funny, and reliably present.",
+      bubble: "I remember this 😂",
+    },
+  ],
   awardLines: [
     { awardId: "certified-ghost", line: "Worth waiting for." },
     { awardId: "main-character", line: "Always kept the plot moving." },
@@ -17,7 +24,12 @@ export const VALID_REPORT: ReportContent = {
     { awardId: "the-initiator", line: "Made sure the story kept starting." },
   ],
   narrative: "Two people made a habit of showing up for one another.",
-  chapters: [{ title: "The beginning", body: "It started with a hello." }],
+  chapters: [
+    { title: "The first hello", body: "It started with a hello." },
+    { title: "The five-minute reply", body: "The next message arrived five minutes later." },
+    { title: "The midnight line", body: "Both messages landed just after midnight." },
+    { title: "The tiny archive", body: "Two messages were enough for this fixture." },
+  ],
 };
 
 export function testMessage(timestamp: Date, sender: string, text: string): Message {

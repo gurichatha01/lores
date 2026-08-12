@@ -5,6 +5,7 @@ import type {
   PersonStats,
   ReplyTimeBucket,
 } from "./types";
+import { sanitizeEvidenceText } from "./evidenceHygiene";
 
 export const REPLY_GAP_CAP_MIN = 6 * 60;
 
@@ -26,7 +27,6 @@ const NOVEL_WORDS = 80_000;
 const TOP_EMOJI_LIMIT = 5;
 const TOP_WORD_LIMIT = 10;
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
-const URL = /(?:https?:\/\/|www\.)\S+/giu;
 const LAUGH_TOKEN =
   /(?:\b(?:ha(?:ha)+|he(?:he)+|hi(?:hi)+|lol+|lmao+|lmfao+|rofl+|hehe|bahaha+)\b|😂|🤣|💀)/giu;
 const GOOD_MORNING = /\b(?:good\s*mornings?|gmorning|gud\s*morning|morning)\b/giu;
@@ -148,6 +148,23 @@ const STOP_WORDS = new Set([
   "ko",
   "kya",
   "par",
+  "ok",
+  "okay",
+  "haan",
+  "han",
+  "hmm",
+  "hmmm",
+  "acha",
+  "accha",
+  "theek",
+  "thik",
+  "yep",
+  "yup",
+  "sure",
+  "fine",
+  "cool",
+  "done",
+  "noted",
 ]);
 
 /**
@@ -347,7 +364,9 @@ function countEmojis(counts: Map<string, number>, emojis: readonly string[]): vo
 }
 
 function countWords(counts: Map<string, number>, text: string): void {
-  for (const match of text.replace(URL, " ").match(WORD) ?? []) {
+  const cleaned = sanitizeEvidenceText(text);
+  if (!cleaned) return;
+  for (const match of cleaned.match(WORD) ?? []) {
     const word = match.toLowerCase();
     if (word.length < 2 || STOP_WORDS.has(word) || /^\d+$/u.test(word)) {
       continue;

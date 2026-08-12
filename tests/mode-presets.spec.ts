@@ -18,10 +18,9 @@ describe("report mode presets", () => {
     expect(Object.keys(MODE_PRESETS).sort()).toEqual([...REPORT_MODES].sort());
   });
 
-  it("keeps one placeholder voice and four deterministic stat slots per mode", () => {
+  it("keeps four deterministic stat slots per mode", () => {
     for (const mode of REPORT_MODES) {
       const preset = getModePreset(mode);
-      expect(preset.placeholderVoice.length).toBeGreaterThan(10);
       expect(preset.statMetrics).toHaveLength(4);
       expect(parseGenerateReportInput(createTestGenerateInput(mode)).mode).toBe(mode);
     }

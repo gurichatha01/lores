@@ -20,7 +20,7 @@ describe("Wrapped card content", () => {
       expect(card.headlineAward).toEqual(
         input.awards.find((award) => award.id === "main-character"),
       );
-      expect(card.punchLine).toBe(VALID_REPORT.heroLine);
+      expect(card.punchLine).toBe(VALID_REPORT.wrappedLine);
       expect(card.fileName).toBe(`lore-${mode}-wrapped.png`);
     }
   });

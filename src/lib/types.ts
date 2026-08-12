@@ -73,6 +73,7 @@ export interface Award {
   label: string;
   emoji: string;
   who: string;
+  detail: string;
 }
 
 export type ReportMode =
@@ -86,10 +87,11 @@ export type ReportMode =
 export interface ReportContent {
   title: string;
   heroLine: string;
+  wrappedLine: string;
   highlights: { label: string; body: string; bubble?: string }[];
   awardLines: { awardId: string; line: string }[];
   narrative: string;
-  chapters?: { title: string; body: string }[];
+  chapters: { title: string; body: string }[];
 }
 
 /** ChatStats serialized without converting local wall-clock dates to UTC. */
