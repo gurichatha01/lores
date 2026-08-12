@@ -385,12 +385,18 @@ function findLongestSilence(activeDays: readonly number[]): number {
 }
 
 function localDayNumber(date: Date): number {
+  // Encode local calendar fields as a stable day ordinal. Date.UTC is used only
+  // for arithmetic here; the instant's UTC date is never read for bucketing.
   return Math.round(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS);
 }
 
 function dateFromLocalDayNumber(day: number): Date {
-  const utc = new Date(day * DAY_MS);
-  return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
+  const ordinalDate = new Date(day * DAY_MS);
+  return new Date(
+    ordinalDate.getUTCFullYear(),
+    ordinalDate.getUTCMonth(),
+    ordinalDate.getUTCDate(),
+  );
 }
 
 function mondayFirstWeekday(date: Date): number {

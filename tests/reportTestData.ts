@@ -1,0 +1,54 @@
+import { assignAwards } from "../src/lib/assignAwards";
+import { computeStats } from "../src/lib/computeStats";
+import { serializeGenerateReportInput } from "../src/lib/reportTransport";
+import type { GenerateReportInput, Message, ReportContent } from "../src/lib/types";
+
+export const VALID_REPORT: ReportContent = {
+  title: "A tiny history of us",
+  heroLine: "The conversation kept finding its way back.",
+  highlights: [{ label: "The vibe", body: "Warm, funny, and reliably present.", bubble: "hey you" }],
+  awardLines: [
+    { awardId: "certified-ghost", line: "Worth waiting for." },
+    { awardId: "main-character", line: "Always kept the plot moving." },
+    { awardId: "3am-overthinker", line: "Moonlight suited the conversation." },
+    { awardId: "one-word-warrior", line: "Said plenty with very little." },
+    { awardId: "comedian", line: "Kept the chat laughing." },
+    { awardId: "the-initiator", line: "Made sure the story kept starting." },
+  ],
+  narrative: "Two people made a habit of showing up for one another.",
+  chapters: [{ title: "The beginning", body: "It started with a hello." }],
+};
+
+export function testMessage(timestamp: Date, sender: string, text: string): Message {
+  return {
+    timestamp,
+    sender,
+    text,
+    wordCount: text.match(/[\p{L}\p{N}]+/gu)?.length ?? 0,
+    hasEmoji: /[😂💀❤️]/u.test(text),
+    emojis: Array.from(text.matchAll(/[😂💀❤️]/gu), (match) => match[0]),
+  };
+}
+
+export function createTestGenerateInput(): GenerateReportInput {
+  const messages = [
+    testMessage(new Date(2024, 7, 12, 0, 15, 0), "A", "I remember this 😂"),
+    testMessage(new Date(2024, 7, 12, 0, 20, 0), "B", "Me too"),
+  ];
+  const stats = computeStats(messages);
+  return serializeGenerateReportInput({
+    mode: "sweetheart",
+    subtype: "partners",
+    userContext: "Together since university.",
+    stats,
+    awards: assignAwards(stats),
+    sample: messages,
+  });
+}
+
+export function geminiResponse(content: ReportContent | string): Response {
+  const text = typeof content === "string" ? content : JSON.stringify(content);
+  return Response.json({
+    candidates: [{ content: { parts: [{ text }] } }],
+  });
+}

@@ -50,3 +50,35 @@ export interface Award {
   emoji: string;
   who: string;
 }
+
+export type ReportMode = "sweetheart";
+
+export interface ReportContent {
+  title: string;
+  heroLine: string;
+  highlights: { label: string; body: string; bubble?: string }[];
+  awardLines: { awardId: string; line: string }[];
+  narrative: string;
+  chapters?: { title: string; body: string }[];
+}
+
+/** ChatStats serialized without converting local wall-clock dates to UTC. */
+export interface ReportStats extends Omit<ChatStats, "firstMessageDate" | "lastMessageDate" | "busiestDay"> {
+  firstMessageDate: string;
+  lastMessageDate: string;
+  busiestDay: { date: string; count: number };
+}
+
+/** A curated Message serialized without converting its local timestamp to UTC. */
+export interface ReportSampleMessage extends Omit<Message, "timestamp"> {
+  timestamp: string;
+}
+
+export interface GenerateReportInput {
+  mode: ReportMode;
+  subtype: string;
+  userContext: string;
+  stats: ReportStats;
+  awards: Award[];
+  sample: ReportSampleMessage[];
+}

@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { parseWhatsApp } from "../src/lib/parseWhatsApp";
+import { formatLocalDateTime } from "../src/lib/reportTransport";
 
 const realExportPath = process.env.REAL_WHATSAPP_EXPORT;
 
@@ -37,8 +38,8 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
       mediaCount: result.mediaCount,
       participantCount: senders.size,
       messagesPerParticipant: [...senders.values()].sort((left, right) => right - left),
-      firstMessage: first?.toISOString(),
-      lastMessage: last?.toISOString(),
+      firstMessageLocal: first ? formatLocalDateTime(first) : undefined,
+      lastMessageLocal: last ? formatLocalDateTime(last) : undefined,
       spanDays,
     });
   });

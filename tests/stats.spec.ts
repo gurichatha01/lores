@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { assignAwards } from "../src/lib/assignAwards";
 import { computeStats, REPLY_GAP_CAP_MIN } from "../src/lib/computeStats";
+import { parseWhatsAppText } from "../src/lib/parseWhatsApp";
 import type { Message } from "../src/lib/types";
 
 function message(timestamp: string, sender: string, text = "hello"): Message {
@@ -28,6 +29,29 @@ function person(stats: ReturnType<typeof computeStats>, name: string) {
 }
 
 describe("computeStats", () => {
+  it("keeps naive WhatsApp timestamps in the local wall-clock day near midnight", () => {
+    const parsed = parseWhatsAppText(
+      [
+        "[11/08/24, 11:55:00 PM] B: before midnight",
+        "[12/08/24, 12:15:00 AM] A: after midnight",
+        "[12/08/24, 12:20:00 AM] B: still after midnight",
+      ].join("\n"),
+    );
+    const nearMidnight = parsed.messages[1].timestamp;
+    const stats = computeStats(parsed);
+
+    expect(nearMidnight.getHours()).toBe(0);
+    expect(nearMidnight.toISOString()).toBe("2024-08-11T18:45:00.000Z");
+    expect(stats.messagesByHour[0]).toBe(2);
+    expect(stats.messagesByWeekday[0]).toBe(2); // Monday, 12 August locally.
+    expect(stats.messagesByWeekday[6]).toBe(1); // Sunday, 11 August locally.
+    expect([
+      stats.busiestDay.date.getFullYear(),
+      stats.busiestDay.date.getMonth(),
+      stats.busiestDay.date.getDate(),
+    ]).toEqual([2024, 7, 12]);
+  });
+
   it("computes reply medians only on sender changes and caps overnight gaps", () => {
     const stats = computeStats([
       message("2024-01-01T09:00:00", "A"),
