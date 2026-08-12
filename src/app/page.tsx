@@ -7,6 +7,7 @@ const credibilitySlots = [
   "verified creator quote",
   "press or trust mark",
 ] as const;
+const SHOW_CREDIBILITY_SECTION = false;
 
 export default function LandingPage() {
   return (
@@ -77,27 +78,29 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y-2 border-ink bg-white px-5 py-12 sm:px-10 lg:px-14" aria-labelledby="credibility-title">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex items-end justify-between border-b-2 border-ink pb-2">
-            <h2 id="credibility-title" className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
-              real proof belongs here
-            </h2>
-            <span className="font-mono text-[9px] uppercase text-ink/40">placeholders only · phase 9</span>
+      {SHOW_CREDIBILITY_SECTION ? (
+        <section className="border-y-2 border-ink bg-white px-5 py-12 sm:px-10 lg:px-14" aria-labelledby="credibility-title">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex items-end justify-between border-b-2 border-ink pb-2">
+              <h2 id="credibility-title" className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]">
+                real proof belongs here
+              </h2>
+              <span className="font-mono text-[9px] uppercase text-ink/40">placeholders only · phase 9</span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {credibilitySlots.map((slot, index) => (
+                <div key={slot} className="flex min-h-36 flex-col justify-between border-2 border-dashed border-hairline p-4">
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-ink/35">
+                    placeholder {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <p className="max-w-[16rem] text-lg font-black tracking-[-0.5px] text-ink/35">{slot}</p>
+                  <p className="font-mono text-[9px] uppercase text-ink/30">never fabricated</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {credibilitySlots.map((slot, index) => (
-              <div key={slot} className="flex min-h-36 flex-col justify-between border-2 border-dashed border-hairline p-4">
-                <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-ink/35">
-                  placeholder {String(index + 1).padStart(2, "0")}
-                </span>
-                <p className="max-w-[16rem] text-lg font-black tracking-[-0.5px] text-ink/35">{slot}</p>
-                <p className="font-mono text-[9px] uppercase text-ink/30">never fabricated</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <footer className="bg-surface px-5 py-8 sm:px-10 lg:px-14">
         <div className="mx-auto flex max-w-6xl items-end justify-between gap-6">
