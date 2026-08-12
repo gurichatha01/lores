@@ -257,13 +257,14 @@ describe("assignAwards", () => {
       message("2024-06-01T01:00:00", "A", "hahaha project update"),
       message("2024-06-01T01:45:00", "B", "k"),
       message("2024-06-01T02:00:00", "A", "rofl project update details"),
-      message("2024-06-01T02:50:00", "B", "sure"),
+      message("2024-06-01T05:50:00", "B", "sure"),
       message("2024-06-01T12:00:00", "A", "starting again after lunch"),
       message("2024-06-01T12:01:00", "B", "yes"),
       message("2024-06-02T12:00:00", "A", "starting the next day"),
     ]);
 
-    expect(Object.fromEntries(assignAwards(stats).map((award) => [award.id, award.who]))).toEqual({
+    const awards = assignAwards(stats);
+    expect(Object.fromEntries(awards.map((award) => [award.id, award.who]))).toEqual({
       "certified-ghost": "B",
       "main-character": "A",
       "3am-overthinker": "A",
@@ -271,7 +272,7 @@ describe("assignAwards", () => {
       comedian: "A",
       "the-initiator": "A",
     });
-    expect(Object.fromEntries(assignAwards(stats).map((award) => [award.id, award.detail]))).toEqual({
+    expect(Object.fromEntries(awards.map((award) => [award.id, award.detail]))).toEqual({
       "certified-ghost": "median reply 25m",
       "main-character": "56% of all messages",
       "3am-overthinker": "3 late-night messages",
@@ -279,6 +280,18 @@ describe("assignAwards", () => {
       comedian: "4 laugh-messages",
       "the-initiator": "3 conversation starts",
     });
+    expect(person(stats, "B").medianReplyTimeMin).toBeGreaterThan(
+      person(stats, "A").medianReplyTimeMin,
+    );
+    expect(person(stats, "A").messageShare).toBeGreaterThan(person(stats, "B").messageShare);
+    expect(person(stats, "A").lateNightCount).toBeGreaterThan(person(stats, "B").lateNightCount);
+    expect(person(stats, "B").avgWordsPerMessage).toBeLessThan(
+      person(stats, "A").avgWordsPerMessage,
+    );
+    expect(person(stats, "A").laughCount).toBeGreaterThan(person(stats, "B").laughCount);
+    expect(person(stats, "A").conversationStarts).toBeGreaterThan(
+      person(stats, "B").conversationStarts,
+    );
   });
 
   it("keeps addresses, phone numbers, links, and filler out of top words", () => {

@@ -73,7 +73,8 @@ describe("generateReport", () => {
   });
 
   it("uses the specificity rules, all three few-shots, guardrails, and strict output shape", () => {
-    const prompt = buildSystemPrompt(createTestGenerateInput("sweetheart"));
+    const input = createTestGenerateInput("sweetheart");
+    const prompt = buildSystemPrompt(input);
 
     expect(prompt).toContain("THE ONE RULE: specificity");
     expect(prompt).toContain("journey, bond, connection, sanctuary");
@@ -85,6 +86,42 @@ describe("generateReport", () => {
     expect(prompt).toContain('"wrappedLine"');
     expect(prompt).not.toContain("[INJECT");
     expect(prompt).not.toContain("[LENGTH]");
+    expect(prompt).toContain(
+      'Certified Ghost (certified-ghost): winner "B" has the HIGHEST median reply time, meaning the slowest replier.',
+    );
+    expect(prompt).toContain(
+      'Main Character (main-character): winner "A" has the HIGHEST message share',
+    );
+    expect(prompt).toContain(
+      '3AM Overthinker (3am-overthinker): winner "A" has the HIGHEST late-night message count',
+    );
+    expect(prompt).toContain(
+      'One-Word Warrior (one-word-warrior): winner "B" has the LOWEST average words per message',
+    );
+    expect(prompt).toContain(
+      'Comedian (comedian): winner "A" has the HIGHEST laugh-message count',
+    );
+    expect(prompt).toContain(
+      'The Initiator (the-initiator): winner "A" has the HIGHEST conversation-start count',
+    );
+    expect(prompt).toContain(
+      'Tie context: "A" and "B" share this metric value; deterministic participant-order tie-break selected "A". Do not claim a strict lead.',
+    );
+  });
+
+  it("rejects award winners or details that do not match the person metrics", async () => {
+    const input = createTestGenerateInput();
+    input.awards = input.awards.map((award) =>
+      award.id === "certified-ghost" ? { ...award, who: "A" } : award,
+    );
+    const fetchMock = vi.fn();
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(input)).rejects.toThrow(
+      "Award winners and details must match the deterministic person metrics",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("retries exactly once when Gemini returns invalid report JSON", async () => {
@@ -118,6 +155,54 @@ describe("generateReport", () => {
     expect(repairRequest.contents[0].role).toBe("user");
     expect(repairRequest.contents[0].parts[0].text).toContain(
       "Every highlight bubble must exactly match",
+    );
+  });
+
+  it("retries an award line that describes the opposite metric direction", async () => {
+    const wrongDirection = {
+      ...VALID_REPORT,
+      awardLines: VALID_REPORT.awardLines.map((awardLine) =>
+        awardLine.awardId === "certified-ghost"
+          ? { ...awardLine, line: "A rapid-fire 5m reply kept the chat moving." }
+          : awardLine,
+      ),
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(wrongDirection))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "Certified Ghost line describes the opposite metric direction",
+    );
+  });
+
+  it("retries an award line that cites another statistic", async () => {
+    const wrongStat = {
+      ...VALID_REPORT,
+      awardLines: VALID_REPORT.awardLines.map((awardLine) =>
+        awardLine.awardId === "main-character"
+          ? { ...awardLine, line: "Took the largest share with 99% of all messages." }
+          : awardLine,
+      ),
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(wrongStat))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "Main Character line must use its winner's computed detail",
     );
   });
 

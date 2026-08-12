@@ -16,12 +16,12 @@ export const VALID_REPORT: ReportContent = {
     },
   ],
   awardLines: [
-    { awardId: "certified-ghost", line: "Worth waiting for." },
-    { awardId: "main-character", line: "Always kept the plot moving." },
-    { awardId: "3am-overthinker", line: "Moonlight suited the conversation." },
-    { awardId: "one-word-warrior", line: "Said plenty with very little." },
-    { awardId: "comedian", line: "Kept the chat laughing." },
-    { awardId: "the-initiator", line: "Made sure the story kept starting." },
+    { awardId: "certified-ghost", line: "The slowest reply clocked in at 5m." },
+    { awardId: "main-character", line: "Took the largest share with 50% of all messages." },
+    { awardId: "3am-overthinker", line: "Owned the night with 1 late-night message." },
+    { awardId: "one-word-warrior", line: "Kept it shortest at 2 words per message." },
+    { awardId: "comedian", line: "Led the laughs with 1 laugh-message." },
+    { awardId: "the-initiator", line: "Opened the chat with 1 conversation start." },
   ],
   narrative: "Two people made a habit of showing up for one another.",
   chapters: [

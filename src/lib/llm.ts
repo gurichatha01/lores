@@ -1,5 +1,11 @@
 import type { GenerateReportInput, ReportContent } from "./types";
 import type { ReportMode } from "./types";
+import {
+  assignAwards,
+  getAwardLineDirectionError,
+  getAwardMetricRule,
+  getAwardMetricValue,
+} from "./assignAwards";
 import { parseReportContent, ReportValidationError } from "./reportValidation";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
@@ -79,7 +85,7 @@ TAKE YOUR CUE FROM THE MESSAGES. Match the real relationship. If the chat is pla
 NEVER INVENT. You only know what's in the stats and sample. If you don't have a specific detail for a point, use a specific NUMBER instead. Never fabricate events, quotes, nicknames, or people that don't appear in the data. Real-but-smaller beats impressive-but-made-up.
 
 FIELD RULES:
-- awardLines — the winner's name is already shown as a heading. Do NOT restate it or start with it. Don't describe the award ("kept us laughing as the Comedian"). State the behavior that earned it, using the award's detail number or a receipt. Make it land in one line.
+- awardLines — the winner's name is already shown as a heading. Do NOT restate it or start with it. Don't describe the award ("kept us laughing as the Comedian"). State the behavior that earned it. Include the numeric value from the award's detail using digits, and obey the award wiring below. Make it land in one line.
 - narrative — ${NARRATIVE_LENGTH} words. Open with a concrete detail, never a summary. Tell their actual story with their actual specifics. Close on a line that hits.
 - chapters — exactly 4, chronological, forming an arc across the whole span. Use the milestone dates and the by-month data to structure it (quiet start → peak → dip → now, or whatever the data actually shows). Each title is specific to THIS chat (never "The Beginning" — something like "The Meme Era" or "The 2AM Debate Club"). Each body is 2–3 sentences grounded in real details from that stretch.
 - highlights — pull real moments/patterns from the sample. Each is a genuine receipt or a specific pattern, briefly labeled.
@@ -100,6 +106,9 @@ Chapter:
 ✅ "Ch. 2 — The Whale Phase: for six weeks the chat was 40% Sanj's whale-communication project and 60% Guri pretending to understand it. Peak messages hit here — 199 in one day, May 19th."
 
 The pattern every time: delete the abstraction, replace with a number or a real detail from their chat.
+
+AWARD WIRING — NON-NEGOTIABLE:
+${formatAwardWiring(input)}
 
 GUARDRAILS:
 - Roast mode: behavior-based only. No insults about appearance, identity, intelligence, or anything a person can't see in the data. The receipt does the work.
@@ -135,6 +144,7 @@ export class LlmOutputError extends Error {
 }
 
 export async function generateReport(input: GenerateReportInput): Promise<ReportContent> {
+  assertAwardInputsMatchStats(input);
   const provider = process.env.LLM_PROVIDER?.trim().toLowerCase() || "gemini";
 
   switch (provider) {
@@ -192,6 +202,7 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
       const responseBody: unknown = await response.json();
       const content = parseReportContent(JSON.parse(stripCodeFences(extractGeminiText(responseBody))));
       assertAwardLinesMatch(input, content);
+      assertAwardLinesUseWinnerMetrics(input, content);
       assertHighlightBubblesGrounded(input, content);
       return content;
     } catch (error) {
@@ -255,6 +266,68 @@ function assertAwardLinesMatch(input: GenerateReportInput, content: ReportConten
   if (expected.length !== actual.length || expected.some((awardId, index) => awardId !== actual[index])) {
     throw new LlmOutputError("Gemini must return exactly one line for every computed award.");
   }
+}
+
+function assertAwardInputsMatchStats(input: GenerateReportInput): void {
+  const expected = assignAwards(input.stats);
+  const actual = input.awards;
+  const matches =
+    expected.length === actual.length &&
+    expected.every((award, index) => {
+      const candidate = actual[index];
+      return (
+        candidate?.id === award.id &&
+        candidate.label === award.label &&
+        candidate.emoji === award.emoji &&
+        candidate.who === award.who &&
+        candidate.detail === award.detail
+      );
+    });
+  if (!matches) {
+    throw new LlmOutputError("Award winners and details must match the deterministic person metrics.");
+  }
+}
+
+function assertAwardLinesUseWinnerMetrics(
+  input: GenerateReportInput,
+  content: ReportContent,
+): void {
+  const linesByAward = new Map(content.awardLines.map((line) => [line.awardId, line.line]));
+  for (const award of input.awards) {
+    const line = linesByAward.get(award.id)!;
+    const expectedNumbers = extractNumericEvidence(award.detail);
+    const actualNumbers = new Set(extractNumericEvidence(line));
+    if (expectedNumbers.some((number) => !actualNumbers.has(number))) {
+      throw new LlmOutputError(
+        `${award.label} line must use its winner's computed detail: ${award.detail}.`,
+      );
+    }
+    const directionError = getAwardLineDirectionError(award.id, line);
+    if (directionError) throw new LlmOutputError(directionError);
+  }
+}
+
+function formatAwardWiring(input: GenerateReportInput): string {
+  return input.awards
+    .map((award) => {
+      const rule = getAwardMetricRule(award.id);
+      if (!rule) return `- ${award.id}: unsupported award; do not write a line.`;
+      const winner = input.stats.people.find((person) => person.name === award.who);
+      const winnerValue = winner ? getAwardMetricValue(award.id, winner) : undefined;
+      const tiedPeople = input.stats.people.filter(
+        (person) => getAwardMetricValue(award.id, person) === winnerValue,
+      );
+      const tieContext =
+        tiedPeople.length > 1
+          ? ` Tie context: ${tiedPeople.map((person) => `"${person.name}"`).join(" and ")} share this metric value; deterministic participant-order tie-break selected "${award.who}". Do not claim a strict lead.`
+          : "";
+      return `- ${award.label} (${award.id}): winner "${award.who}" has the ${rule.selection.toUpperCase()} ${rule.metric}, meaning ${rule.meaning}. Use numeric detail "${award.detail}". ${rule.lineInstruction}${tieContext}`;
+    })
+    .join("\n");
+}
+
+function extractNumericEvidence(value: string): string[] {
+  return value.replace(/(?<=\d),(?=\d{3}\b)/gu, "").match(/\d+(?:\.\d+)?%?/gu) ?? [];
 }
 
 function assertHighlightBubblesGrounded(
