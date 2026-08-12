@@ -8,6 +8,7 @@ import {
   LlmRequestError,
   stripCodeFences,
 } from "../src/lib/llm";
+import { getModePreset, REPORT_MODES } from "../src/lib/modePresets";
 import { createTestGenerateInput, geminiResponse, VALID_REPORT } from "./reportTestData";
 
 afterEach(() => {
@@ -42,7 +43,7 @@ describe("generateReport", () => {
   });
 
   it("keeps the Gemini model independently swappable", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(VALID_REPORT));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(geminiResponse(VALID_REPORT)));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubEnv("LLM_MODEL", "gemini-3.5-flash-lite");
     vi.stubGlobal("fetch", fetchMock);
@@ -50,6 +51,23 @@ describe("generateReport", () => {
     await generateReport(createTestGenerateInput());
 
     expect(fetchMock.mock.calls[0][0]).toContain("/models/gemini-3.5-flash-lite:generateContent");
+  });
+
+  it("uses the selected mode's placeholder voice without model prefilling", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(geminiResponse(VALID_REPORT)));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    for (const mode of REPORT_MODES) {
+      await generateReport(createTestGenerateInput(mode));
+      const body = JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body));
+      expect(body.systemInstruction.parts[0].text).toContain(getModePreset(mode).placeholderVoice);
+      expect(body.contents).toHaveLength(1);
+      expect(body.contents.at(-1)?.role).toBe("user");
+      expect(body.generationConfig).not.toHaveProperty("temperature");
+      expect(body.generationConfig).not.toHaveProperty("top_p");
+      expect(body.generationConfig).not.toHaveProperty("top_k");
+    }
   });
 
   it("retries exactly once when Gemini returns invalid report JSON", async () => {

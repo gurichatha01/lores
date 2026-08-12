@@ -1,0 +1,169 @@
+import type { ReportMode } from "./types";
+
+export type ReportTreatment = "soft" | "editorial" | "dark";
+export type StatMetric =
+  | "conversation-starts"
+  | "reply-time"
+  | "streak"
+  | "late-night"
+  | "message-share"
+  | "laughs"
+  | "last-of-day"
+  | "media"
+  | "busiest-day"
+  | "word-count"
+  | "silence";
+
+export interface ModePreset {
+  id: ReportMode;
+  label: string;
+  emoji: string;
+  note: string;
+  defaultSubtype: string;
+  treatment: ReportTreatment;
+  accent: string;
+  accentSoft: string;
+  surface: string;
+  card: string;
+  text: string;
+  muted: string;
+  border: string;
+  storyLabel: string;
+  momentsLabel: string;
+  statMetrics: readonly [StatMetric, StatMetric, StatMetric, StatMetric];
+  placeholderVoice: string;
+}
+
+export const REPORT_MODES: readonly ReportMode[] = [
+  "sweetheart",
+  "ride-or-die",
+  "group",
+  "family",
+  "work",
+  "roast",
+];
+
+export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
+  sweetheart: {
+    id: "sweetheart",
+    label: "Sweetheart",
+    emoji: "💕",
+    note: "rose · soft glow",
+    defaultSubtype: "partner",
+    treatment: "soft",
+    accent: "#f0568a",
+    accentSoft: "#fdeef4",
+    surface: "#f5f2f0",
+    card: "#ffffff",
+    text: "#0a0a0a",
+    muted: "rgba(10,10,10,.52)",
+    border: "#f2dbe3",
+    storyLabel: "your story, in full",
+    momentsLabel: "the moments",
+    statMetrics: ["conversation-starts", "reply-time", "streak", "late-night"],
+    placeholderVoice: "Warm, affectionate, and gently funny.",
+  },
+  "ride-or-die": {
+    id: "ride-or-die",
+    label: "Ride or Die",
+    emoji: "👯",
+    note: "hot-orange · best-friend energy",
+    defaultSubtype: "best friends",
+    treatment: "editorial",
+    accent: "#ff5c1a",
+    accentSoft: "#ffe4d8",
+    surface: "#f3f3ef",
+    card: "#ffffff",
+    text: "#0a0a0a",
+    muted: "rgba(10,10,10,.55)",
+    border: "#0a0a0a",
+    storyLabel: "the friendship lore",
+    momentsLabel: "the evidence",
+    statMetrics: ["message-share", "reply-time", "laughs", "late-night"],
+    placeholderVoice: "Energetic, loyal, chaotic, and unmistakably platonic.",
+  },
+  group: {
+    id: "group",
+    label: "Group Wrapped",
+    emoji: "🏆",
+    note: "cobalt · scoreboard",
+    defaultSubtype: "group chat",
+    treatment: "editorial",
+    accent: "#2b2bef",
+    accentSoft: "#e5e5ff",
+    surface: "#f3f3ef",
+    card: "#ffffff",
+    text: "#0a0a0a",
+    muted: "rgba(10,10,10,.55)",
+    border: "#0a0a0a",
+    storyLabel: "the group lore",
+    momentsLabel: "the leaderboard",
+    statMetrics: ["message-share", "conversation-starts", "laughs", "last-of-day"],
+    placeholderVoice: "Fast, communal, scoreboard-like, and playful with every participant.",
+  },
+  family: {
+    id: "family",
+    label: "Family",
+    emoji: "🏡",
+    note: "cozy amber",
+    defaultSubtype: "family",
+    treatment: "soft",
+    accent: "#e8940c",
+    accentSoft: "#fff0cd",
+    surface: "#fff8eb",
+    card: "#ffffff",
+    text: "#0a0a0a",
+    muted: "rgba(10,10,10,.52)",
+    border: "#f0d9ad",
+    storyLabel: "the family story",
+    momentsLabel: "the keepsakes",
+    statMetrics: ["conversation-starts", "reply-time", "media", "last-of-day"],
+    placeholderVoice: "Cozy, grateful, intergenerational, and never romantic.",
+  },
+  work: {
+    id: "work",
+    label: "Work",
+    emoji: "💼",
+    note: "cool teal · office edition",
+    defaultSubtype: "team",
+    treatment: "editorial",
+    accent: "#0f8f8f",
+    accentSoft: "#dff3f0",
+    surface: "#eef6f5",
+    card: "#ffffff",
+    text: "#0a0a0a",
+    muted: "rgba(10,10,10,.55)",
+    border: "#0a0a0a",
+    storyLabel: "the office lore",
+    momentsLabel: "meeting notes",
+    statMetrics: ["word-count", "reply-time", "busiest-day", "conversation-starts"],
+    placeholderVoice: "Dry, observant, workplace-safe, and lightly witty.",
+  },
+  roast: {
+    id: "roast",
+    label: "Roast 🔥",
+    emoji: "🔥",
+    note: "red heat · dark",
+    defaultSubtype: "no mercy",
+    treatment: "dark",
+    accent: "#e11400",
+    accentSoft: "#3a120d",
+    surface: "#120a08",
+    card: "#1c1110",
+    text: "#f3f3ef",
+    muted: "rgba(243,243,239,.6)",
+    border: "#4b211b",
+    storyLabel: "the verdict",
+    momentsLabel: "the allegations",
+    statMetrics: ["reply-time", "message-share", "late-night", "silence"],
+    placeholderVoice: "Sharp and playful, but never cruel, hateful, or invasive.",
+  },
+};
+
+export function isReportMode(value: unknown): value is ReportMode {
+  return typeof value === "string" && REPORT_MODES.includes(value as ReportMode);
+}
+
+export function getModePreset(mode: ReportMode): ModePreset {
+  return MODE_PRESETS[mode];
+}

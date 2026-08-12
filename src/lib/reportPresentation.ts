@@ -1,6 +1,8 @@
 import type { PersonStats, ReportStats } from "./types";
+import { getModePreset, type StatMetric } from "./modePresets";
+import type { ReportMode } from "./types";
 
-export interface SweetheartStatCard {
+export interface ModeStatCard {
   label: string;
   value: string;
   detail: string;
@@ -35,33 +37,92 @@ export function formatSpanLabel(spanDays: number): string {
 }
 
 export function buildSweetheartStatCards(stats: ReportStats): SweetheartStatCard[] {
+  return buildModeStatCards("sweetheart", stats);
+}
+
+export type SweetheartStatCard = ModeStatCard;
+
+export function buildModeStatCards(mode: ReportMode, stats: ReportStats): ModeStatCard[] {
+  return getModePreset(mode).statMetrics.map((metric) => buildStatCard(metric, stats));
+}
+
+function buildStatCard(metric: StatMetric, stats: ReportStats): ModeStatCard {
   const initiator = maxPerson(stats.people, (person) => person.conversationStarts);
   const lateNight = maxPerson(stats.people, (person) => person.lateNightCount);
+  const mainCharacter = maxPerson(stats.people, (person) => person.messageShare);
+  const comedian = maxPerson(stats.people, (person) => person.laughCount);
+  const lastOfDay = maxPerson(stats.people, (person) => person.lastOfDayCount);
   const starts = stats.people.reduce((total, person) => total + person.conversationStarts, 0);
   const startsShare = starts > 0 ? Math.round((initiator.conversationStarts / starts) * 100) : 0;
 
-  return [
-    {
+  switch (metric) {
+    case "conversation-starts":
+      return {
       label: "texts first",
       value: `${startsShare}%`,
       detail: `${initiator.name} · ${formatCount(initiator.conversationStarts)} conversation starts`,
-    },
-    {
-      label: "avg reply",
-      value: stats.people.map((person) => formatReplyTime(person.medianReplyTimeMin)).join(" / "),
-      detail: stats.people.map((person) => person.name).join(" / "),
-    },
-    {
-      label: "longest streak",
-      value: `${formatCount(stats.longestStreakDays)}d`,
-      detail: "everyone active, day after day",
-    },
-    {
-      label: "midnight–4am",
-      value: lateNight.name,
-      detail: `${formatCount(lateNight.lateNightCount)} late-night messages`,
-    },
-  ];
+      };
+    case "reply-time":
+      return {
+        label: "avg reply",
+        value: stats.people.map((person) => formatReplyTime(person.medianReplyTimeMin)).join(" / "),
+        detail: stats.people.map((person) => person.name).join(" / "),
+      };
+    case "streak":
+      return {
+        label: "longest streak",
+        value: `${formatCount(stats.longestStreakDays)}d`,
+        detail: "everyone active, day after day",
+      };
+    case "late-night":
+      return {
+        label: "midnight–4am",
+        value: lateNight.name,
+        detail: `${formatCount(lateNight.lateNightCount)} late-night messages`,
+      };
+    case "message-share":
+      return {
+        label: "main character",
+        value: `${Math.round(mainCharacter.messageShare * 100)}%`,
+        detail: `${mainCharacter.name} · ${formatCount(mainCharacter.messageCount)} messages`,
+      };
+    case "laughs":
+      return {
+        label: "laugh track",
+        value: comedian.name,
+        detail: `${formatCount(comedian.laughCount)} laughs`,
+      };
+    case "last-of-day":
+      return {
+        label: "last word",
+        value: lastOfDay.name,
+        detail: `${formatCount(lastOfDay.lastOfDayCount)} days closed out`,
+      };
+    case "media":
+      return {
+        label: "camera roll",
+        value: formatCount(stats.mediaCount),
+        detail: "media moments shared",
+      };
+    case "busiest-day":
+      return {
+        label: "peak traffic",
+        value: formatCount(stats.busiestDay.count),
+        detail: formatLocalReportDate(stats.busiestDay.date),
+      };
+    case "word-count":
+      return {
+        label: "word count",
+        value: formatCount(stats.totalWords),
+        detail: stats.novelsEquivalent > 0 ? `about ${stats.novelsEquivalent} novels` : "concise and on record",
+      };
+    case "silence":
+      return {
+        label: "dry spell",
+        value: `${formatCount(stats.longestSilenceDays)}d`,
+        detail: "longest complete silence",
+      };
+  }
 }
 
 function maxPerson(people: readonly PersonStats[], metric: (person: PersonStats) => number): PersonStats {

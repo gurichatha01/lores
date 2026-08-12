@@ -6,6 +6,7 @@ import type {
   ReportSampleMessage,
   ReportStats,
 } from "./types";
+import { isReportMode } from "./modePresets";
 
 const INPUT_KEYS = ["mode", "subtype", "userContext", "stats", "awards", "sample"] as const;
 const STATS_KEYS = [
@@ -53,8 +54,8 @@ export class ReportValidationError extends Error {
 export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   const input = asRecord(value, "request body");
   assertExactKeys(input, INPUT_KEYS, "request body");
-  if (input.mode !== "sweetheart") {
-    throw new ReportValidationError("Phase 3 only supports Sweetheart mode.");
+  if (!isReportMode(input.mode)) {
+    throw new ReportValidationError("mode is not supported.");
   }
 
   const stats = parseReportStats(input.stats);
@@ -73,7 +74,7 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   }
 
   return {
-    mode: "sweetheart",
+    mode: input.mode,
     subtype: asString(input.subtype, "subtype", 100, true),
     userContext: asString(input.userContext, "userContext", 2_000, true),
     stats,

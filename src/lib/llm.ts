@@ -1,11 +1,17 @@
 import type { GenerateReportInput, ReportContent } from "./types";
+import { getModePreset } from "./modePresets";
 import { parseReportContent, ReportValidationError } from "./reportValidation";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 
-const SWEETHEART_SYSTEM_PROMPT = `You write a warm Sweetheart relationship report for Lore.
+function placeholderSystemPrompt(input: GenerateReportInput): string {
+  const preset = getModePreset(input.mode);
+  return `You write a ${preset.label} chat report for Lore.
+Placeholder voice: ${preset.placeholderVoice}
 Use only the supplied deterministic stats, computed awards, and curated sample.
+Respect the selected mode and subtype. Do not infer romance unless the mode is Sweetheart.
 Do not invent or alter numeric facts. Return only JSON matching the requested schema, with no markdown.`;
+}
 
 const REPORT_SCHEMA = {
   type: "OBJECT",
@@ -94,7 +100,7 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
     model,
   )}:generateContent`;
   const request = {
-    systemInstruction: { parts: [{ text: SWEETHEART_SYSTEM_PROMPT }] },
+    systemInstruction: { parts: [{ text: placeholderSystemPrompt(input) }] },
     contents: [{ role: "user", parts: [{ text: JSON.stringify(input) }] }],
     generationConfig: {
       responseMimeType: "application/json",

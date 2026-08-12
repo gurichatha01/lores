@@ -51,7 +51,13 @@ export interface Award {
   who: string;
 }
 
-export type ReportMode = "sweetheart";
+export type ReportMode =
+  | "sweetheart"
+  | "ride-or-die"
+  | "group"
+  | "family"
+  | "work"
+  | "roast";
 
 export interface ReportContent {
   title: string;

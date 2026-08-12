@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createReportSession, parseReportSession } from "../src/lib/reportSession";
+import { REPORT_MODES } from "../src/lib/modePresets";
 import { createTestGenerateInput, VALID_REPORT } from "./reportTestData";
 
 describe("report session", () => {
@@ -18,5 +19,12 @@ describe("report session", () => {
     expect(() => parseReportSession(JSON.stringify({ ...session, rawChat: "private" }))).toThrow(
       "invalid shape",
     );
+  });
+
+  it("round-trips every supported report mode", () => {
+    for (const mode of REPORT_MODES) {
+      const session = createReportSession(createTestGenerateInput(mode), VALID_REPORT);
+      expect(parseReportSession(JSON.stringify(session)).mode).toBe(mode);
+    }
   });
 });

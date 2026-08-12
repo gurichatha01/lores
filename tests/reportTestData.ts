@@ -1,7 +1,8 @@
 import { assignAwards } from "../src/lib/assignAwards";
 import { computeStats } from "../src/lib/computeStats";
 import { serializeGenerateReportInput } from "../src/lib/reportTransport";
-import type { GenerateReportInput, Message, ReportContent } from "../src/lib/types";
+import { getModePreset } from "../src/lib/modePresets";
+import type { GenerateReportInput, Message, ReportContent, ReportMode } from "../src/lib/types";
 
 export const VALID_REPORT: ReportContent = {
   title: "A tiny history of us",
@@ -30,15 +31,15 @@ export function testMessage(timestamp: Date, sender: string, text: string): Mess
   };
 }
 
-export function createTestGenerateInput(): GenerateReportInput {
+export function createTestGenerateInput(mode: ReportMode = "sweetheart"): GenerateReportInput {
   const messages = [
     testMessage(new Date(2024, 7, 12, 0, 15, 0), "A", "I remember this 😂"),
     testMessage(new Date(2024, 7, 12, 0, 20, 0), "B", "Me too"),
   ];
   const stats = computeStats(messages);
   return serializeGenerateReportInput({
-    mode: "sweetheart",
-    subtype: "partners",
+    mode,
+    subtype: getModePreset(mode).defaultSubtype,
     userContext: "Together since university.",
     stats,
     awards: assignAwards(stats),

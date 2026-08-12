@@ -1,6 +1,6 @@
 # LORE — Build Progress
 
-Last agent: codex   Last updated: 2026-08-12
+Last agent: codex   Last updated: 2026-08-13
 
 ## Status
 - [x] Phase 0 — scaffold & design system
@@ -8,13 +8,13 @@ Last agent: codex   Last updated: 2026-08-12
 - [x] Phase 2 — stats & awards
 - [x] Phase 3 — LLM layer (Sweetheart, placeholder prompt)
 - [x] Phase 4 — report render (CHECKPOINT: show human)
-- [ ] Phase 5 — all modes + share cards
+- [x] Phase 5 — all modes + share cards
 - [ ] Phase 6 — PDF
 - [ ] Phase 7 — full funnel UX
 - [ ] Phase 8 — LATER: payments/pricing/credibility
 
 ## Where the next agent should start
-STOP at the Phase 4 human checkpoint. Review the real Sweetheart output before authorizing Phase 5; do not tune prompts or start additional modes yet.
+Start Phase 6 — PDF. Preserve the six locked mode treatments and do not tune prompts or touch pricing.
 
 ## Decisions & deviations
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
@@ -38,6 +38,10 @@ STOP at the Phase 4 human checkpoint. Review the real Sweetheart output before a
 - Phase 4 adds a minimal `/create` → `/report` browser flow. ZIP/TXT parsing, stats, awards, and curation stay client-side; only the serialized derived payload reaches `/api/generate`. The saved report session drops the curated sample and user context after generation.
 - The Sweetheart full-state report follows the locked Round 2 soft treatment: rose accent, four rounded deterministic stat cards, pill awards with AI lines, message-bubble highlights, narrative, and local calendar date labels. Share cards and PDF actions remain deferred.
 - The first live Gemini run completed through the real route using the private 125-message export and rendered `The Cozy Rhythm of Late Nights & Location Pins`. The browser showed no console warnings/errors at 390px or desktop width. This is the required human quality checkpoint.
+- Phase 5 adds six centralized presets — Sweetheart, Ride or Die, Group Wrapped, Family, Work, and Roast — with mode-specific deterministic stat selections, locked accent colors, default subtypes, and deliberately placeholder prompt voices. Gemini sampling settings remain absent and the provider/model switch remains unchanged.
+- Sweetheart and Family use the soft treatment; Ride or Die, Group Wrapped, and Work use the sharp editorial treatment; Roast uses the dark red heat treatment with warning tape. The create and report screens derive their mode styling from the same preset source.
+- Every report produces a deterministic 9:16 PNG share set at 1080×1920: one hero, one card per computed award, and one verdict/line card. Cards use a dark canvas, mode-color glow, and `lore_` / `lore.app` watermarking; Roast cards also use warning tape.
+- Browser verification ran the private 125-message export through all six real Gemini routes. Every mode rendered its expected treatment and eight-card set, the canvas exporter initialized at 1080×1920, the download control completed, and the final sweep had no console warnings or errors.
 
 ## Known issues / TODO
-- Human review of the first real Sweetheart report is pending. Do not continue to Phase 5 until the output is approved.
+- All six mode prompts are intentionally placeholders. Prompt tuning remains deferred.

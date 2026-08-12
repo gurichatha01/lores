@@ -1,4 +1,5 @@
 import type { GenerateReportInput, ReportContent, ReportSessionData } from "./types";
+import { isReportMode } from "./modePresets";
 import {
   parseAwards,
   parseReportContent,
@@ -40,12 +41,12 @@ export function parseReportSession(serialized: string): ReportSessionData {
   ) {
     throw new ReportValidationError("Saved report has an invalid shape.");
   }
-  if (record.mode !== "sweetheart" || typeof record.subtype !== "string") {
+  if (!isReportMode(record.mode) || typeof record.subtype !== "string") {
     throw new ReportValidationError("Saved report has an unsupported mode.");
   }
 
   return {
-    mode: "sweetheart",
+    mode: record.mode,
     subtype: record.subtype,
     stats: parseReportStats(record.stats),
     awards: parseAwards(record.awards),

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildModeStatCards,
   buildSweetheartStatCards,
   formatLocalReportDate,
   formatReplyTime,
   formatSpanLabel,
 } from "../src/lib/reportPresentation";
+import { REPORT_MODES } from "../src/lib/modePresets";
 import { createTestGenerateInput } from "./reportTestData";
 
 describe("Sweetheart report presentation", () => {
@@ -25,6 +27,16 @@ describe("Sweetheart report presentation", () => {
       "midnight–4am",
     ]);
     expect(cards.every((card) => card.value.length > 0 && card.detail.length > 0)).toBe(true);
+  });
+
+  it("builds four deterministic stats selected for every mode", () => {
+    const stats = createTestGenerateInput().stats;
+
+    for (const mode of REPORT_MODES) {
+      const cards = buildModeStatCards(mode, stats);
+      expect(cards).toHaveLength(4);
+      expect(cards.every((card) => card.value.length > 0 && card.detail.length > 0)).toBe(true);
+    }
   });
 
   it("formats spans and reply times compactly", () => {
