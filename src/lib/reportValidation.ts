@@ -11,6 +11,7 @@ import type {
 import { isReportMode } from "./modePresets";
 
 const INPUT_KEYS = ["mode", "subtype", "userContext", "stats", "awards", "sample", "receiptExchanges"] as const;
+const DEFAULTABLE_INPUT_KEYS = ["subtype", "userContext", "awards", "sample", "receiptExchanges"] as const;
 const STATS_KEYS = [
   "isGroup",
   "people",
@@ -74,8 +75,16 @@ export class ReportValidationError extends Error {
 }
 
 export function parseGenerateReportInput(value: unknown): GenerateReportInput {
-  const input = asRecord(value, "request body");
-  assertExactKeys(input, INPUT_KEYS, "request body");
+  const rawInput = asRecord(value, "request body");
+  assertExactKeys(rawInput, INPUT_KEYS, "request body", DEFAULTABLE_INPUT_KEYS);
+  const input: Record<string, unknown> = {
+    ...rawInput,
+    subtype: rawInput.subtype ?? "",
+    userContext: rawInput.userContext ?? "",
+    awards: rawInput.awards ?? [],
+    sample: rawInput.sample ?? [],
+    receiptExchanges: rawInput.receiptExchanges ?? [],
+  };
   if (!isReportMode(input.mode)) {
     throw new ReportValidationError("mode is not supported.");
   }
@@ -93,7 +102,7 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
       : []),
   ]);
 
-  if (sample.length === 0 || sample.length > Math.min(stats.totalMessages, stats.people.length * 30)) {
+  if (sample.length > Math.min(stats.totalMessages, stats.people.length * 30)) {
     throw new ReportValidationError("sample must contain at most 30 curated messages per person.");
   }
   if (sample.some((message) => !people.has(message.sender))) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { serializeGenerateReportInput } from "../src/lib/reportTransport";
 import { parseGenerateReportInput } from "../src/lib/reportValidation";
 import type { PersonStats } from "../src/lib/types";
 import { createTestGenerateInput } from "./reportTestData";
@@ -36,5 +37,41 @@ describe("report transport", () => {
     expect(() => parseGenerateReportInput(input)).toThrow(
       "stats.people[0] is missing required field: topWords",
     );
+  });
+
+  it("defaults every additive request-body field at serialization and validation boundaries", () => {
+    const complete = createTestGenerateInput();
+    const serialized = serializeGenerateReportInput({
+      mode: complete.mode,
+      stats: {
+        ...complete.stats,
+        firstMessageDate: new Date(2024, 7, 12, 0, 15),
+        lastMessageDate: new Date(2024, 7, 12, 0, 28),
+        busiestDay: { date: new Date(2024, 7, 12), count: complete.stats.busiestDay.count },
+        firstLateNightDate: new Date(2024, 7, 12, 0, 15),
+        firstRelationshipTalkDate: null,
+        longestSilenceRange: null,
+      },
+    });
+
+    expect(serialized).toMatchObject({
+      subtype: "",
+      userContext: "",
+      awards: [],
+      sample: [],
+      receiptExchanges: [],
+    });
+
+    const legacyBody = structuredClone(complete) as unknown as Record<string, unknown>;
+    for (const field of ["subtype", "userContext", "awards", "sample", "receiptExchanges"]) {
+      delete legacyBody[field];
+    }
+    expect(parseGenerateReportInput(legacyBody)).toMatchObject({
+      subtype: "",
+      userContext: "",
+      awards: [],
+      sample: [],
+      receiptExchanges: [],
+    });
   });
 });

@@ -34,6 +34,26 @@ describe("POST /api/generate", () => {
     await expect(response.json()).resolves.toEqual(VALID_REPORT);
   });
 
+  it("defaults an omitted receiptExchanges field to an empty array", async () => {
+    const input = structuredClone(createTestGenerateInput()) as Partial<
+      ReturnType<typeof createTestGenerateInput>
+    >;
+    delete input.receiptExchanges;
+    const reportWithoutReceipts = { ...VALID_REPORT, highlights: [] };
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(reportWithoutReceipts));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request(input));
+    const providerRequest = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const providerInput = JSON.parse(providerRequest.contents[0].parts[0].text);
+
+    expect(response.status).toBe(200);
+    expect(providerInput.receiptExchanges).toEqual([]);
+    expect(providerRequest.generationConfig.responseSchema.properties.highlights.maxItems).toBe(0);
+    await expect(response.json()).resolves.toEqual(reportWithoutReceipts);
+  });
+
   it("preserves freeform context from the API payload through to the LLM request", async () => {
     const input = createTestGenerateInput();
     input.userContext = "We met in film school and Trip Math is an inside joke.";

@@ -11,11 +11,11 @@ import type {
 
 export interface CreateGenerateReportInput {
   mode: ReportMode;
-  subtype: string;
-  userContext: string;
+  subtype?: string;
+  userContext?: string;
   stats: ChatStats;
-  awards: readonly Award[];
-  sample: readonly Message[];
+  awards?: readonly Award[];
+  sample?: readonly Message[];
   receiptExchanges?: readonly ReceiptExchange[];
 }
 
@@ -25,11 +25,11 @@ export function serializeGenerateReportInput(
 ): GenerateReportInput {
   return {
     mode: input.mode,
-    subtype: input.subtype,
-    userContext: input.userContext,
+    subtype: input.subtype ?? "",
+    userContext: input.userContext ?? "",
     stats: serializeStats(input.stats),
-    awards: input.awards.map((award) => ({ ...award })),
-    sample: input.sample.map(serializeMessage),
+    awards: (input.awards ?? []).map((award) => ({ ...award })),
+    sample: (input.sample ?? []).map(serializeMessage),
     receiptExchanges: (input.receiptExchanges ?? []).map((exchange) => ({
       ...exchange,
       messages: exchange.messages.map((message) => ({ ...message })),
