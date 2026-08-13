@@ -30,7 +30,8 @@ describe("PDF keepsake", () => {
   });
 
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
-    const report = createReportSession(createTestGenerateInput("work"), VALID_REPORT);
+    const qaMode = process.env.PDF_QA_MODE === "sweetheart" ? "sweetheart" : "work";
+    const report = createReportSession(createTestGenerateInput(qaMode), VALID_REPORT);
     report.content.highlights[0].snippet.messages[0].text = Array.from(
       { length: 90 },
       (_, index) => `receipt-word-${index + 1}`,

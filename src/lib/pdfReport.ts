@@ -108,35 +108,116 @@ function renderPage(createCanvas: PdfCanvasFactory, draw: (context: CanvasRender
 
 function drawCover(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
   fillPage(context, data.surface);
+  const stats = data.report.stats;
+
+  context.fillStyle = data.accent;
+  context.fillRect(0, 0, 28, PDF_PAGE_HEIGHT);
+  context.fillRect(0, 1640, PDF_PAGE_WIDTH, 114);
+  context.save();
+  context.globalAlpha = 0.07;
+  context.fillStyle = data.accent;
+  archivo(context, 620, 900);
+  context.textAlign = "right";
+  context.fillText("01", PDF_PAGE_WIDTH - 48, 170);
+  context.restore();
+  context.textAlign = "left";
+
   drawHeader(context, data, "the keepsake edition", false);
+  context.strokeStyle = data.accent;
+  context.lineWidth = 8;
+  context.beginPath();
+  context.moveTo(PAGE_MARGIN, 140);
+  context.lineTo(PDF_PAGE_WIDTH - PAGE_MARGIN, 140);
+  context.stroke();
 
   context.fillStyle = data.accent;
   mono(context, 28, 700, 4);
-  context.fillText(`${data.modeLabel.toUpperCase()} - THE LORES OF`, PAGE_MARGIN, 510);
+  context.fillText(`${data.modeLabel.toUpperCase()} - THE LORES OF`, PAGE_MARGIN, 344);
   context.letterSpacing = "0px";
 
   context.fillStyle = INK;
-  archivo(context, 112, 900);
-  const namesBottom = drawTextBlock(context, data.names, PAGE_MARGIN, 570, 1040, 112, 4);
+  archivo(context, 132, 900);
+  const namesBottom = drawTextBlock(context, data.names, PAGE_MARGIN, 404, 1076, 124, 3);
 
   context.fillStyle = MUTED;
-  mono(context, 27, 400);
+  mono(context, 24, 700, 1);
   context.fillText(
-    `${data.dateRange.toUpperCase()} - ${data.span.toUpperCase()} - ${formatCount(data.report.stats.totalMessages)} MESSAGES`,
+    `${data.dateRange.toUpperCase()} - ${data.span.toUpperCase()}`,
     PAGE_MARGIN,
-    namesBottom + 68,
+    namesBottom + 44,
   );
 
-  context.strokeStyle = INK;
+  context.letterSpacing = "0px";
+  drawCoverStats(context, data, Math.max(930, namesBottom + 136));
+
+  context.strokeStyle = data.accent;
   context.lineWidth = 4;
   context.beginPath();
   context.moveTo(PAGE_MARGIN, 1458);
   context.lineTo(PDF_PAGE_WIDTH - PAGE_MARGIN, 1458);
   context.stroke();
+  context.fillStyle = data.accent;
+  mono(context, 17, 700, 2);
+  context.fillText("THE LINE THAT SUMS IT UP", PAGE_MARGIN, 1412);
+  context.letterSpacing = "0px";
   context.fillStyle = INK;
   archivo(context, 34, 700);
   drawTextBlock(context, `“${data.report.content.heroLine}”`, PAGE_MARGIN, 1492, 1030, 44, 4);
-  drawPageNumber(context, 1, data.accent, false);
+  context.fillStyle =
+    data.report.mode === "group" || data.report.mode === "roast" ? PAPER : INK;
+  mono(context, 18, 700, 2);
+  context.fillText("KEEPSAKE EDITION", PAGE_MARGIN, 1680);
+  context.textAlign = "right";
+  context.fillText("01 - LORES.IN", PDF_PAGE_WIDTH - PAGE_MARGIN, 1680);
+  context.textAlign = "left";
+}
+
+function drawCoverStats(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  y: number,
+): void {
+  const stats = data.report.stats;
+  const items = [
+    { label: "MESSAGES", value: formatCount(stats.totalMessages) },
+    { label: "WORDS", value: formatCount(stats.totalWords) },
+    { label: "DAY STREAK", value: formatCount(stats.longestStreakDays) },
+  ];
+  const width = PDF_PAGE_WIDTH - PAGE_MARGIN * 2;
+  const columnWidth = width / items.length;
+
+  context.fillStyle = `${data.accent}18`;
+  context.fillRect(PAGE_MARGIN, y, width, 230);
+  context.strokeStyle = data.accent;
+  context.lineWidth = 5;
+  context.strokeRect(PAGE_MARGIN, y, width, 230);
+
+  items.forEach((item, index) => {
+    const x = PAGE_MARGIN + index * columnWidth;
+    if (index > 0) {
+      context.strokeStyle = data.accent;
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(x, y + 28);
+      context.lineTo(x, y + 202);
+      context.stroke();
+    }
+    context.fillStyle = data.accent;
+    mono(context, 19, 700, 2);
+    context.fillText(item.label, x + 28, y + 36);
+    context.letterSpacing = "0px";
+    context.fillStyle = INK;
+    fitAndDrawText(
+      context,
+      item.value,
+      x + 28,
+      y + 91,
+      columnWidth - 56,
+      68,
+      42,
+      900,
+    );
+  });
 }
 
 function drawMetrics(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
