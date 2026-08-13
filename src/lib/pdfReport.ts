@@ -1,5 +1,7 @@
 import { getModePreset } from "./modePresets";
 import { buildPlayerCards, type PlayerCardModel } from "./playerCards";
+import { buildReceiptPresentation } from "./receiptPresentation";
+import { buildStoryTimeline, type StoryTimelineTick } from "./storyTimeline";
 import {
   formatCount,
   formatLocalReportDate,
@@ -27,6 +29,7 @@ export interface PdfDocumentData {
   span: string;
   dateRange: string;
   storyPages: PdfChapter[][];
+  storyTimeline: StoryTimelineTick[];
   awardCards: Array<{ award: Award; line: string }>;
   detailPages: Array<{
     highlights: ReportContent["highlights"];
@@ -54,6 +57,7 @@ export function buildPdfDocumentData(report: ReportSessionData): PdfDocumentData
   const chapters = report.content.chapters?.length
     ? report.content.chapters
     : [{ title: report.content.title, body: report.content.narrative }];
+  const storyPages = paginateChapters(chapters);
 
   return {
     report,
@@ -66,7 +70,8 @@ export function buildPdfDocumentData(report: ReportSessionData): PdfDocumentData
     dateRange: `${formatLocalReportDate(report.stats.firstMessageDate.slice(0, 10))} - ${formatLocalReportDate(
       report.stats.lastMessageDate.slice(0, 10),
     )}`,
-    storyPages: paginateChapters(chapters),
+    storyPages,
+    storyTimeline: buildStoryTimeline(storyPages.flat(), report.stats),
     awardCards: report.awards.map((award) => ({
       award,
       line:
@@ -753,6 +758,8 @@ function drawFullHighlight(
 ): void {
   const x = PAGE_MARGIN;
   const cardWidth = PDF_PAGE_WIDTH - PAGE_MARGIN * 2;
+  const compact = cardHeight < 900;
+  const receipt = buildReceiptPresentation(highlight);
   context.fillStyle = "#ffffff";
   context.strokeStyle = INK;
   context.lineWidth = 3;
@@ -775,15 +782,41 @@ function drawFullHighlight(
     36,
   );
 
+  const cardBottom = y + cardHeight - (compact ? 20 : 28);
+  const statHeight = receipt.statLine ? (compact ? 64 : 98) : 0;
+  const quoteHeight = receipt.pullQuote ? (compact ? 104 : 218) : 0;
+  const footerGap = receipt.pullQuote ? (compact ? 14 : 24) : 0;
+  const statTop = receipt.statLine
+    ? cardBottom - statHeight - quoteHeight - footerGap
+    : cardBottom - quoteHeight;
+  const threadBottom = statTop - (compact ? 16 : 32);
+
   drawConversationSnippet(
     context,
     data,
-    highlight.snippet.messages,
-    x + 28,
-    bodyBottom + 28,
-    cardWidth - 56,
-    y + cardHeight - 28,
+    receipt.messages,
+    x + (compact ? 24 : 32),
+    bodyBottom + (compact ? 18 : 34),
+    cardWidth - (compact ? 48 : 64),
+    threadBottom,
+    compact,
   );
+
+  if (receipt.statLine) {
+    drawReceiptStatStrip(context, data, receipt.statLine, x + 28, statTop, cardWidth - 56, statHeight, compact);
+  }
+  if (receipt.pullQuote) {
+    drawReceiptPullQuote(
+      context,
+      data,
+      receipt.pullQuote,
+      x + 34,
+      statTop + statHeight + footerGap,
+      cardWidth - 68,
+      quoteHeight,
+      compact,
+    );
+  }
 }
 
 function drawConversationSnippet(
@@ -794,37 +827,60 @@ function drawConversationSnippet(
   top: number,
   width: number,
   bottom: number,
+  compact: boolean,
 ): void {
-  let fontSize = 22;
-  let lineHeight = 29;
-  let layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight);
-  while (layouts.totalHeight > bottom - top && fontSize > 10) {
+  if (messages.length === 0 || bottom <= top) return;
+  let fontSize = compact ? 23 : 30;
+  let lineHeight = compact ? 31 : 40;
+  let bubbleGap = compact ? 16 : 26;
+  let layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight, bubbleGap, compact);
+  while (layouts.totalHeight > bottom - top && fontSize > 11) {
     fontSize -= 1;
-    lineHeight = fontSize + 7;
-    layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight);
+    lineHeight = fontSize + (compact ? 8 : 10);
+    bubbleGap = Math.max(10, bubbleGap - 1);
+    layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight, bubbleGap, compact);
+  }
+  if (messages.length > 1 && layouts.totalHeight < bottom - top) {
+    bubbleGap = Math.min(
+      compact ? 32 : 58,
+      bubbleGap + (bottom - top - layouts.totalHeight) / (messages.length - 1),
+    );
+    layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight, bubbleGap, compact);
   }
 
   let y = top;
   const firstSender = messages[0]?.sender;
   for (const layout of layouts.items) {
     const outgoing = layout.message.sender !== firstSender;
-    const bubbleWidth = Math.min(width * 0.84, Math.max(width * 0.48, layout.maxLineWidth + 56));
+    const horizontalPadding = compact ? 24 : 30;
+    const bubbleWidth = Math.min(
+      width * (compact ? 0.88 : 0.9),
+      Math.max(width * (compact ? 0.52 : 0.56), layout.maxLineWidth + horizontalPadding * 2),
+    );
     const bubbleX = outgoing ? x + width - bubbleWidth : x;
     context.fillStyle = outgoing ? data.accent : `${data.accent}18`;
     context.fillRect(bubbleX, y, bubbleWidth, layout.height);
     context.fillStyle = outgoing ? "rgba(255,255,255,.78)" : data.accent;
-    mono(context, Math.max(12, fontSize - 7), 700, 0.5);
-    context.fillText(layout.message.sender, bubbleX + 22, y + 14);
+    mono(context, Math.max(12, fontSize - 8), 700, 0.5);
+    context.fillText(layout.message.sender, bubbleX + horizontalPadding, y + (compact ? 14 : 18));
     context.textAlign = "right";
-    context.fillText(formatSnippetTime(layout.message.timestamp), bubbleX + bubbleWidth - 22, y + 14);
+    context.fillText(
+      formatSnippetTime(layout.message.timestamp),
+      bubbleX + bubbleWidth - horizontalPadding,
+      y + (compact ? 14 : 18),
+    );
     context.textAlign = "left";
     context.letterSpacing = "0px";
     context.fillStyle = outgoing ? "#ffffff" : INK;
     archivo(context, fontSize, 600);
     layout.lines.forEach((line, lineIndex) =>
-      context.fillText(line, bubbleX + 22, y + 42 + lineIndex * lineHeight),
+      context.fillText(
+        line,
+        bubbleX + horizontalPadding,
+        y + (compact ? 44 : 56) + lineIndex * lineHeight,
+      ),
     );
-    y += layout.height + 14;
+    y += layout.height + bubbleGap;
   }
 }
 
@@ -834,21 +890,83 @@ function layoutSnippetMessages(
   width: number,
   fontSize: number,
   lineHeight: number,
+  bubbleGap: number,
+  compact: boolean,
 ) {
   archivo(context, fontSize, 600);
   const items = messages.map((message) => {
-    const lines = wrapLines(context, message.text, width * 0.84 - 44, Number.POSITIVE_INFINITY);
+    const horizontalPadding = compact ? 24 : 30;
+    const lines = wrapLines(
+      context,
+      message.text,
+      width * (compact ? 0.88 : 0.9) - horizontalPadding * 2,
+      Number.POSITIVE_INFINITY,
+    );
     return {
       message,
       lines,
       maxLineWidth: Math.max(0, ...lines.map((line) => context.measureText(line).width)),
-      height: 58 + lines.length * lineHeight,
+      height: (compact ? 62 : 78) + lines.length * lineHeight,
     };
   });
   return {
     items,
-    totalHeight: items.reduce((total, item) => total + item.height + 14, 0),
+    totalHeight: items.reduce(
+      (total, item, index) => total + item.height + (index < items.length - 1 ? bubbleGap : 0),
+      0,
+    ),
   };
+}
+
+function drawReceiptStatStrip(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  statLine: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  compact: boolean,
+): void {
+  context.fillStyle = `${data.accent}14`;
+  context.fillRect(x, y, width, height);
+  context.strokeStyle = data.accent;
+  context.lineWidth = compact ? 2 : 3;
+  context.beginPath();
+  context.moveTo(x, y);
+  context.lineTo(x + width, y);
+  context.moveTo(x, y + height);
+  context.lineTo(x + width, y + height);
+  context.stroke();
+  context.fillStyle = INK;
+  mono(context, compact ? 13 : 19, 700, compact ? 0.5 : 1.2);
+  context.textAlign = "center";
+  fitAndDrawMonoText(context, statLine.toUpperCase(), x + width / 2, y + (compact ? 22 : 35), width - 32, compact ? 13 : 19, 10);
+  context.textAlign = "left";
+  context.letterSpacing = "0px";
+}
+
+function drawReceiptPullQuote(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  quote: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  compact: boolean,
+): void {
+  context.fillStyle = data.accent;
+  archivo(context, compact ? 27 : 43, 900);
+  drawTextBlock(
+    context,
+    `"${quote}"`,
+    x,
+    y + (compact ? 8 : 16),
+    width,
+    compact ? 31 : 49,
+    compact ? 3 : Math.max(3, Math.floor((height - 20) / 49)),
+  );
 }
 
 function formatSnippetTime(timestamp: string): string {
@@ -868,21 +986,134 @@ function drawStory(
   if (data.report.mode === "roast" && storyIndex === 0) {
     drawHazardTape(context, PAGE_MARGIN, 148, PDF_PAGE_WIDTH - PAGE_MARGIN * 2, 38);
   }
-  let y = data.report.mode === "roast" && storyIndex === 0 ? 226 : 200;
+  const globalOffset = precedingChapterCount(data.storyPages, storyIndex);
+  const ticks = data.storyTimeline.slice(globalOffset, globalOffset + chapters.length);
+  const top = data.report.mode === "roast" && storyIndex === 0 ? 226 : 190;
+  const bottom = 1_610;
+  const spineX = 218;
+  const contentX = 278;
+  const contentWidth = PDF_PAGE_WIDTH - contentX - PAGE_MARGIN;
+  const bandHeight = (bottom - top) / Math.max(1, chapters.length);
+  const firstTickY = top + 22;
+  const lastTickY = chapters.length === 1 ? bottom - 22 : top + (chapters.length - 1) * bandHeight + 22;
+
+  context.strokeStyle = `${data.accent}70`;
+  context.lineWidth = 5;
+  context.beginPath();
+  context.moveTo(spineX, chapters.length === 1 ? top : firstTickY);
+  context.lineTo(spineX, chapters.length === 1 ? bottom : lastTickY);
+  context.stroke();
 
   for (const [index, chapter] of chapters.entries()) {
-    context.fillStyle = data.accent;
-    mono(context, 21, 700, 3);
-    context.fillText(`CH. ${index + 1 + precedingChapterCount(data.storyPages, storyIndex)}`, PAGE_MARGIN, y);
+    const tick = ticks[index] ?? fallbackStoryTick(globalOffset + index + 1);
+    const bandTop = top + index * bandHeight;
+    const tickY = bandTop + 22;
+    const dense = chapters.length > 4;
+
+    context.fillStyle = MUTED;
+    mono(context, dense ? 13 : 16, 700, dense ? 0.8 : 1.2);
+    context.textAlign = "right";
+    context.fillText(tick.dateLabel.toUpperCase(), spineX - 28, tickY - (dense ? 7 : 9));
+    context.textAlign = "left";
     context.letterSpacing = "0px";
+
+    context.fillStyle = tick.isBusiestDay ? data.accent : PAPER;
+    context.strokeStyle = data.accent;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.arc(spineX, tickY, tick.isBusiestDay ? 11 : 8, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.beginPath();
+    context.moveTo(spineX + 10, tickY);
+    context.lineTo(contentX - 14, tickY);
+    context.stroke();
+
+    context.fillStyle = data.accent;
+    mono(context, dense ? 14 : 17, 700, dense ? 1.5 : 2.5);
+    context.fillText(`CH. ${tick.chapterIndex}`, contentX, bandTop + 7);
+    context.letterSpacing = "0px";
+
+    if (tick.busiestDayLabel) {
+      drawBusiestDayBadge(
+        context,
+        data,
+        tick.busiestDayLabel,
+        contentX + (dense ? 110 : 130),
+        bandTop + 1,
+        contentWidth - (dense ? 110 : 130),
+        dense,
+      );
+    }
+
+    const titleSize = dense ? 32 : 43;
+    const titleLineHeight = dense ? 35 : 47;
     context.fillStyle = INK;
-    archivo(context, 55, 900);
-    y = drawTextBlock(context, chapter.title, PAGE_MARGIN, y + 42, 1050, 58, 2) + 26;
+    archivo(context, titleSize, 900);
+    const titleBottom = drawTextBlock(
+      context,
+      chapter.title || "Untitled chapter",
+      contentX,
+      bandTop + (dense ? 38 : 43),
+      contentWidth,
+      titleLineHeight,
+      2,
+    );
+    const bodySize = dense ? 19 : 24;
+    const bodyLineHeight = dense ? 26 : 33;
+    const bodyTop = titleBottom + (dense ? 7 : 11);
+    const bandBottom = bandTop + bandHeight - 16;
+    const maxBodyLines = Math.max(1, Math.floor((bandBottom - bodyTop) / bodyLineHeight));
     context.fillStyle = INK;
-    archivo(context, 29, 500);
-    y = drawTextBlock(context, chapter.body, PAGE_MARGIN, y, 1050, 43, 22) + 46;
+    archivo(context, bodySize, 500);
+    drawTextBlock(
+      context,
+      chapter.body || "No chapter text available.",
+      contentX,
+      bodyTop,
+      contentWidth,
+      bodyLineHeight,
+      maxBodyLines,
+    );
   }
   drawPageNumber(context, pageNumber, data.accent, false);
+}
+
+function drawBusiestDayBadge(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  label: string,
+  x: number,
+  y: number,
+  width: number,
+  dense: boolean,
+): void {
+  const height = dense ? 30 : 34;
+  const badgeWidth = Math.min(width, dense ? 340 : 390);
+  context.fillStyle = `${data.accent}18`;
+  context.fillRect(x, y, badgeWidth, height);
+  context.fillStyle = data.accent;
+  mono(context, dense ? 11 : 13, 700, 0.5);
+  fitAndDrawMonoText(
+    context,
+    label.toUpperCase(),
+    x + 10,
+    y + (dense ? 8 : 9),
+    badgeWidth - 20,
+    dense ? 11 : 13,
+    9,
+  );
+  context.letterSpacing = "0px";
+}
+
+function fallbackStoryTick(chapterIndex: number): StoryTimelineTick {
+  return {
+    chapterIndex,
+    date: null,
+    dateLabel: "Date unknown",
+    isBusiestDay: chapterIndex === 1,
+    busiestDayLabel: chapterIndex === 1 ? "date unknown · 0 msgs" : null,
+  };
 }
 
 function drawClosing(context: CanvasRenderingContext2D, data: PdfDocumentData, pageNumber: number): void {
@@ -1092,7 +1323,7 @@ function paginateChapters(chapters: readonly PdfChapter[]): PdfChapter[][] {
 
   for (const chapter of expanded) {
     const chapterWeight = chapter.title.length * 2 + chapter.body.length;
-    if (current.length > 0 && weight + chapterWeight > 1_350) {
+    if (current.length > 0 && (current.length >= 6 || weight + chapterWeight > 1_350)) {
       pages.push(current);
       current = [];
       weight = 0;
@@ -1137,7 +1368,11 @@ function buildDetailPages(
   while (highlightIndex < highlights.length) {
     const current = highlights[highlightIndex];
     const next = highlights[highlightIndex + 1];
-    const canSharePage = next && receiptLayoutWeight(current) + receiptLayoutWeight(next) <= 1_150;
+    const canSharePage =
+      next &&
+      !buildReceiptPresentation(current).pullQuote &&
+      !buildReceiptPresentation(next).pullQuote &&
+      receiptLayoutWeight(current) + receiptLayoutWeight(next) <= 1_150;
     pages.push({
       highlights: canSharePage ? [current, next] : [current],
       people: [],
@@ -1243,6 +1478,24 @@ function fitAndDrawText(
   while (size > minSize && context.measureText(text).width > maxWidth) {
     size -= 1;
     archivo(context, size, weight);
+  }
+  context.fillText(ellipsize(context, text, maxWidth), x, y);
+}
+
+function fitAndDrawMonoText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxSize: number,
+  minSize: number,
+): void {
+  let size = maxSize;
+  mono(context, size, 700);
+  while (size > minSize && context.measureText(text).width > maxWidth) {
+    size -= 1;
+    mono(context, size, 700);
   }
   context.fillText(ellipsize(context, text, maxWidth), x, y);
 }

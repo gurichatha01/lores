@@ -22,6 +22,9 @@ describe("PDF keepsake", () => {
     expect(data.report.stats.replyTimeDistribution).toEqual(report.stats.replyTimeDistribution);
     expect(data.report.stats.topEmojis).toEqual(report.stats.topEmojis);
     expect(data.storyPages.flat()).toEqual(VALID_REPORT.chapters);
+    expect(data.storyTimeline).toHaveLength(VALID_REPORT.chapters.length);
+    expect(data.storyTimeline[0].date).toBe(report.stats.firstMessageDate.slice(0, 10));
+    expect(data.storyTimeline.at(-1)?.date).toBe(report.stats.lastMessageDate.slice(0, 10));
     expect(Object.fromEntries(data.awardCards.map(({ award, line }) => [award.id, line]))).toEqual(
       Object.fromEntries(VALID_REPORT.awardLines.map(({ awardId, line }) => [awardId, line])),
     );
@@ -33,6 +36,20 @@ describe("PDF keepsake", () => {
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
     const qaMode = isReportMode(process.env.PDF_QA_MODE) ? process.env.PDF_QA_MODE : "work";
     const report = createReportSession(createTestGenerateInput(qaMode), VALID_REPORT);
+    if (process.env.PDF_QA_PULL_QUOTE) {
+      (report.content.highlights[0] as (typeof report.content.highlights)[number] & { bubble?: string }).bubble =
+        "One ridiculous night, preserved in four messages.";
+    }
+    if (process.env.PDF_QA_STORY_TIMELINE) {
+      report.stats.firstMessageDate = "2021-01-10";
+      report.stats.lastMessageDate = "2025-01-09";
+      report.stats.spanDays = 1_461;
+      report.stats.busiestDay = { date: "2023-09-18", count: 143 };
+      report.content.chapters = Array.from({ length: 12 }, (_, index) => ({
+        title: `Chapter ${index + 1}: ${VALID_REPORT.chapters[index % VALID_REPORT.chapters.length].title}`,
+        body: VALID_REPORT.chapters[index % VALID_REPORT.chapters.length].body,
+      }));
+    }
     report.content.highlights[0].snippet.messages[0].text = Array.from(
       { length: 90 },
       (_, index) => `receipt-word-${index + 1}`,
@@ -75,7 +92,9 @@ describe("PDF keepsake", () => {
     const bytes = new Uint8Array(pdf.output("arraybuffer"));
 
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
-    expect(pdf.getNumberOfPages()).toBe(8);
+    expect(pdf.getNumberOfPages()).toBe(
+      8 + (process.env.PDF_QA_PULL_QUOTE ? 1 : 0) + (process.env.PDF_QA_STORY_TIMELINE ? 1 : 0),
+    );
     expect(pdf.internal.pageSize.getWidth()).toBeCloseTo(210, 1);
     expect(pdf.internal.pageSize.getHeight()).toBeCloseTo(297, 1);
     expect(bytes.byteLength).toBeGreaterThan(100_000);
