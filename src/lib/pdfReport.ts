@@ -20,6 +20,7 @@ export interface PdfDocumentData {
   report: ReportSessionData;
   modeLabel: string;
   accent: string;
+  accentSoft: string;
   surface: string;
   names: string;
   span: string;
@@ -55,8 +56,9 @@ export function buildPdfDocumentData(report: ReportSessionData): PdfDocumentData
 
   return {
     report,
-    modeLabel: preset.label,
+    modeLabel: report.mode === "roast" ? "Roast" : preset.label,
     accent: preset.accent,
+    accentSoft: preset.accentSoft,
     surface: preset.treatment === "soft" ? preset.surface : PAPER,
     names: formatParticipantTitle(report.stats.people),
     span: formatSpanLabel(report.stats.spanDays).replace(", in messages", ""),
@@ -113,23 +115,22 @@ function drawCover(context: CanvasRenderingContext2D, data: PdfDocumentData): vo
   context.fillStyle = data.accent;
   context.fillRect(0, 0, 28, PDF_PAGE_HEIGHT);
   context.fillRect(0, 1640, PDF_PAGE_WIDTH, 114);
-  context.save();
-  context.globalAlpha = 0.07;
-  context.fillStyle = data.accent;
-  archivo(context, 620, 900);
-  context.textAlign = "right";
-  context.fillText("01", PDF_PAGE_WIDTH - 48, 170);
-  context.restore();
-  context.textAlign = "left";
+  drawCoverMotif(context, data);
 
   drawHeader(context, data, "the keepsake edition", false);
-  context.strokeStyle = data.accent;
-  context.lineWidth = 8;
-  context.beginPath();
-  context.moveTo(PAGE_MARGIN, 140);
-  context.lineTo(PDF_PAGE_WIDTH - PAGE_MARGIN, 140);
-  context.stroke();
+  if (data.report.mode === "roast") {
+    drawHazardTape(context, PAGE_MARGIN, 140, PDF_PAGE_WIDTH - PAGE_MARGIN * 2, 44);
+  } else {
+    context.strokeStyle = data.accent;
+    context.lineWidth = 8;
+    context.beginPath();
+    context.moveTo(PAGE_MARGIN, 140);
+    context.lineTo(PDF_PAGE_WIDTH - PAGE_MARGIN, 140);
+    context.stroke();
+  }
 
+  context.save();
+  context.globalAlpha = 1;
   context.fillStyle = data.accent;
   mono(context, 28, 700, 4);
   context.fillText(`${data.modeLabel.toUpperCase()} - THE LORES OF`, PAGE_MARGIN, 344);
@@ -146,8 +147,8 @@ function drawCover(context: CanvasRenderingContext2D, data: PdfDocumentData): vo
     PAGE_MARGIN,
     namesBottom + 44,
   );
+  context.restore();
 
-  context.letterSpacing = "0px";
   drawCoverStats(context, data, Math.max(930, namesBottom + 136));
 
   context.strokeStyle = data.accent;
@@ -160,9 +161,12 @@ function drawCover(context: CanvasRenderingContext2D, data: PdfDocumentData): vo
   mono(context, 17, 700, 2);
   context.fillText("THE LINE THAT SUMS IT UP", PAGE_MARGIN, 1412);
   context.letterSpacing = "0px";
+  context.save();
+  context.globalAlpha = 1;
   context.fillStyle = INK;
   archivo(context, 34, 700);
   drawTextBlock(context, `“${data.report.content.heroLine}”`, PAGE_MARGIN, 1492, 1030, 44, 4);
+  context.restore();
   context.fillStyle =
     data.report.mode === "group" || data.report.mode === "roast" ? PAPER : INK;
   mono(context, 18, 700, 2);
@@ -185,28 +189,48 @@ function drawCoverStats(
   ];
   const width = PDF_PAGE_WIDTH - PAGE_MARGIN * 2;
   const columnWidth = width / items.length;
+  const mode = data.report.mode;
+  const soft = mode === "sweetheart" || mode === "family";
+  const solid = mode === "ride-or-die" || mode === "group";
+  const roast = mode === "roast";
+  const panelFill = roast ? INK : solid ? data.accent : data.accentSoft;
+  const valueColor = roast || mode === "group" ? PAPER : INK;
+  const labelColor = roast ? data.accent : mode === "group" ? PAPER : solid ? INK : data.accent;
+  const dividerColor = roast || mode === "group" ? "rgba(243,243,239,.45)" : data.accent;
 
-  context.fillStyle = `${data.accent}18`;
-  context.fillRect(PAGE_MARGIN, y, width, 230);
+  context.fillStyle = panelFill;
+  if (soft) {
+    context.beginPath();
+    context.roundRect(PAGE_MARGIN, y, width, 230, mode === "sweetheart" ? 38 : 22);
+    context.fill();
+  } else {
+    context.fillRect(PAGE_MARGIN, y, width, 230);
+  }
   context.strokeStyle = data.accent;
   context.lineWidth = 5;
-  context.strokeRect(PAGE_MARGIN, y, width, 230);
+  if (soft) {
+    context.beginPath();
+    context.roundRect(PAGE_MARGIN, y, width, 230, mode === "sweetheart" ? 38 : 22);
+    context.stroke();
+  } else {
+    context.strokeRect(PAGE_MARGIN, y, width, 230);
+  }
 
   items.forEach((item, index) => {
     const x = PAGE_MARGIN + index * columnWidth;
     if (index > 0) {
-      context.strokeStyle = data.accent;
+      context.strokeStyle = dividerColor;
       context.lineWidth = 3;
       context.beginPath();
       context.moveTo(x, y + 28);
       context.lineTo(x, y + 202);
       context.stroke();
     }
-    context.fillStyle = data.accent;
+    context.fillStyle = labelColor;
     mono(context, 19, 700, 2);
     context.fillText(item.label, x + 28, y + 36);
     context.letterSpacing = "0px";
-    context.fillStyle = INK;
+    context.fillStyle = valueColor;
     fitAndDrawText(
       context,
       item.value,
@@ -218,6 +242,120 @@ function drawCoverStats(
       900,
     );
   });
+}
+
+function drawCoverMotif(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
+  const mode = data.report.mode;
+  context.save();
+  context.globalAlpha = mode === "group" ? 0.075 : 0.07;
+  context.fillStyle = data.accent;
+  context.strokeStyle = data.accent;
+  archivo(context, 620, 900);
+  context.textAlign = "right";
+  context.fillText("01", PDF_PAGE_WIDTH - 48, 170);
+  context.textAlign = "left";
+  context.lineWidth = 18;
+
+  if (mode === "sweetheart") {
+    drawHeartOutline(context, 905, 298, 225);
+  } else if (mode === "ride-or-die") {
+    for (let index = 0; index < 3; index += 1) {
+      const x = 860 + index * 90;
+      context.beginPath();
+      context.moveTo(x, 280);
+      context.lineTo(x - 100, 565);
+      context.stroke();
+    }
+  } else if (mode === "group") {
+    context.strokeRect(700, 250, 440, 330);
+    context.beginPath();
+    context.moveTo(700, 360);
+    context.lineTo(1140, 360);
+    context.moveTo(700, 470);
+    context.lineTo(1140, 470);
+    context.moveTo(920, 250);
+    context.lineTo(920, 580);
+    context.stroke();
+  } else if (mode === "family") {
+    context.beginPath();
+    context.moveTo(770, 410);
+    context.lineTo(940, 270);
+    context.lineTo(1110, 410);
+    context.lineTo(1110, 590);
+    context.lineTo(770, 590);
+    context.closePath();
+    context.stroke();
+  } else if (mode === "work") {
+    context.lineWidth = 10;
+    for (let x = 730; x <= 1130; x += 100) {
+      context.beginPath();
+      context.moveTo(x, 245);
+      context.lineTo(x, 600);
+      context.stroke();
+    }
+    for (let y = 300; y <= 600; y += 100) {
+      context.beginPath();
+      context.moveTo(680, y);
+      context.lineTo(1140, y);
+      context.stroke();
+    }
+  }
+  context.restore();
+  context.textAlign = "left";
+}
+
+function drawHeartOutline(
+  context: CanvasRenderingContext2D,
+  centerX: number,
+  top: number,
+  size: number,
+): void {
+  context.beginPath();
+  context.moveTo(centerX, top + size * 0.28);
+  context.bezierCurveTo(
+    centerX - size * 0.5,
+    top - size * 0.05,
+    centerX - size * 0.58,
+    top + size * 0.55,
+    centerX,
+    top + size,
+  );
+  context.bezierCurveTo(
+    centerX + size * 0.58,
+    top + size * 0.55,
+    centerX + size * 0.5,
+    top - size * 0.05,
+    centerX,
+    top + size * 0.28,
+  );
+  context.stroke();
+}
+
+function drawHazardTape(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  context.save();
+  context.beginPath();
+  context.rect(x, y, width, height);
+  context.clip();
+  context.fillStyle = "#e11400";
+  context.fillRect(x, y, width, height);
+  context.fillStyle = INK;
+  const stripeWidth = 92;
+  for (let stripeX = x - height; stripeX < x + width + height; stripeX += stripeWidth) {
+    context.beginPath();
+    context.moveTo(stripeX, y);
+    context.lineTo(stripeX + stripeWidth / 2, y);
+    context.lineTo(stripeX + stripeWidth / 2 - height, y + height);
+    context.lineTo(stripeX - height, y + height);
+    context.closePath();
+    context.fill();
+  }
+  context.restore();
 }
 
 function drawMetrics(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
@@ -535,7 +673,10 @@ function drawStory(
 ): void {
   fillPage(context, PAPER);
   drawSectionHeader(context, data, `05 - the story${data.storyPages.length > 1 ? ` - ${storyIndex + 1}` : ""}`);
-  let y = 200;
+  if (data.report.mode === "roast" && storyIndex === 0) {
+    drawHazardTape(context, PAGE_MARGIN, 148, PDF_PAGE_WIDTH - PAGE_MARGIN * 2, 38);
+  }
+  let y = data.report.mode === "roast" && storyIndex === 0 ? 226 : 200;
 
   for (const [index, chapter] of chapters.entries()) {
     context.fillStyle = data.accent;

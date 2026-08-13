@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createReportPdf, pdfFileName } from "../src/lib/createReportPdf";
 import { buildPdfDocumentData, type PdfCanvas } from "../src/lib/pdfReport";
 import { createReportSession } from "../src/lib/reportSession";
+import { isReportMode } from "../src/lib/modePresets";
 import { createTestGenerateInput, VALID_REPORT } from "./reportTestData";
 
 describe("PDF keepsake", () => {
@@ -30,7 +31,7 @@ describe("PDF keepsake", () => {
   });
 
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
-    const qaMode = process.env.PDF_QA_MODE === "sweetheart" ? "sweetheart" : "work";
+    const qaMode = isReportMode(process.env.PDF_QA_MODE) ? process.env.PDF_QA_MODE : "work";
     const report = createReportSession(createTestGenerateInput(qaMode), VALID_REPORT);
     report.content.highlights[0].snippet.messages[0].text = Array.from(
       { length: 90 },
