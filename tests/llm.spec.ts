@@ -50,6 +50,16 @@ describe("generateReport", () => {
     expect(body.generationConfig).not.toHaveProperty("top_p");
     expect(body.generationConfig).not.toHaveProperty("top_k");
     expect(body.contents.at(-1)?.role).toBe("user");
+    expect(providerInput.userContext).toBe("Together since university.");
+    expect(body.contents[0].parts[0].text).toContain(
+      '\"userContext\":\"Together since university.\"',
+    );
+    expect(body.systemInstruction.parts[0].text).toContain(
+      "userContext — optional background supplied by the user in the create flow",
+    );
+    expect(body.systemInstruction.parts[0].text).toContain(
+      "Use it to interpret the relationship, situation, and tone",
+    );
   });
 
   it("keeps the Gemini model independently swappable", async () => {

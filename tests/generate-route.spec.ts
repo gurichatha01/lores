@@ -33,6 +33,24 @@ describe("POST /api/generate", () => {
     await expect(response.json()).resolves.toEqual(VALID_REPORT);
   });
 
+  it("preserves freeform context from the API payload through to the LLM request", async () => {
+    const input = createTestGenerateInput();
+    input.userContext = "We met in film school and Trip Math is an inside joke.";
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request(input));
+    const providerRequest = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const providerInput = JSON.parse(providerRequest.contents[0].parts[0].text);
+
+    expect(response.status).toBe(200);
+    expect(providerInput.userContext).toBe(input.userContext);
+    expect(providerRequest.systemInstruction.parts[0].text).toContain(
+      "Use it to interpret the relationship, situation, and tone",
+    );
+  });
+
   it("accepts deterministic shared recipients for alternate awards", async () => {
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(geminiResponse(ALTERNATE_REPORT)));
