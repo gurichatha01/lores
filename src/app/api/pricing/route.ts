@@ -14,6 +14,8 @@ export function GET(request: Request): Response {
     currency: quote.currency,
     amount: quote.amount,
     display: quote.display,
+    regularDisplay: quote.regularDisplay,
+    offerLabel: quote.offerLabel,
     region: quote.region,
     international: quote.international,
   });

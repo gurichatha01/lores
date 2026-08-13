@@ -44,7 +44,8 @@ describe("Sweetheart report presentation", () => {
   it("formats spans and reply times compactly", () => {
     expect(formatSpanLabel(744)).toBe("2 years, in messages");
     expect(formatSpanLabel(90)).toBe("3 months, in messages");
-    expect(formatReplyTime(0)).toBe("—");
+    expect(formatReplyTime(0, 0)).toBe("—");
+    expect(formatReplyTime(0, 12)).toBe("<1m");
     expect(formatReplyTime(90)).toBe("1.5h");
   });
 

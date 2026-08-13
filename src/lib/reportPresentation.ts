@@ -31,8 +31,9 @@ export function formatWordCountWithNovels(
   return comparison ? `${words} · ${comparison}` : words;
 }
 
-export function formatReplyTime(minutes: number): string {
-  if (minutes <= 0) return "—";
+export function formatReplyTime(minutes: number, replyCount = 1): string {
+  if (replyCount === 0) return "—";
+  if (minutes < 1) return "<1m";
   if (minutes < 60) return `${Math.round(minutes)}m`;
   if (minutes < 1_440) return `${round(minutes / 60)}h`;
   return `${round(minutes / 1_440)}d`;
@@ -89,7 +90,9 @@ function buildStatCard(metric: StatMetric, stats: ReportStats): ModeStatCard {
     case "reply-time":
       return {
         label: "avg reply",
-        value: stats.people.map((person) => formatReplyTime(person.medianReplyTimeMin)).join(" / "),
+        value: stats.people
+          .map((person) => formatReplyTime(person.medianReplyTimeMin, person.replyCount))
+          .join(" / "),
         detail: stats.people.map((person) => person.name).join(" / "),
       };
     case "streak":

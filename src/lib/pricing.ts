@@ -10,7 +10,13 @@
  * cents for USD.
  */
 export const PRICING = {
-  IN: { currency: "INR", amount: 14900, display: "₹149" }, // amount in paise
+  IN: {
+    currency: "INR",
+    amount: 14900,
+    display: "₹149",
+    regularDisplay: "₹299",
+    offerLabel: "Launch price",
+  }, // amount in paise
   US: { currency: "USD", amount: 299, display: "$2.99" }, // amount in cents
 } as const;
 
@@ -21,6 +27,8 @@ export interface PriceQuote {
   currency: (typeof PRICING)[PriceRegion]["currency"];
   amount: number;
   display: string;
+  regularDisplay?: string;
+  offerLabel?: string;
   /** Whether the USD/international path is switched on for this deployment. */
   international: boolean;
 }

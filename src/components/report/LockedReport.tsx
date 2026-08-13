@@ -41,10 +41,18 @@ interface OrderResponse {
   keyId: string;
 }
 
+interface PricingResponse {
+  display: string;
+  regularDisplay?: string;
+  offerLabel?: string;
+}
+
 export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const [status, setStatus] = useState<UnlockStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [priceDisplay, setPriceDisplay] = useState<string | null>(null);
+  const [regularPriceDisplay, setRegularPriceDisplay] = useState<string | null>(null);
+  const [offerLabel, setOfferLabel] = useState<string | null>(null);
   const { awards, content, stats } = report;
   const preset = getModePreset(report.mode);
   const soft = preset.treatment === "soft";
@@ -60,8 +68,13 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     fetch("/api/pricing")
       .then((response) => (response.ok ? response.json() : null))
       .then((body) => {
-        if (active && body && typeof body.display === "string") {
-          setPriceDisplay(body.display);
+        const quote = body as PricingResponse | null;
+        if (active && quote && typeof quote.display === "string") {
+          setPriceDisplay(quote.display);
+          setRegularPriceDisplay(
+            typeof quote.regularDisplay === "string" ? quote.regularDisplay : null,
+          );
+          setOfferLabel(typeof quote.offerLabel === "string" ? quote.offerLabel : null);
         }
       })
       .catch(() => {
@@ -239,7 +252,15 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)]" aria-label="Unlock report">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lores{priceDisplay ? ` · ${priceDisplay}` : ""}</p>
+              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lores</p>
+              {priceDisplay ? (
+                <p className="mt-1 text-sm font-extrabold text-white">
+                  {offerLabel ? `${offerLabel} · ` : ""}{priceDisplay}
+                  {regularPriceDisplay ? (
+                    <> · <span className="text-white/55">regularly <s>{regularPriceDisplay}</s></span></>
+                  ) : null}
+                </p>
+              ) : null}
               <p className="mt-1 font-mono text-[9px] leading-relaxed text-white/55">full report · PDF keepsake · Wrapped card</p>
             </div>
             <div className="text-xl font-black">lores<span style={{ color: preset.accent }}>_</span></div>

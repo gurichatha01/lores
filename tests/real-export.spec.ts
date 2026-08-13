@@ -50,6 +50,11 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
       lastMessageLocal: last ? formatLocalDateTime(last) : undefined,
       spanDays,
       personSchemaValidation: "passed; no missing fields",
+      replyStats: stats.people.map((person) => ({
+        name: person.name,
+        medianReplyTimeMin: person.medianReplyTimeMin,
+        qualifyingReplyCount: person.replyCount,
+      })),
       personStatKeys: stats.people.map((person) => ({
         name: person.name,
         keys: Object.keys(person),

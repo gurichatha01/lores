@@ -118,6 +118,9 @@ Chapter:
 
 The pattern every time: delete the abstraction, replace with a number or a real detail from their chat.
 
+USER CONTEXT / OCCASION — CREATIVE BRIEF:
+${formatUserContextBrief(input.userContext)}
+
 AWARD WIRING — NON-NEGOTIABLE:
 ${formatAwardWiring(input)}
 
@@ -132,6 +135,14 @@ ${MODE_VOICE_BLOCKS[input.mode]}
 
 Return ONLY valid JSON matching this schema, no markdown fences, no preamble:
 ${JSON.stringify(REPORT_SCHEMA, null, 2)}`;
+}
+
+function formatUserContextBrief(userContext: string): string {
+  if (!userContext.trim()) {
+    return "No occasion or extra context was supplied. Let the chat evidence determine the framing.";
+  }
+  return `The user supplied: ${JSON.stringify(userContext)}
+This is not a throwaway sentence. Treat it as the creative brief for the whole edition. Let it materially shape the title, heroLine, wrappedLine, highlight selection, narrative arc, chapter framing, and final emotional landing while every factual claim remains grounded in stats or sampled messages. If it names an occasion (for example a birthday or anniversary), write a keepsake for that occasion: surface moments that make sense as a gift, frame the passage of time for the recipient, and make the closing feel addressed to the day. If it names relationship context (for example long-distance or newly together), prioritize the real patterns that illuminate that context. Never invent an occasion-specific event, quote, or fact.`;
 }
 
 export class LlmConfigurationError extends Error {

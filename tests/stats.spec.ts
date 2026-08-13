@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assignAwards, AWARD_THRESHOLDS } from "../src/lib/assignAwards";
 import {
   computeStats,
+  MIN_CAPPED_REPLIES_FOR_MEDIAN,
   NO_REPLY_MEDIAN_MIN,
   REPLY_GAP_CAP_MIN,
 } from "../src/lib/computeStats";
@@ -69,7 +70,8 @@ describe("computeStats", () => {
 
     expect(REPLY_GAP_CAP_MIN).toBe(360);
     expect(person(stats, "A").medianReplyTimeMin).toBe(12.5);
-    expect(person(stats, "B").medianReplyTimeMin).toBe(12.5);
+    expect(person(stats, "B").medianReplyTimeMin).toBe(15);
+    expect(person(stats, "B").replyCount).toBe(3);
     expect(person(stats, "A").conversationStarts).toBe(1);
     expect(person(stats, "B").conversationStarts).toBe(1);
     expect(stats.replyTimeDistribution).toEqual([
@@ -80,6 +82,19 @@ describe("computeStats", () => {
       { label: "2-4h", count: 0 },
       { label: "4-6h", count: 0 },
     ]);
+  });
+
+  it("falls back to slow sender-change replies when too few exchanges fit the cap", () => {
+    const stats = computeStats([
+      message("2024-01-01T09:00:00", "A"),
+      message("2024-01-01T17:00:00", "B"),
+      message("2024-01-02T09:00:00", "A"),
+      message("2024-01-02T21:00:00", "B"),
+    ]);
+
+    expect(MIN_CAPPED_REPLIES_FOR_MEDIAN).toBe(3);
+    expect(person(stats, "A")).toMatchObject({ replyCount: 1, medianReplyTimeMin: 960 });
+    expect(person(stats, "B")).toMatchObject({ replyCount: 2, medianReplyTimeMin: 600 });
   });
 
   it("returns complete finite defaults for link, media, and blank-only participants", () => {

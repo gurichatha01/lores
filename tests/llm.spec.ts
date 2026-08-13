@@ -132,6 +132,24 @@ describe("generateReport", () => {
     expect(prompt).toContain("Roast only the behavior proven by the chat");
   });
 
+  it("uses birthday context as a whole-report creative brief", () => {
+    const noContext = createTestGenerateInput("sweetheart");
+    noContext.userContext = "";
+    const birthday = createTestGenerateInput("sweetheart");
+    birthday.userContext = "this is for her birthday";
+
+    const plainPrompt = buildSystemPrompt(noContext);
+    const birthdayPrompt = buildSystemPrompt(birthday);
+
+    expect(birthdayPrompt).not.toBe(plainPrompt);
+    expect(birthdayPrompt).toContain('The user supplied: "this is for her birthday"');
+    expect(birthdayPrompt).toContain(
+      "materially shape the title, heroLine, wrappedLine, highlight selection, narrative arc, chapter framing, and final emotional landing",
+    );
+    expect(birthdayPrompt).toContain("write a keepsake for that occasion");
+    expect(plainPrompt).toContain("No occasion or extra context was supplied");
+  });
+
   it("uses the specificity rules, all three few-shots, guardrails, and strict output shape", () => {
     const input = createTestGenerateInput("sweetheart");
     const prompt = buildSystemPrompt(input);

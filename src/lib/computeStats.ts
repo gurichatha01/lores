@@ -10,13 +10,14 @@ import { containsProfanityOrSlur } from "./sanitizeLlmInput";
 
 export const REPLY_GAP_CAP_MIN = 6 * 60;
 export const NO_REPLY_MEDIAN_MIN = 0;
+export const MIN_CAPPED_REPLIES_FOR_MEDIAN = 3;
 
 interface MutablePersonStats {
   name: string;
   messageCount: number;
   wordCount: number;
   replyTimesMin: number[];
-  replyCount: number;
+  allReplyTimesMin: number[];
   conversationStarts: number;
   lastOfDayCount: number;
   lateNightCount: number;
@@ -185,7 +186,11 @@ const STOP_WORDS = new Set([
  *
  * Definitions:
  * - A reply is a message whose sender differs from the immediately previous
- *   message's sender; gaps over six hours are excluded as a new conversation.
+ *   message's sender. The median normally excludes gaps over six hours as a
+ *   new conversation; when a person has fewer than three such replies, all
+ *   observed sender-change gaps are used so sparse, slow chats still report a
+ *   meaningful median. A person with no observed replies keeps the zero/null
+ *   sentinel and is the only case rendered as an em dash.
  * - A conversation start is the first message, or the first message after a
  *   gap strictly greater than six hours.
  * - A streak day counts only when every participant sent at least one message.
@@ -291,12 +296,14 @@ export function computeStats(
     if (previous && gapMinutes > LONG_SILENCE_MIN) {
       person.silenceRevivalCount += 1;
     }
+    if (previous && previous.sender !== message.sender) {
+      person.allReplyTimesMin.push(gapMinutes);
+    }
     if (!previous || gapMinutes > REPLY_GAP_CAP_MIN) {
       person.conversationStarts += 1;
     } else if (previous.sender !== message.sender) {
       const replyTime = gapMinutes;
       person.replyTimesMin.push(replyTime);
-      person.replyCount += 1;
       replyTimesMin.push(replyTime);
     }
 
@@ -311,39 +318,48 @@ export function computeStats(
   const first = messages[0].timestamp;
   const last = messages.at(-1)!.timestamp;
   const spanDays = localDayNumber(last) - localDayNumber(first) + 1;
-  const personStats = Array.from(people.values(), (person): PersonStats => ({
-    name: person.name,
-    messageCount: person.messageCount,
-    messageShare: safeDivide(person.messageCount, messages.length),
-    wordCount: person.wordCount,
-    avgWordsPerMessage: safeDivide(person.wordCount, person.messageCount),
-    medianReplyTimeMin: median(person.replyTimesMin),
-    replyCount: person.replyCount,
-    conversationStarts: person.conversationStarts,
-    lastOfDayCount: person.lastOfDayCount,
-    lateNightCount: person.lateNightCount,
-    laughCount: person.laughCount,
-    profanityMessageCount: person.profanityMessageCount,
-    emojiCount: person.emojiCount,
-    emojisPerMessage: round(safeDivide(person.emojiCount, person.messageCount), 3),
-    linkCount: person.linkCount,
-    mediaCount: safeNonNegativeInteger(mediaBySender[person.name] ?? 0),
-    maxConsecutiveMessages: person.maxConsecutiveMessages,
-    silenceRevivalCount: person.silenceRevivalCount,
-    weekendMessageCount: person.weekendMessageCount,
-    weekendShare: round(safeDivide(person.weekendMessageCount, person.messageCount), 3),
-    activeSpanShare: round(
-      safeDivide(
-        person.firstMessageDate && person.lastMessageDate
-        ? localDayNumber(person.lastMessageDate) - localDayNumber(person.firstMessageDate) + 1
-        : 0,
-        spanDays,
+  const personStats = Array.from(people.values(), (person): PersonStats => {
+    const effectiveReplyTimes =
+      person.replyTimesMin.length >= MIN_CAPPED_REPLIES_FOR_MEDIAN
+        ? person.replyTimesMin
+        : person.allReplyTimesMin;
+    return {
+      name: person.name,
+      messageCount: person.messageCount,
+      messageShare: safeDivide(person.messageCount, messages.length),
+      wordCount: person.wordCount,
+      avgWordsPerMessage: safeDivide(person.wordCount, person.messageCount),
+      medianReplyTimeMin: median(effectiveReplyTimes),
+      replyCount: effectiveReplyTimes.length,
+      conversationStarts: person.conversationStarts,
+      lastOfDayCount: person.lastOfDayCount,
+      lateNightCount: person.lateNightCount,
+      laughCount: person.laughCount,
+      profanityMessageCount: person.profanityMessageCount,
+      emojiCount: person.emojiCount,
+      emojisPerMessage: round(safeDivide(person.emojiCount, person.messageCount), 3),
+      linkCount: person.linkCount,
+      mediaCount: safeNonNegativeInteger(mediaBySender[person.name] ?? 0),
+      maxConsecutiveMessages: person.maxConsecutiveMessages,
+      silenceRevivalCount: person.silenceRevivalCount,
+      weekendMessageCount: person.weekendMessageCount,
+      weekendShare: round(safeDivide(person.weekendMessageCount, person.messageCount), 3),
+      activeSpanShare: round(
+        safeDivide(
+          person.firstMessageDate && person.lastMessageDate
+            ? localDayNumber(person.lastMessageDate) - localDayNumber(person.firstMessageDate) + 1
+            : 0,
+          spanDays,
+        ),
+        3,
       ),
-      3,
-    ),
-    topEmojis: topEntries(person.emojis, TOP_EMOJI_LIMIT).map(([emoji, count]) => ({ emoji, count })),
-    topWords: topEntries(person.words, TOP_WORD_LIMIT).map(([word]) => word),
-  }));
+      topEmojis: topEntries(person.emojis, TOP_EMOJI_LIMIT).map(([emoji, count]) => ({
+        emoji,
+        count,
+      })),
+      topWords: topEntries(person.words, TOP_WORD_LIMIT).map(([word]) => word),
+    };
+  });
   const activeDays = [...dailyCounts.keys()].sort((left, right) => left - right);
   const busiest = findBusiestDay(dailyCounts);
   const longestSilenceRange = findLongestSilenceRange(activeDays);
@@ -397,7 +413,7 @@ function getOrCreatePerson(
     messageCount: 0,
     wordCount: 0,
     replyTimesMin: [],
-    replyCount: 0,
+    allReplyTimesMin: [],
     conversationStarts: 0,
     lastOfDayCount: 0,
     lateNightCount: 0,
