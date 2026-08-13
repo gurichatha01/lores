@@ -6,7 +6,7 @@ import {
   formatSpanLabel,
   formatWordCountWithNovels,
 } from "./reportPresentation";
-import type { PersonStats, ReportSessionData } from "./types";
+import type { Award, PersonStats, ReportContent, ReportSessionData } from "./types";
 
 export const PDF_PAGE_WIDTH = 1240;
 export const PDF_PAGE_HEIGHT = 1754;
@@ -25,7 +25,11 @@ export interface PdfDocumentData {
   span: string;
   dateRange: string;
   storyPages: PdfChapter[][];
-  peoplePages: PersonStats[][];
+  awardCards: Array<{ award: Award; line: string }>;
+  detailPages: Array<{
+    highlights: ReportContent["highlights"];
+    people: PersonStats[];
+  }>;
 }
 
 export interface PdfCanvas {
@@ -60,7 +64,13 @@ export function buildPdfDocumentData(report: ReportSessionData): PdfDocumentData
       report.stats.lastMessageDate.slice(0, 10),
     )}`,
     storyPages: paginateChapters(chapters),
-    peoplePages: chunk(report.stats.people, 8),
+    awardCards: report.awards.map((award) => ({
+      award,
+      line:
+        report.content.awardLines.find((candidate) => candidate.awardId === award.id)?.line ??
+        award.detail,
+    })),
+    detailPages: buildDetailPages(report.content.highlights, report.stats.people),
   };
 }
 
@@ -75,8 +85,8 @@ export function renderReportPdfPages(
   pages.push(renderPage(createCanvas, (context) => drawMetrics(context, data)));
   pages.push(renderPage(createCanvas, (context) => drawAwards(context, data)));
   let pageNumber = 4;
-  for (const [index, people] of data.peoplePages.entries()) {
-    pages.push(renderPage(createCanvas, (context) => drawPeoplePage(context, data, people, index, pageNumber)));
+  for (const [index, details] of data.detailPages.entries()) {
+    pages.push(renderPage(createCanvas, (context) => drawDetailsPage(context, data, details, index, pageNumber)));
     pageNumber += 1;
   }
   for (const [index, chapters] of data.storyPages.entries()) {
@@ -199,31 +209,37 @@ function drawMetrics(context: CanvasRenderingContext2D, data: PdfDocumentData): 
 function drawAwards(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
   fillPage(context, PAPER);
   drawSectionHeader(context, data, "03 - the awards");
-  const { awards } = data.report;
+  const { awardCards } = data;
 
-  awards.forEach((award, index) => {
+  awardCards.forEach(({ award, line }, index) => {
     const column = index % 2;
     const row = Math.floor(index / 2);
     const x = PAGE_MARGIN + column * 548;
-    const y = 190 + row * 176;
+    const y = 190 + row * 252;
     const highlighted = award.id === "main-character";
     context.fillStyle = highlighted ? data.accent : "#ffffff";
     context.strokeStyle = INK;
     context.lineWidth = 4;
-    context.fillRect(x, y, 528, 152);
-    context.strokeRect(x, y, 528, 152);
+    context.fillRect(x, y, 528, 226);
+    context.strokeRect(x, y, 528, 226);
     context.fillStyle = highlighted ? "#ffffff" : INK;
     context.font = "48px 'Segoe UI Emoji', Arial, sans-serif";
-    context.fillText(award.emoji, x + 24, y + 44);
+    context.fillText(award.emoji, x + 24, y + 34);
     archivo(context, 27, 900);
-    context.fillText(award.label.toUpperCase(), x + 88, y + 32);
+    fitAndDrawText(context, award.label.toUpperCase(), x + 88, y + 26, 410, 27, 20, 900);
     archivo(context, 22, 700);
     context.fillStyle = highlighted ? "rgba(255,255,255,.82)" : MUTED;
-    fitAndDrawText(context, award.who, x + 88, y + 76, 410, 22, 16, 700);
+    fitAndDrawText(context, award.who, x + 88, y + 65, 410, 22, 16, 700);
+    context.fillStyle = highlighted ? "rgba(255,255,255,.7)" : data.accent;
+    mono(context, 16, 700);
+    drawTextBlock(context, award.detail.toUpperCase(), x + 24, y + 108, 480, 22, 2);
+    context.fillStyle = highlighted ? "#ffffff" : INK;
+    archivo(context, 19, 600);
+    drawTextBlock(context, line, x + 24, y + 157, 480, 25, 3);
   });
 
-  const awardRows = Math.ceil(awards.length / 2);
-  const milestoneRuleY = Math.max(870, 190 + awardRows * 176 + 30);
+  const awardRows = Math.ceil(awardCards.length / 2);
+  const milestoneRuleY = Math.max(955, 190 + awardRows * 252 + 24);
   sectionRule(context, "MILESTONES", milestoneRuleY);
   const milestoneTop = milestoneRuleY + 63;
   const milestones = buildMilestones(data);
@@ -242,49 +258,96 @@ function drawAwards(context: CanvasRenderingContext2D, data: PdfDocumentData): v
   drawPageNumber(context, 3, data.accent, false);
 }
 
-function drawPeoplePage(
+function drawDetailsPage(
   context: CanvasRenderingContext2D,
   data: PdfDocumentData,
-  people: readonly PersonStats[],
-  peoplePageIndex: number,
+  details: PdfDocumentData["detailPages"][number],
+  detailPageIndex: number,
   pageNumber: number,
 ): void {
   fillPage(context, PAPER);
+  const hasHighlights = details.highlights.length > 0;
   drawSectionHeader(
     context,
     data,
-    `04 - the people${data.peoplePages.length > 1 ? ` - ${peoplePageIndex + 1}` : ""}`,
+    `04 - ${hasHighlights ? "receipts & people" : "the people"}${data.detailPages.length > 1 ? ` - ${detailPageIndex + 1}` : ""}`,
   );
-  people.forEach((person, index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
-    const x = PAGE_MARGIN + column * 548;
-    const y = 200 + row * 300;
+
+  if (hasHighlights) {
+    drawHighlights(context, data, details.highlights);
+    sectionRule(context, "THE PEOPLE", 564);
+  }
+
+  const columns = 3;
+  const cardWidth = 342;
+  const cardHeight = hasHighlights ? 250 : 310;
+  const gapX = 25;
+  const rowGap = hasHighlights ? 24 : 28;
+  const peopleTop = hasHighlights ? 638 : 194;
+  details.people.forEach((person, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = PAGE_MARGIN + column * (cardWidth + gapX);
+    const y = peopleTop + row * (cardHeight + rowGap);
     context.fillStyle = "#ffffff";
     context.strokeStyle = INK;
-    context.lineWidth = 4;
-    context.fillRect(x, y, 528, 258);
-    context.strokeRect(x, y, 528, 258);
+    context.lineWidth = 3;
+    context.fillRect(x, y, cardWidth, cardHeight);
+    context.strokeRect(x, y, cardWidth, cardHeight);
     context.fillStyle = data.accent;
-    archivo(context, 34, 900);
-    fitAndDrawText(context, person.name, x + 24, y + 24, 478, 34, 22, 900);
+    fitAndDrawText(context, person.name, x + 20, y + 20, cardWidth - 40, 29, 19, 900);
     context.fillStyle = MUTED;
-    mono(context, 18, 700, 2);
-    context.fillText(`${formatCount(person.messageCount)} MESSAGES`, x + 24, y + 80);
+    mono(context, 15, 700, 1.5);
+    context.fillText(`${formatCount(person.messageCount)} MESSAGES`, x + 20, y + 68);
     context.letterSpacing = "0px";
     context.fillStyle = INK;
-    archivo(context, 23, 600);
+    archivo(context, hasHighlights ? 19 : 21, 600);
     drawTextBlock(
       context,
       person.topWords.join(" - ") || "no repeated words",
-      x + 24,
-      y + 124,
-      478,
-      34,
-      4,
+      x + 20,
+      y + 105,
+      cardWidth - 40,
+      hasHighlights ? 28 : 31,
+      hasHighlights ? 5 : 6,
     );
   });
   drawPageNumber(context, pageNumber, data.accent, false);
+}
+
+function drawHighlights(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  highlights: ReportContent["highlights"],
+): void {
+  const cardWidth = 342;
+  const gap = 25;
+  highlights.forEach((highlight, index) => {
+    const x = PAGE_MARGIN + index * (cardWidth + gap);
+    const y = 188;
+    context.fillStyle = "#ffffff";
+    context.strokeStyle = INK;
+    context.lineWidth = 3;
+    context.fillRect(x, y, cardWidth, 330);
+    context.strokeRect(x, y, cardWidth, 330);
+    context.fillStyle = data.accent;
+    mono(context, 15, 700, 2);
+    context.fillText(String(index + 1).padStart(2, "0"), x + 20, y + 20);
+    context.letterSpacing = "0px";
+    context.fillStyle = INK;
+    fitAndDrawText(context, highlight.label, x + 20, y + 52, cardWidth - 40, 27, 19, 900);
+    context.fillStyle = MUTED;
+    archivo(context, 18, 600);
+    drawTextBlock(context, highlight.body, x + 20, y + 96, cardWidth - 40, 25, 3);
+
+    if (highlight.bubble) {
+      context.fillStyle = `${data.accent}18`;
+      context.fillRect(x + 16, y + 184, cardWidth - 32, 128);
+      context.fillStyle = INK;
+      archivo(context, 16, 700);
+      drawTextBlock(context, `“${highlight.bubble}”`, x + 28, y + 198, cardWidth - 56, 21, 5);
+    }
+  });
 }
 
 function drawStory(
@@ -556,6 +619,26 @@ function precedingChapterCount(pages: readonly PdfChapter[][], pageIndex: number
   return pages.slice(0, pageIndex).reduce((total, page) => total + page.length, 0);
 }
 
+function buildDetailPages(
+  highlights: ReportContent["highlights"],
+  people: readonly PersonStats[],
+): PdfDocumentData["detailPages"] {
+  const pages: PdfDocumentData["detailPages"] = [];
+  let highlightIndex = 0;
+  let personIndex = 0;
+
+  while (highlightIndex < highlights.length || personIndex < people.length) {
+    const pageHighlights = highlights.slice(highlightIndex, highlightIndex + 3);
+    highlightIndex += pageHighlights.length;
+    const peopleCapacity = pageHighlights.length > 0 ? 9 : 12;
+    const pagePeople = people.slice(personIndex, personIndex + peopleCapacity);
+    personIndex += pagePeople.length;
+    pages.push({ highlights: pageHighlights, people: pagePeople });
+  }
+
+  return pages;
+}
+
 function fillPage(context: CanvasRenderingContext2D, color: string): void {
   context.clearRect(0, 0, PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT);
   context.fillStyle = color;
@@ -673,12 +756,4 @@ function wrapLines(
     lines[lines.length - 1] = `${lines.at(-1)!.replace(/[.,;:!?]?$/u, "")}…`;
   }
   return lines;
-}
-
-function chunk<T>(values: readonly T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size));
-  }
-  return chunks;
 }

@@ -17,7 +17,7 @@ export function ReportPdfDownload({ report }: ReportPdfDownloadProps) {
   const [status, setStatus] = useState<Status>("idle");
   const preset = getModePreset(report.mode);
   const pdfData = buildPdfDocumentData(report);
-  const pageCount = 4 + pdfData.storyPages.length + pdfData.peoplePages.length;
+  const pageCount = 4 + pdfData.storyPages.length + pdfData.detailPages.length;
 
   async function download(): Promise<void> {
     if (status === "building") return;

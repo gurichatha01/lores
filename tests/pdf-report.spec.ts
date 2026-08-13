@@ -21,6 +21,11 @@ describe("PDF keepsake", () => {
     expect(data.report.stats.replyTimeDistribution).toEqual(report.stats.replyTimeDistribution);
     expect(data.report.stats.topEmojis).toEqual(report.stats.topEmojis);
     expect(data.storyPages.flat()).toEqual(VALID_REPORT.chapters);
+    expect(Object.fromEntries(data.awardCards.map(({ award, line }) => [award.id, line]))).toEqual(
+      Object.fromEntries(VALID_REPORT.awardLines.map(({ awardId, line }) => [awardId, line])),
+    );
+    expect(data.detailPages.flatMap((page) => page.highlights)).toEqual(VALID_REPORT.highlights);
+    expect(data.detailPages.flatMap((page) => page.people)).toEqual(report.stats.people);
     expect(pdfFileName(report)).toBe("lores-sweetheart-keepsake.pdf");
   });
 

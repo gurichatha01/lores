@@ -54,7 +54,11 @@ function groupReport() {
     title: "The group report",
     heroLine: "Nine people kept this chat moving.",
     wrappedLine: "One group, nine distinct chat habits.",
-    highlights: [],
+    highlights: [
+      { label: "Travel Agent", body: "A whole itinerary emerged.", bubble: "message number 1" },
+      { label: "Trip Math", body: "Every split was audited.", bubble: "message number 2" },
+      { label: "Gig Logistics", body: "Tickets ran the calendar.", bubble: "message number 3" },
+    ],
     awardLines: awards.map((award) => ({ awardId: award.id, line: award.detail })),
     narrative: "A deterministic group fixture.",
     chapters: [
@@ -108,10 +112,11 @@ describe("group report integrity", () => {
 
   it("lists every participant once in unified PDF cards with no cutoff", () => {
     const data = buildPdfDocumentData(groupReport());
-    expect(data.peoplePages.flat().map((person) => person.name)).toEqual(names);
-    expect(data.peoplePages).toHaveLength(2);
-    expect(data.peoplePages[0]).toHaveLength(8);
-    expect(data.peoplePages[1]).toHaveLength(1);
+    expect(data.detailPages.flatMap((page) => page.people).map((person) => person.name)).toEqual(names);
+    expect(data.detailPages).toHaveLength(1);
+    expect(data.detailPages[0].people).toHaveLength(9);
+    expect(data.detailPages[0].highlights).toHaveLength(3);
+    expect(data.awardCards.every((card) => card.line.length > 0)).toBe(true);
   });
 
   it("uses compact group titles and one consistent date span across surfaces", () => {
