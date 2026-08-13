@@ -8,6 +8,7 @@ import {
   formatCount,
   formatLocalReportDate,
   formatNovelsComparison,
+  formatParticipantTitle,
   formatSpanLabel,
 } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
@@ -21,7 +22,7 @@ export function ModeReport({ report }: ModeReportProps) {
   const preset = getModePreset(report.mode);
   const soft = preset.treatment === "soft";
   const dark = preset.treatment === "dark";
-  const names = stats.people.map((person) => person.name);
+  const names = formatParticipantTitle(stats.people);
   const awardLines = new Map(content.awardLines.map((line) => [line.awardId, line.line]));
   const cards = buildModeStatCards(report.mode, stats);
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
@@ -45,7 +46,7 @@ export function ModeReport({ report }: ModeReportProps) {
             className="font-mono text-[11px] font-bold uppercase tracking-[0.1em]"
             style={{ color: preset.accent }}
           >
-            {preset.emoji} {preset.label} · {names.join(" & ")}
+            {preset.emoji} {preset.label} · {names}
           </div>
           <Link
             href="/create"

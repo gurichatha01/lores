@@ -14,16 +14,25 @@ interface MutablePersonStats {
   messageCount: number;
   wordCount: number;
   replyTimesMin: number[];
+  replyCount: number;
   conversationStarts: number;
   lastOfDayCount: number;
   lateNightCount: number;
   laughCount: number;
+  emojiCount: number;
+  linkCount: number;
+  maxConsecutiveMessages: number;
+  silenceRevivalCount: number;
+  weekendMessageCount: number;
+  firstMessageDate: Date | null;
+  lastMessageDate: Date | null;
   emojis: Map<string, number>;
   words: Map<string, number>;
 }
 
 const DAY_MS = 86_400_000;
 const NOVEL_WORDS = 80_000;
+const LONG_SILENCE_MIN = 24 * 60;
 const TOP_EMOJI_LIMIT = 5;
 const TOP_WORD_LIMIT = 10;
 const WORD = /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu;
@@ -32,6 +41,7 @@ const LAUGH_TOKEN =
 const GOOD_MORNING = /\b(?:good\s*mornings?|gmorning|gud\s*morning|morning)\b/giu;
 const I_LOVE_YOU = /\b(?:i\s+love\s+you|love\s+you|ily)\b/giu;
 const RELATIONSHIP_TALK = /\bwhat\s+are\s+we\b/iu;
+const LINK = /(?:https?:\/\/|www\.)[^\s]+/giu;
 const REPLY_BUCKETS: ReplyTimeBucket[] = [
   { label: "<1m", count: 0 },
   { label: "1-5m", count: 0 },
@@ -186,6 +196,7 @@ export function computeStats(
   const parsedExport = isParsedExport(input);
   const sourceMessages = parsedExport ? input.messages : input;
   const mediaCount = parsedExport ? input.mediaCount : explicitMediaCount;
+  const mediaBySender = parsedExport ? input.mediaBySender ?? {} : {};
   const messages = [...sourceMessages].sort(
     (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
   );
@@ -214,6 +225,8 @@ export function computeStats(
   let firstLateNightDate: Date | null = null;
   let firstRelationshipTalkDate: Date | null = null;
   let previous: Message | undefined;
+  let runSender = "";
+  let runLength = 0;
 
   for (const message of messages) {
     const person = getOrCreatePerson(people, message.sender);
@@ -229,6 +242,19 @@ export function computeStats(
     dailyCounts.set(day, (dailyCounts.get(day) ?? 0) + 1);
     getOrCreateSet(dailyParticipants, day).add(message.sender);
     lastMessageByDay.set(day, message);
+    person.firstMessageDate ??= new Date(timestamp.getTime());
+    person.lastMessageDate = new Date(timestamp.getTime());
+    if (timestamp.getDay() === 0 || timestamp.getDay() === 6) {
+      person.weekendMessageCount += 1;
+    }
+
+    if (message.sender === runSender) {
+      runLength += 1;
+    } else {
+      runSender = message.sender;
+      runLength = 1;
+    }
+    person.maxConsecutiveMessages = Math.max(person.maxConsecutiveMessages, runLength);
 
     if (timestamp.getHours() < 4) {
       person.lateNightCount += 1;
@@ -236,6 +262,8 @@ export function computeStats(
     }
 
     person.laughCount += message.text.match(LAUGH_TOKEN)?.length ?? 0;
+    person.emojiCount += message.emojis.length;
+    person.linkCount += message.text.match(LINK)?.length ?? 0;
     countEmojis(person.emojis, message.emojis);
     countEmojis(chatEmojis, message.emojis);
     countWords(person.words, message.text);
@@ -245,11 +273,16 @@ export function computeStats(
       firstRelationshipTalkDate = new Date(timestamp.getTime());
     }
 
-    if (!previous || elapsedMinutes(previous, message) > REPLY_GAP_CAP_MIN) {
+    const gapMinutes = previous ? elapsedMinutes(previous, message) : Number.POSITIVE_INFINITY;
+    if (previous && gapMinutes > LONG_SILENCE_MIN) {
+      person.silenceRevivalCount += 1;
+    }
+    if (!previous || gapMinutes > REPLY_GAP_CAP_MIN) {
       person.conversationStarts += 1;
     } else if (previous.sender !== message.sender) {
-      const replyTime = elapsedMinutes(previous, message);
+      const replyTime = gapMinutes;
       person.replyTimesMin.push(replyTime);
+      person.replyCount += 1;
       replyTimesMin.push(replyTime);
     }
 
@@ -261,6 +294,9 @@ export function computeStats(
   }
 
   const participantCount = people.size;
+  const first = messages[0].timestamp;
+  const last = messages.at(-1)!.timestamp;
+  const spanDays = localDayNumber(last) - localDayNumber(first) + 1;
   const personStats = Array.from(people.values(), (person): PersonStats => ({
     name: person.name,
     messageCount: person.messageCount,
@@ -268,16 +304,29 @@ export function computeStats(
     wordCount: person.wordCount,
     avgWordsPerMessage: person.wordCount / person.messageCount,
     medianReplyTimeMin: median(person.replyTimesMin),
+    replyCount: person.replyCount,
     conversationStarts: person.conversationStarts,
     lastOfDayCount: person.lastOfDayCount,
     lateNightCount: person.lateNightCount,
     laughCount: person.laughCount,
+    emojiCount: person.emojiCount,
+    emojisPerMessage: round(person.emojiCount / person.messageCount, 3),
+    linkCount: person.linkCount,
+    mediaCount: mediaBySender[person.name] ?? 0,
+    maxConsecutiveMessages: person.maxConsecutiveMessages,
+    silenceRevivalCount: person.silenceRevivalCount,
+    weekendMessageCount: person.weekendMessageCount,
+    weekendShare: round(person.weekendMessageCount / person.messageCount, 3),
+    activeSpanShare: round(
+      ((person.firstMessageDate && person.lastMessageDate
+        ? localDayNumber(person.lastMessageDate) - localDayNumber(person.firstMessageDate) + 1
+        : 0) / spanDays),
+      3,
+    ),
     topEmojis: topEntries(person.emojis, TOP_EMOJI_LIMIT).map(([emoji, count]) => ({ emoji, count })),
     topWords: topEntries(person.words, TOP_WORD_LIMIT).map(([word]) => word),
   }));
   const activeDays = [...dailyCounts.keys()].sort((left, right) => left - right);
-  const first = messages[0].timestamp;
-  const last = messages.at(-1)!.timestamp;
   const busiest = findBusiestDay(dailyCounts);
   const longestSilenceRange = findLongestSilenceRange(activeDays);
 
@@ -290,7 +339,7 @@ export function computeStats(
     mediaCount,
     firstMessageDate: new Date(first.getTime()),
     lastMessageDate: new Date(last.getTime()),
-    spanDays: localDayNumber(last) - localDayNumber(first) + 1,
+    spanDays,
     busiestDay: {
       date: dateFromLocalDayNumber(busiest.day),
       count: busiest.count,
@@ -330,10 +379,18 @@ function getOrCreatePerson(
     messageCount: 0,
     wordCount: 0,
     replyTimesMin: [],
+    replyCount: 0,
     conversationStarts: 0,
     lastOfDayCount: 0,
     lateNightCount: 0,
     laughCount: 0,
+    emojiCount: 0,
+    linkCount: 0,
+    maxConsecutiveMessages: 0,
+    silenceRevivalCount: 0,
+    weekendMessageCount: 0,
+    firstMessageDate: null,
+    lastMessageDate: null,
     emojis: new Map(),
     words: new Map(),
   };

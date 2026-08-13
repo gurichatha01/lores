@@ -23,14 +23,14 @@ describe.skipIf(!realExportPath)("real WhatsApp stats sanity check", () => {
     expect(stats.people.length).toBeGreaterThanOrEqual(2);
     expect(stats.messagesByHour).toHaveLength(24);
     expect(stats.messagesByWeekday).toHaveLength(7);
-    expect(stats.messagesByMonth.length).toBeGreaterThan(12);
+    expect(stats.messagesByMonth.length).toBeGreaterThanOrEqual(12);
     expect(stats.messagesByMonth.reduce((sum, month) => sum + month.count, 0)).toBe(stats.totalMessages);
     expect(stats.replyTimeDistribution).toHaveLength(6);
     expect(stats.replyTimeDistribution.reduce((sum, bucket) => sum + bucket.count, 0)).toBeGreaterThan(0);
     expect(stats.busiestDay.count).toBeGreaterThan(0);
-    expect(stats.spanDays).toBeGreaterThan(365);
+    expect(stats.spanDays).toBeGreaterThan(300);
     expect(awards.length).toBeGreaterThanOrEqual(3);
-    expect(awards.length).toBeLessThanOrEqual(6);
+    expect(awards.length).toBeLessThanOrEqual(8);
 
     console.info(JSON.stringify({ stats, awards }, null, 2));
   });

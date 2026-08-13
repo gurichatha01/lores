@@ -41,10 +41,20 @@ const PERSON_KEYS = [
   "wordCount",
   "avgWordsPerMessage",
   "medianReplyTimeMin",
+  "replyCount",
   "conversationStarts",
   "lastOfDayCount",
   "lateNightCount",
   "laughCount",
+  "emojiCount",
+  "emojisPerMessage",
+  "linkCount",
+  "mediaCount",
+  "maxConsecutiveMessages",
+  "silenceRevivalCount",
+  "weekendMessageCount",
+  "weekendShare",
+  "activeSpanShare",
   "topEmojis",
   "topWords",
 ] as const;
@@ -71,7 +81,13 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   const awards = parseAwards(input.awards);
   const sample = asArray(input.sample, "sample").map(parseSampleMessage);
   const people = new Set(stats.people.map((person) => person.name));
-  const collectiveRecipient = stats.people.map((person) => person.name).join(" & ");
+  const collectiveRecipients = new Set([
+    "the group",
+    `all ${stats.people.length} of you`,
+    ...(stats.people.length === 2
+      ? [stats.people.map((person) => person.name).join(" & ")]
+      : []),
+  ]);
 
   if (sample.length === 0 || sample.length > Math.min(stats.totalMessages, stats.people.length * 30)) {
     throw new ReportValidationError("sample must contain at most 30 curated messages per person.");
@@ -79,9 +95,9 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   if (sample.some((message) => !people.has(message.sender))) {
     throw new ReportValidationError("Every sample sender must exist in stats.people.");
   }
-  if (awards.some((award) => !people.has(award.who) && award.who !== collectiveRecipient)) {
+  if (awards.some((award) => !people.has(award.who) && !collectiveRecipients.has(award.who))) {
     throw new ReportValidationError(
-      "Every award recipient must be a participant or the full participant set.",
+      "Every award recipient must be one participant or a concise collective label.",
     );
   }
 
@@ -274,6 +290,7 @@ function parsePerson(value: unknown, index: number): PersonStats {
       `stats.people[${index}].medianReplyTimeMin`,
       0,
     ),
+    replyCount: asNonNegativeInteger(person.replyCount, `stats.people[${index}].replyCount`),
     conversationStarts: asNonNegativeInteger(
       person.conversationStarts,
       `stats.people[${index}].conversationStarts`,
@@ -281,6 +298,33 @@ function parsePerson(value: unknown, index: number): PersonStats {
     lastOfDayCount: asNonNegativeInteger(person.lastOfDayCount, `stats.people[${index}].lastOfDayCount`),
     lateNightCount: asNonNegativeInteger(person.lateNightCount, `stats.people[${index}].lateNightCount`),
     laughCount: asNonNegativeInteger(person.laughCount, `stats.people[${index}].laughCount`),
+    emojiCount: asNonNegativeInteger(person.emojiCount, `stats.people[${index}].emojiCount`),
+    emojisPerMessage: asFiniteNumber(
+      person.emojisPerMessage,
+      `stats.people[${index}].emojisPerMessage`,
+      0,
+    ),
+    linkCount: asNonNegativeInteger(person.linkCount, `stats.people[${index}].linkCount`),
+    mediaCount: asNonNegativeInteger(person.mediaCount, `stats.people[${index}].mediaCount`),
+    maxConsecutiveMessages: asNonNegativeInteger(
+      person.maxConsecutiveMessages,
+      `stats.people[${index}].maxConsecutiveMessages`,
+    ),
+    silenceRevivalCount: asNonNegativeInteger(
+      person.silenceRevivalCount,
+      `stats.people[${index}].silenceRevivalCount`,
+    ),
+    weekendMessageCount: asNonNegativeInteger(
+      person.weekendMessageCount,
+      `stats.people[${index}].weekendMessageCount`,
+    ),
+    weekendShare: asFiniteNumber(person.weekendShare, `stats.people[${index}].weekendShare`, 0, 1),
+    activeSpanShare: asFiniteNumber(
+      person.activeSpanShare,
+      `stats.people[${index}].activeSpanShare`,
+      0,
+      1,
+    ),
     topEmojis,
     topWords: asArray(person.topWords, `stats.people[${index}].topWords`).map((word, wordIndex) =>
       asString(word, `stats.people[${index}].topWords[${wordIndex}]`, 100),

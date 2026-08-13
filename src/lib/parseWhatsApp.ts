@@ -103,6 +103,7 @@ export function parseWhatsAppText(
   return {
     messages: details.messages,
     mediaCount: details.mediaCount,
+    mediaBySender: details.mediaBySender,
   };
 }
 
@@ -135,6 +136,7 @@ async function parseWhatsAppZip(
     // Attached-file text lines refer to files already counted in the ZIP. Omitted
     // placeholders have no corresponding file, so they are added separately.
     mediaCount: archivedMediaCount + details.omittedMediaCount,
+    mediaBySender: details.mediaBySender,
   };
 }
 
@@ -143,6 +145,7 @@ function parseTextDetails(source: string, options: ParseWhatsAppOptions): TextPa
   const fallbackOrder = inferDateOrder(entries, options.dateOrder ?? "auto");
   const senderFrequency = countSenderCandidates(entries);
   const messages: Message[] = [];
+  const mediaBySender: Record<string, number> = {};
   let omittedMediaCount = 0;
   let attachedMediaReferenceCount = 0;
 
@@ -157,6 +160,7 @@ function parseTextDetails(source: string, options: ParseWhatsAppOptions): TextPa
       continue;
     }
 
+    const sender = cleanVisibleText(split.sender);
     let text = [split.text, ...entry.continuationLines].join("\n");
     text = stripForwardedMarkers(text);
     text = stripEditedMarkers(text);
@@ -164,6 +168,10 @@ function parseTextDetails(source: string, options: ParseWhatsAppOptions): TextPa
     const media = stripMediaLines(text);
     omittedMediaCount += media.omittedCount;
     attachedMediaReferenceCount += media.attachedReferenceCount;
+    const senderMediaCount = media.omittedCount + media.attachedReferenceCount;
+    if (senderMediaCount > 0) {
+      mediaBySender[sender] = (mediaBySender[sender] ?? 0) + senderMediaCount;
+    }
     text = media.text;
 
     if (!text || DELETED_MESSAGE.test(text)) {
@@ -173,7 +181,7 @@ function parseTextDetails(source: string, options: ParseWhatsAppOptions): TextPa
     const emojis = extractEmojis(text);
     messages.push({
       timestamp,
-      sender: cleanVisibleText(split.sender),
+      sender,
       text,
       wordCount: text.match(WORD)?.length ?? 0,
       hasEmoji: emojis.length > 0,
@@ -184,6 +192,7 @@ function parseTextDetails(source: string, options: ParseWhatsAppOptions): TextPa
   return {
     messages,
     mediaCount: omittedMediaCount + attachedMediaReferenceCount,
+    mediaBySender,
     omittedMediaCount,
     attachedMediaReferenceCount,
   };

@@ -6,6 +6,7 @@ import {
   formatCount,
   formatLocalReportDate,
   formatNovelsComparison,
+  formatParticipantTitle,
   formatSpanLabel,
 } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
@@ -16,7 +17,7 @@ interface SweetheartReportProps {
 
 export function SweetheartReport({ report }: SweetheartReportProps) {
   const { awards, content, stats } = report;
-  const names = stats.people.map((person) => person.name);
+  const names = formatParticipantTitle(stats.people);
   const awardLines = new Map(content.awardLines.map((line) => [line.awardId, line.line]));
   const cards = buildSweetheartStatCards(stats);
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
@@ -26,7 +27,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
       <article className="mx-auto min-h-screen max-w-[430px] overflow-hidden bg-[#f5f2f0] px-6 pb-10 pt-6 shadow-editorial sm:min-h-0 sm:rounded-[44px] sm:px-7 sm:pb-12 sm:pt-8">
         <header className="flex items-center justify-between pb-2">
           <div className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-sweetheart">
-            💕 sweetheart · {names.join(" & ")}
+            💕 sweetheart · {names}
           </div>
           <Link href="/create" className="font-mono text-[11px] font-bold text-sweetheart">
             ← new

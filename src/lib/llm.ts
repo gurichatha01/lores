@@ -302,6 +302,17 @@ function assertAwardLinesUseWinnerMetrics(
         `${award.label} line must use its winner's computed detail: ${award.detail}.`,
       );
     }
+    const namedRecipients = input.stats.people.filter(
+      (person) => award.who === person.name || !input.stats.people.some((candidate) => candidate.name === award.who),
+    );
+    const repeatedName = namedRecipients.find(
+      (person) => person.name.trim().length >= 2 && line.toLocaleLowerCase().includes(person.name.toLocaleLowerCase()),
+    );
+    if (repeatedName) {
+      throw new LlmOutputError(
+        `${award.label} line must not repeat the winner's name; it is already the card heading.`,
+      );
+    }
     const winner = input.stats.people.find((person) => person.name === award.who);
     const winnerValue = winner ? getAwardMetricValue(award.id, winner) : undefined;
     const tied =
@@ -331,7 +342,7 @@ function formatAwardWiring(input: GenerateReportInput): string {
         tiedPeople.length > 1
           ? ` TIE RULE — MANDATORY FOR THIS LINE: ${tiedPeople.map((person) => `"${person.name}"`).join(" and ")} share this metric value. Explicitly use "tied", "shared", or "matched" in the line. Deterministic participant-order tie-break selected "${award.who}" only for display; it does NOT mean they were actually slower, faster, higher, lower, better, or worse. Treat the award label as ceremonial and never claim a strict lead.`
           : "";
-      return `- ${award.label} (${award.id}): winner "${award.who}" has the ${rule.selection.toUpperCase()} ${rule.metric}, meaning ${rule.meaning}. Use numeric detail "${award.detail}". ${rule.lineInstruction}${tieContext}`;
+      return `- ${award.label} (${award.id}): winner "${award.who}" has the ${rule.selection.toUpperCase()} ${rule.metric}, meaning ${rule.meaning}. Use numeric detail "${award.detail}". Do not repeat the winner name in the line. ${rule.lineInstruction}${tieContext}`;
     })
     .join("\n");
 }

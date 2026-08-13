@@ -127,7 +127,7 @@ function drawWrappedCard(canvas: HTMLCanvasElement, content: WrappedCardContent)
   context.fillStyle = preset.accent;
   context.font = "700 32px 'Space Mono', monospace";
   context.letterSpacing = "5px";
-  context.fillText(`${content.modeEmoji} ${content.modeLabel.toUpperCase()} WRAPPED`, PADDING, 94);
+  context.fillText(`${content.modeEmoji} ${content.editionLabel.toUpperCase()}`, PADDING, 94);
   context.letterSpacing = "0px";
 
   context.fillStyle = foreground;

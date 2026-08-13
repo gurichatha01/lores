@@ -247,6 +247,34 @@ describe("computeStats", () => {
       { label: "4-6h", count: 1 },
     ]);
   });
+
+  it("retains the per-person signals used by group awards", () => {
+    const parsed = parseWhatsAppText([
+      "05/01/2024, 10:00 - A: https://example.com look 😂",
+      "05/01/2024, 10:01 - A: second message 😂",
+      "05/01/2024, 10:02 - A: <Media omitted>",
+      "05/01/2024, 10:03 - B: reply",
+      "06/01/2024, 10:00 - B: weekend one",
+      "06/01/2024, 10:01 - C: weekend reply",
+      "08/01/2024, 12:00 - C: bringing this back",
+    ].join("\n"));
+    const stats = computeStats(parsed);
+
+    expect(person(stats, "A")).toMatchObject({
+      emojiCount: 2,
+      emojisPerMessage: 1,
+      linkCount: 1,
+      mediaCount: 1,
+      maxConsecutiveMessages: 2,
+    });
+    expect(person(stats, "C")).toMatchObject({
+      replyCount: 1,
+      silenceRevivalCount: 1,
+      weekendMessageCount: 1,
+    });
+    expect(person(stats, "B").weekendShare).toBe(0.5);
+    expect(person(stats, "A").activeSpanShare).toBeGreaterThan(0);
+  });
 });
 
 describe("assignAwards", () => {
@@ -406,8 +434,8 @@ describe("assignAwards", () => {
       "3am-overthinker",
       "comedian",
       "perfectly-in-sync",
-      "two-way-street",
       "the-metronome",
+      "two-way-street",
     ]);
   });
 

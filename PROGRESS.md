@@ -1,6 +1,6 @@
 # LORES — Build Progress
 
-Last agent: claude-code   Last updated: 2026-08-13
+Last agent: codex   Last updated: 2026-08-13
 
 ## Status
 - [x] Phase 0 — scaffold & design system
@@ -74,6 +74,12 @@ Phase 9 (Razorpay unlock, test mode) is built and gated behind env. To exercise 
 - Order creation and signature verification call the Razorpay REST API / Node `crypto` directly (no `razorpay` npm dependency added). Verified with a local HMAC round-trip: correct signature matches, tampered signature rejected.
 - Client flow lives in `LockedReport.tsx` + `lib/razorpayCheckout.ts`: it loads the hosted Checkout script, opens it with the server order, and unlocks only after `/api/verify` returns `{verified:true}`. `ReportPageClient` swaps the teaser → `ModeReport` (the existing full report) on verified unlock and persists the unlock flag in sessionStorage for this session. Failure, cancel (modal dismiss), unconfigured (503), and script-load errors all surface a graceful message and never unlock.
 - No persistent server-side per-report unlock store exists (reports live only in the browser session, and the server never receives a report id). The security boundary is the server-side HMAC verification; the sessionStorage flag only keeps the report open across refreshes and is not itself trusted for anything.
+- Group-report award selection now evaluates a broader deterministic pool: The Lurker, The Novelist, Reply Guy, Emoji Addict, The Broadcaster, The Double-Texter, The Reviver, and Weekend Warrior. Each has a qualifying gate and one metric-owned winner. Qualifiers are ranked by signal strength, diversified across winners before repeat winners, target six cards, and hard-cap at eight without padding.
+- Perfectly In Sync and Two-Way Street are now two-person-only. Group-wide awards use concise collective recipients such as `all 9 of you`; full participant lists cannot pass request validation for groups. Award-line validation also rejects repeating the winner name while continuing to require the exact numeric detail and correct metric direction.
+- The engine now retains per-person reply samples, emoji density, links, media attribution, longest same-sender run, long-silence revivals, weekend skew, and active-span coverage. The private `viet dong` ZIP produced 4,485 text messages, 731 media items, nine participants, and six fitting awards.
+- Group titles use `<first participant> & N others` for more than three people across report headers, the Wrapped card, and the PDF. The Group card edition label is normalized to `Group Wrapped`, removing the doubled `GROUP WRAPPED WRAPPED`, and every surface shares the same `formatSpanLabel` value.
+- PDF participants now live in one unified, paginated section with identical name/message-count/top-word cards and no cutoff. The real nine-person PDF contains all nine members across two people pages, for seven A4 pages total.
+- Live Group-mode Gemini QA completed against the private nine-person export and produced `output/pdf/lores-viet-dong-group-report.json` plus the seven-page `output/pdf/lores-viet-dong-group-keepsake.pdf`. The PDF was reopened, rasterized, and inspected page by page; titles, award recipients, all participant cards, charts, story, and closing span are legible with no overflow.
 
 ## Known issues / TODO
 - No open award-eligibility follow-up remains from prompt pass v2.

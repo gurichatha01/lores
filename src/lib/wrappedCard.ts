@@ -2,6 +2,7 @@ import { getModePreset } from "./modePresets";
 import {
   buildModeStatCards,
   formatCount,
+  formatParticipantTitle,
   formatSpanLabel,
   formatWordCountWithNovels,
   type ModeStatCard,
@@ -11,6 +12,7 @@ import type { Award, ReportMode, ReportSessionData } from "./types";
 export interface WrappedCardContent {
   mode: ReportMode;
   modeLabel: string;
+  editionLabel: string;
   modeEmoji: string;
   relationshipLine: string;
   heroLabel: "total messages";
@@ -39,8 +41,11 @@ export function buildWrappedCard(report: ReportSessionData): WrappedCardContent 
   return {
     mode: report.mode,
     modeLabel: preset.label,
+    editionLabel: preset.label.toLowerCase().endsWith("wrapped")
+      ? preset.label
+      : `${preset.label} Wrapped`,
     modeEmoji: preset.emoji,
-    relationshipLine: `${report.stats.people.map((person) => person.name).join(" & ")} · ${span}`,
+    relationshipLine: `${formatParticipantTitle(report.stats.people)} · ${span}`,
     heroLabel: "total messages",
     heroValue: formatCount(report.stats.totalMessages),
     heroDetail: formatWordCountWithNovels(

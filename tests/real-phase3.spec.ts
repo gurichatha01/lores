@@ -95,6 +95,14 @@ function testAwardLine(awardId: string, detail: string): string {
     "perfectly-in-sync": "kept the reply rhythm matched.",
     "two-way-street": "kept the message split balanced.",
     "the-metronome": "kept the consecutive-day streak moving.",
+    "the-lurker": "stayed present while keeping the message count quiet.",
+    "the-novelist": "turned each message into a longer paragraph.",
+    "reply-guy": "kept replies fast at the stated median.",
+    "emoji-addict": "packed the stated emoji rate into every message.",
+    "the-broadcaster": "shared the stated links and media total.",
+    "the-double-texter": "ran the stated consecutive-message streak before a reply.",
+    "the-reviver": "broke the stated number of long silences.",
+    "weekend-warrior": "put the stated share of activity on weekends.",
   };
   return `${detail}; ${suffix[awardId]}`;
 }

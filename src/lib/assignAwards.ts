@@ -13,19 +13,15 @@ interface AwardRuleDefinition {
   lineInstruction: string;
   lineMustMatch: RegExp;
   oppositeDirection?: RegExp;
+  score?: (person: PersonStats) => number;
+  candidate: (stats: AwardStats) => AwardCandidate | null;
 }
 
-interface PrimaryAwardDefinition extends AwardRuleDefinition {
-  score: (person: PersonStats) => number;
-  eligible?: (person: PersonStats) => boolean;
-  direction?: "max" | "min";
-  detail: (person: PersonStats) => string;
-  qualifies: (winner: PersonStats, stats: AwardStats) => boolean;
-}
-
-interface AlternateAwardDefinition extends AwardRuleDefinition {
-  qualifies: (stats: AwardStats) => boolean;
-  create: (stats: AwardStats) => Award;
+interface AwardCandidate {
+  award: Award;
+  winnerKey: string;
+  strength: number;
+  order: number;
 }
 
 export interface AwardMetricRule {
@@ -44,241 +40,325 @@ export const AWARD_THRESHOLDS = {
   initiatorMinShareExclusive: 0.6,
   perfectlyInSyncMaxGapMinutes: 5,
   metronomeMinStreakDays: 7,
+  lurkerMaxEvenShareRatio: 0.6,
+  lurkerMinActiveSpanShare: 0.75,
+  novelistMinMessages: 30,
+  novelistMinAverageWords: 6,
+  replyGuyMaxMedianMinutes: 5,
+  replyGuyMinReplies: 10,
+  emojiAddictMinEmojis: 20,
+  emojiAddictMinPerMessage: 0.3,
+  broadcasterMinItems: 10,
+  doubleTexterMinRun: 5,
+  reviverMinLongSilences: 2,
+  weekendWarriorMinMessages: 20,
+  weekendWarriorMinShare: 0.5,
 } as const;
 
-const MAX_REPORT_AWARDS = 6;
+const TARGET_REPORT_AWARDS = 6;
+const MAX_REPORT_AWARDS = 8;
+const EXCEPTIONAL_SIGNAL = 2;
 
-const PRIMARY_AWARDS: readonly PrimaryAwardDefinition[] = [
-  {
+const AWARD_RULES: readonly AwardRuleDefinition[] = [
+  personRule({
     id: "certified-ghost",
     label: "Certified Ghost",
     emoji: "👻",
     score: (person) => person.medianReplyTimeMin,
+    direction: "max",
+    qualifies: (winner) => winner.medianReplyTimeMin > AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive,
     detail: (person) => `median reply ${formatMinutes(person.medianReplyTimeMin)}`,
-    qualifies: (winner) =>
-      winner.medianReplyTimeMin > AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive,
+    strength: (winner, people) => higherSignal(winner.medianReplyTimeMin, runnerUp(people, (person) => person.medianReplyTimeMin), AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive),
     metric: "median reply time",
     selection: "highest",
     meaning: "the slowest replier",
-    lineInstruction:
-      "Frame the winner as the slowest replier or the person who keeps others waiting; never praise their speed.",
-    lineMustMatch:
-      /\b(?:slow|slowest|wait|waiting|delay|delayed|late|later|offline|ghost|left\s+.+\s+hanging)\b/iu,
-    oppositeDirection:
-      /\b(?:fast|faster|fastest|quick|quicker|quickest|rapid|rapid-fire|instant|immediate|speedy|prompt)\b/iu,
-  },
-  {
+    lineInstruction: "Describe the winner's specific slow-reply behavior and cite the grounded reply-time detail; never praise their speed.",
+    lineMustMatch: /\b(?:slow|slowest|wait|waiting|delay|delayed|late|later|offline|ghost|hanging|reply)\b/iu,
+    oppositeDirection: /\b(?:fast|faster|fastest|quick|quickest|rapid|rapid-fire|instant|immediate|speedy|prompt)\b/iu,
+  }),
+  personRule({
     id: "main-character",
     label: "Main Character",
     emoji: "🎭",
     score: (person) => person.messageShare,
+    direction: "max",
+    qualifies: (winner) => winner.messageShare > AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
     detail: (person) => `${Math.round(person.messageShare * 100)}% of all messages`,
-    qualifies: (winner) =>
-      winner.messageShare > AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
+    strength: (winner, people) => higherSignal(winner.messageShare, runnerUp(people, (person) => person.messageShare), AWARD_THRESHOLDS.mainCharacterMinShareExclusive),
     metric: "message share",
     selection: "highest",
     meaning: "the person who sent the largest share of messages",
-    lineInstruction:
-      "Frame the winner as contributing the most or taking the largest share of the chat.",
-    lineMustMatch: /(?:%|\bpercent\b|\b(?:message|messages|share|chat)\b)/iu,
+    lineInstruction: "Describe the winner's specific message-volume dominance and cite the grounded share.",
+    lineMustMatch: /(?:%|\b(?:message|messages|share|chat)\b)/iu,
     oppositeDirection: /\b(?:fewest|least|lowest|smallest)\s+(?:messages?|share)\b/iu,
-  },
-  {
+  }),
+  personRule({
     id: "3am-overthinker",
     label: "3AM Overthinker",
     emoji: "🌙",
     score: (person) => person.lateNightCount,
+    direction: "max",
+    qualifies: (winner) => winner.lateNightCount > AWARD_THRESHOLDS.lateNightMinMessagesExclusive,
     detail: (person) => `${formatCount(person.lateNightCount)} late-night messages`,
-    qualifies: (winner) =>
-      winner.lateNightCount > AWARD_THRESHOLDS.lateNightMinMessagesExclusive,
+    strength: (winner, people) => higherSignal(winner.lateNightCount, runnerUp(people, (person) => person.lateNightCount), AWARD_THRESHOLDS.lateNightMinMessagesExclusive),
     metric: "late-night message count",
     selection: "highest",
     meaning: "the person with the most late-night messages",
-    lineInstruction: "Frame the winner as the most active late at night.",
+    lineInstruction: "Describe the winner's specific late-night activity and cite the grounded count.",
     lineMustMatch: /\b(?:late[- ]night|night|midnight|3\s*a\.?m\.?)\b/iu,
-    oppositeDirection: /\b(?:fewest|least|no)\s+(?:late[- ]night|night|midnight)\b/iu,
-  },
-  {
+  }),
+  personRule({
     id: "one-word-warrior",
     label: "One-Word Warrior",
     emoji: "🗿",
     score: (person) => person.avgWordsPerMessage,
-    eligible: (person) => person.messageCount > 0,
     direction: "min",
-    detail: (person) => {
-      const average = formatDecimal(person.avgWordsPerMessage);
-      return `${average} ${average === "1" ? "word" : "words"} per message`;
-    },
-    qualifies: (winner) =>
-      winner.avgWordsPerMessage < AWARD_THRESHOLDS.oneWordMaxAverageExclusive,
+    eligible: (person) => person.messageCount >= 20,
+    qualifies: (winner) => winner.avgWordsPerMessage < AWARD_THRESHOLDS.oneWordMaxAverageExclusive,
+    detail: (person) => `${formatDecimal(person.avgWordsPerMessage)} words per message`,
+    strength: (winner, people) => lowerSignal(winner.avgWordsPerMessage, runnerDown(people, (person) => person.avgWordsPerMessage), AWARD_THRESHOLDS.oneWordMaxAverageExclusive),
     metric: "average words per message",
     selection: "lowest",
     meaning: "the person with the shortest messages",
-    lineInstruction:
-      "Frame the winner as the briefest or most concise writer, because this award selects the lowest average.",
-    lineMustMatch:
-      /\b(?:word|words|short|shortest|brief|briefest|concise|fewest|tiny|one-liner|efficient)\b/iu,
+    lineInstruction: "Describe the winner's specific concise-message habit and cite the grounded average.",
+    lineMustMatch: /\b(?:word|words|short|brief|concise|tiny|one-liner|efficient)\b/iu,
     oppositeDirection: /\b(?:most|highest)\s+(?:words?|average)\b|\b(?:longest|wordiest)\b/iu,
-  },
-  {
+  }),
+  personRule({
     id: "comedian",
     label: "Comedian",
     emoji: "🎤",
     score: (person) => person.laughCount,
+    direction: "max",
+    qualifies: (winner) => winner.laughCount > AWARD_THRESHOLDS.comedianMinLaughMessagesExclusive,
     detail: (person) => `${formatCount(person.laughCount)} laugh-messages`,
-    qualifies: (winner) =>
-      winner.laughCount > AWARD_THRESHOLDS.comedianMinLaughMessagesExclusive,
+    strength: (winner, people) => higherSignal(winner.laughCount, runnerUp(people, (person) => person.laughCount), AWARD_THRESHOLDS.comedianMinLaughMessagesExclusive),
     metric: "laugh-message count",
     selection: "highest",
     meaning: "the person with the most laugh-messages",
-    lineInstruction: "Frame the winner as producing the most laughter in the chat.",
-    lineMustMatch:
-      /\b(?:laugh|laughing|laughs|funny|joke|jokes|comedy|comedian|lol|lmao|rofl|keyboard-smash)\b/iu,
-    oppositeDirection:
-      /\b(?:fewest|least|no)\s+(?:laughs?|jokes?)\b|\bnever\s+(?:laughs?|jokes?)\b/iu,
-  },
-  {
+    lineInstruction: "Describe the winner's specific laughter pattern and cite the grounded laugh-message count.",
+    lineMustMatch: /\b(?:laugh|laughing|funny|joke|comedy|comedian|lol|lmao|rofl)\b/iu,
+  }),
+  personRule({
     id: "the-initiator",
     label: "The Initiator",
     emoji: "🚀",
     score: (person) => person.conversationStarts,
+    direction: "max",
+    qualifies: (winner, stats) => winner.conversationStarts / sum(stats.people, (person) => person.conversationStarts) > AWARD_THRESHOLDS.initiatorMinShareExclusive,
     detail: (person) => `${formatCount(person.conversationStarts)} conversation starts`,
-    qualifies: (winner, stats) => {
-      const total = stats.people.reduce((sum, person) => sum + person.conversationStarts, 0);
-      return total > 0 && winner.conversationStarts / total > AWARD_THRESHOLDS.initiatorMinShareExclusive;
-    },
+    strength: (winner, people) => higherSignal(winner.conversationStarts / Math.max(1, sum(people, (person) => person.conversationStarts)), 0, AWARD_THRESHOLDS.initiatorMinShareExclusive),
     metric: "conversation-start count",
     selection: "highest",
     meaning: "the person who started the most conversations",
-    lineInstruction: "Frame the winner as the person who opens or restarts the chat most often.",
-    lineMustMatch:
-      /\b(?:start|starts|started|starting|first|open|opens|opened|opening|kick|kicks|kicked|initiate|initiates|initiated|initiator)\b/iu,
-    oppositeDirection:
-      /\b(?:fewest|least|no)\s+(?:starts?|openings?)\b|\b(?:never|rarely)\s+(?:starts?|initiates?|opens?)\b/iu,
-  },
-];
-
-const ALTERNATE_AWARDS: readonly AlternateAwardDefinition[] = [
-  {
+    lineInstruction: "Describe the winner's specific habit of opening or reviving the chat and cite the grounded count.",
+    lineMustMatch: /\b(?:start|starts|started|open|opens|kick|initiate|initiator)\b/iu,
+  }),
+  personRule({
+    id: "the-lurker",
+    label: "The Lurker",
+    emoji: "👀",
+    score: (person) => person.messageShare,
+    direction: "min",
+    eligible: (person) => person.messageCount >= 10 && person.activeSpanShare >= AWARD_THRESHOLDS.lurkerMinActiveSpanShare,
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.messageShare < (1 / stats.people.length) * AWARD_THRESHOLDS.lurkerMaxEvenShareRatio,
+    detail: (person) => `${formatCount(person.messageCount)} messages across ${Math.round(person.activeSpanShare * 100)}% of the chat span`,
+    strength: (winner, people) => lowerSignal(winner.messageShare, runnerDown(people, (person) => person.messageShare), (1 / people.length) * AWARD_THRESHOLDS.lurkerMaxEvenShareRatio),
+    metric: "message share with full-span presence",
+    selection: "lowest",
+    meaning: "the quietest participant who remained present throughout the chat",
+    lineInstruction: "Describe the winner's specific low-volume but long-running presence and cite the grounded message count or span.",
+    lineMustMatch: /\b(?:quiet|quietest|lurker|watch|watched|present|span|messages?)\b/iu,
+  }),
+  personRule({
+    id: "the-novelist",
+    label: "The Novelist",
+    emoji: "✍️",
+    score: (person) => person.avgWordsPerMessage,
+    direction: "max",
+    eligible: (person) => person.messageCount >= AWARD_THRESHOLDS.novelistMinMessages,
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.avgWordsPerMessage >= AWARD_THRESHOLDS.novelistMinAverageWords && winner.avgWordsPerMessage >= median(stats.people.map((person) => person.avgWordsPerMessage)) * 1.2,
+    detail: (person) => `${formatDecimal(person.avgWordsPerMessage)} words per message`,
+    strength: (winner, people) => higherSignal(winner.avgWordsPerMessage, runnerUp(people, (person) => person.avgWordsPerMessage), AWARD_THRESHOLDS.novelistMinAverageWords),
+    metric: "average words per message",
+    selection: "highest",
+    meaning: "the participant who writes the longest messages on average",
+    lineInstruction: "Describe the winner's specific long-message habit and cite the grounded average.",
+    lineMustMatch: /\b(?:word|words|long|longest|paragraph|essay|novel|message)\b/iu,
+  }),
+  personRule({
+    id: "reply-guy",
+    label: "Reply Guy",
+    emoji: "⚡",
+    score: (person) => person.medianReplyTimeMin,
+    direction: "min",
+    eligible: (person) => person.replyCount >= AWARD_THRESHOLDS.replyGuyMinReplies,
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.medianReplyTimeMin <= AWARD_THRESHOLDS.replyGuyMaxMedianMinutes,
+    detail: (person) => `${formatMinutes(person.medianReplyTimeMin)} median reply across ${formatCount(person.replyCount)} replies`,
+    strength: (winner, people) => lowerSignal(winner.medianReplyTimeMin, runnerDown(people, (person) => person.medianReplyTimeMin), AWARD_THRESHOLDS.replyGuyMaxMedianMinutes),
+    metric: "median reply time",
+    selection: "lowest",
+    meaning: "the fastest reliable replier",
+    lineInstruction: "Describe the winner's specific fast-reply behavior and cite the grounded reply time and/or reply count.",
+    lineMustMatch: /\b(?:fast|quick|instant|reply|replies|minute|minutes|median)\b/iu,
+    oppositeDirection: /\b(?:slow|slowest|ghost|waiting)\b/iu,
+  }),
+  personRule({
+    id: "emoji-addict",
+    label: "Emoji Addict",
+    emoji: "😍",
+    score: (person) => person.emojisPerMessage,
+    direction: "max",
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.emojiCount >= AWARD_THRESHOLDS.emojiAddictMinEmojis && winner.emojisPerMessage >= AWARD_THRESHOLDS.emojiAddictMinPerMessage,
+    detail: (person) => `${formatDecimal(person.emojisPerMessage)} emojis per message (${formatCount(person.emojiCount)} total)`,
+    strength: (winner, people) => higherSignal(winner.emojisPerMessage, runnerUp(people, (person) => person.emojisPerMessage), AWARD_THRESHOLDS.emojiAddictMinPerMessage),
+    metric: "emojis per message",
+    selection: "highest",
+    meaning: "the participant who uses emojis most densely",
+    lineInstruction: "Describe the winner's specific emoji habit and cite the grounded rate or count.",
+    lineMustMatch: /\b(?:emoji|emojis|reaction|reactions|per message|total)\b/iu,
+  }),
+  personRule({
+    id: "the-broadcaster",
+    label: "The Broadcaster",
+    emoji: "📡",
+    score: (person) => person.linkCount + person.mediaCount,
+    direction: "max",
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.linkCount + winner.mediaCount >= AWARD_THRESHOLDS.broadcasterMinItems,
+    detail: (person) => `${formatCount(person.linkCount)} links + ${formatCount(person.mediaCount)} media shares`,
+    strength: (winner, people) => higherSignal(winner.linkCount + winner.mediaCount, runnerUp(people, (person) => person.linkCount + person.mediaCount), AWARD_THRESHOLDS.broadcasterMinItems),
+    metric: "combined link and media shares",
+    selection: "highest",
+    meaning: "the participant who broadcasts the most links and media",
+    lineInstruction: "Describe the winner's specific link/media sharing behavior and cite the grounded counts.",
+    lineMustMatch: /\b(?:link|links|media|share|shares|shared|broadcast)\b/iu,
+  }),
+  personRule({
+    id: "the-double-texter",
+    label: "The Double-Texter",
+    emoji: "📲",
+    score: (person) => person.maxConsecutiveMessages,
+    direction: "max",
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.maxConsecutiveMessages >= AWARD_THRESHOLDS.doubleTexterMinRun,
+    detail: (person) => `${formatCount(person.maxConsecutiveMessages)} consecutive messages without a reply`,
+    strength: (winner, people) => higherSignal(winner.maxConsecutiveMessages, runnerUp(people, (person) => person.maxConsecutiveMessages), AWARD_THRESHOLDS.doubleTexterMinRun),
+    metric: "longest consecutive un-replied message run",
+    selection: "highest",
+    meaning: "the participant with the longest run of messages before anyone else replied",
+    lineInstruction: "Describe the winner's specific consecutive-message streak and cite the grounded run length.",
+    lineMustMatch: /\b(?:consecutive|messages|texts|texting|reply|streak|run)\b/iu,
+  }),
+  personRule({
+    id: "the-reviver",
+    label: "The Reviver",
+    emoji: "🫀",
+    score: (person) => person.silenceRevivalCount,
+    direction: "max",
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.silenceRevivalCount >= AWARD_THRESHOLDS.reviverMinLongSilences,
+    detail: (person) => `${formatCount(person.silenceRevivalCount)} long silences broken`,
+    strength: (winner, people) => higherSignal(winner.silenceRevivalCount, runnerUp(people, (person) => person.silenceRevivalCount), AWARD_THRESHOLDS.reviverMinLongSilences),
+    metric: "long-silence revival count",
+    selection: "highest",
+    meaning: "the participant who most often returned after a silence longer than 24 hours",
+    lineInstruction: "Describe the winner's specific habit of breaking long silences and cite the grounded count.",
+    lineMustMatch: /\b(?:silence|silences|quiet|revive|revived|return|returned|restart|broke|broken)\b/iu,
+  }),
+  personRule({
+    id: "weekend-warrior",
+    label: "Weekend Warrior",
+    emoji: "🗓️",
+    score: (person) => person.weekendShare,
+    direction: "max",
+    qualifies: (winner, stats) => stats.people.length > 2 && winner.weekendMessageCount >= AWARD_THRESHOLDS.weekendWarriorMinMessages && winner.weekendShare >= AWARD_THRESHOLDS.weekendWarriorMinShare,
+    detail: (person) => `${Math.round(person.weekendShare * 100)}% of messages on weekends (${formatCount(person.weekendMessageCount)})`,
+    strength: (winner, people) => higherSignal(winner.weekendShare, runnerUp(people, (person) => person.weekendShare), AWARD_THRESHOLDS.weekendWarriorMinShare),
+    metric: "weekend share of activity",
+    selection: "highest",
+    meaning: "the participant whose activity is most heavily skewed to weekends",
+    lineInstruction: "Describe the winner's specific weekend-heavy activity and cite the grounded share or count.",
+    lineMustMatch: /\b(?:weekend|weekends|saturday|sunday|messages|activity)\b/iu,
+  }),
+  sharedRule({
     id: "perfectly-in-sync",
     label: "Perfectly In Sync",
     emoji: "🫶",
-    qualifies: (stats) => {
-      if (stats.people.length < 2 || stats.people.some((person) => person.messageCount < 2)) {
-        return false;
-      }
-      const replyTimes = stats.people.map((person) => person.medianReplyTimeMin);
-      return Math.max(...replyTimes) - Math.min(...replyTimes) <=
-        AWARD_THRESHOLDS.perfectlyInSyncMaxGapMinutes;
-    },
-    create: (stats) => {
-      const replyTimes = stats.people.map((person) => person.medianReplyTimeMin);
-      const min = Math.min(...replyTimes);
-      const max = Math.max(...replyTimes);
-      return {
-        id: "perfectly-in-sync",
-        label: "Perfectly In Sync",
-        emoji: "🫶",
-        who: joinPeople(stats.people),
-        detail:
-          min === max
-            ? `matching ${formatMinutes(max)} median replies`
-            : `reply medians within ${formatMinutes(max - min)}`,
-      };
-    },
+    qualifies: (stats) => stats.people.length === 2 && replyGap(stats.people) <= AWARD_THRESHOLDS.perfectlyInSyncMaxGapMinutes,
+    create: (stats) => ({
+      who: joinPeople(stats.people),
+      detail: replyGap(stats.people) === 0 ? `matching ${formatMinutes(stats.people[0].medianReplyTimeMin)} median replies` : `reply medians within ${formatMinutes(replyGap(stats.people))}`,
+      strength: 0.8 + 0.2 * (AWARD_THRESHOLDS.perfectlyInSyncMaxGapMinutes - replyGap(stats.people)) / AWARD_THRESHOLDS.perfectlyInSyncMaxGapMinutes,
+    }),
     metric: "gap between participant median reply times",
     selection: "closest",
-    meaning: "participants whose median reply times nearly match",
-    lineInstruction:
-      "Celebrate the participants' matched reply rhythm; this is a shared award, not a winner-versus-loser comparison.",
-    lineMustMatch: /\b(?:sync|synced|rhythm|match|matched|matching|same|shared|together|within|reply|replies)\b/iu,
-  },
-  {
+    meaning: "two participants whose median reply times nearly match",
+    lineInstruction: "Describe their matched reply rhythm and cite the grounded timing; do not repeat either name.",
+    lineMustMatch: /\b(?:sync|rhythm|match|same|shared|together|within|reply|replies)\b/iu,
+  }),
+  sharedRule({
     id: "two-way-street",
     label: "Two-Way Street",
     emoji: "↔️",
-    qualifies: (stats) =>
-      stats.people.length >= 2 &&
-      Math.max(...stats.people.map((person) => person.messageShare)) <=
-        AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
+    qualifies: (stats) => stats.people.length === 2 && Math.max(...stats.people.map((person) => person.messageShare)) <= AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
     create: (stats) => ({
-      id: "two-way-street",
-      label: "Two-Way Street",
-      emoji: "↔️",
       who: joinPeople(stats.people),
       detail: `${stats.people.map((person) => `${Math.round(person.messageShare * 100)}%`).join(" / ")} message split`,
+      strength: 0.8 + (0.1 - Math.abs(stats.people[0].messageShare - 0.5)) * 2,
     }),
     metric: "message-share split",
     selection: "balanced",
-    meaning: "participants with no one taking more than 60% of the chat",
-    lineInstruction:
-      "Describe the balanced split as a shared back-and-forth; do not crown a main character.",
-    lineMustMatch: /(?:%|\b(?:balanced|balance|split|share|shared|two-way|back-and-forth|messages?)\b)/iu,
-  },
-  {
+    meaning: "two participants with a balanced message split",
+    lineInstruction: "Describe the grounded balanced split as shared back-and-forth; do not repeat either name.",
+    lineMustMatch: /(?:%|\b(?:balanced|split|share|two-way|back-and-forth|messages?)\b)/iu,
+  }),
+  sharedRule({
     id: "the-metronome",
     label: "The Metronome",
     emoji: "⏱️",
-    qualifies: (stats) =>
-      stats.longestStreakDays >= AWARD_THRESHOLDS.metronomeMinStreakDays,
+    qualifies: (stats) => stats.longestStreakDays >= AWARD_THRESHOLDS.metronomeMinStreakDays,
     create: (stats) => ({
-      id: "the-metronome",
-      label: "The Metronome",
-      emoji: "⏱️",
-      who: joinPeople(stats.people),
+      who: stats.people.length > 2 ? `all ${stats.people.length} of you` : joinPeople(stats.people),
       detail: `${formatCount(stats.longestStreakDays)}-day all-participant streak`,
+      strength: stats.people.length > 2 ? stats.longestStreakDays / AWARD_THRESHOLDS.metronomeMinStreakDays : Math.min(1, stats.longestStreakDays / AWARD_THRESHOLDS.metronomeMinStreakDays),
     }),
     metric: "all-participant daily streak",
     selection: "longest",
     meaning: "a sustained run of consecutive days with everyone active",
-    lineInstruction:
-      "Describe the consistency of everyone showing up on consecutive days.",
-    lineMustMatch: /\b(?:streak|day|days|daily|consecutive|consistent|consistency|showing up|rhythm)\b/iu,
-  },
+    lineInstruction: "Describe the group's grounded consecutive-day consistency; do not repeat participant names.",
+    lineMustMatch: /\b(?:streak|day|days|daily|consecutive|consistent|rhythm)\b/iu,
+  }),
 ];
 
-const ALL_AWARD_RULES: readonly AwardRuleDefinition[] = [
-  ...PRIMARY_AWARDS,
-  ...ALTERNATE_AWARDS,
-];
-
-/** Select only awards whose deterministic metric clears its qualifying gate. */
+/** Select threshold-clearing awards, ranked by signal and diversified across winners. */
 export function assignAwards(stats: AwardStats): Award[] {
   if (stats.people.length === 0) return [];
 
-  const primaryAwards = PRIMARY_AWARDS.flatMap((definition) => {
-    const candidates = stats.people.filter((person) => definition.eligible?.(person) ?? true);
-    if (candidates.length === 0) return [];
+  const candidates = AWARD_RULES.flatMap((rule, order) => {
+    const candidate = rule.candidate(stats);
+    return candidate ? [{ ...candidate, order }] : [];
+  }).sort((left, right) => right.strength - left.strength || left.order - right.order);
 
-    const winner = candidates.reduce((best, candidate) => {
-      const bestScore = definition.score(best);
-      const candidateScore = definition.score(candidate);
-      const candidateWins =
-        definition.direction === "min"
-          ? candidateScore < bestScore
-          : candidateScore > bestScore;
-      return candidateWins ? candidate : best;
-    });
-    if (!definition.qualifies(winner, stats)) return [];
+  const exceptionalCount = candidates.filter((candidate) => candidate.strength >= EXCEPTIONAL_SIGNAL).length;
+  const limit = Math.min(MAX_REPORT_AWARDS, Math.max(TARGET_REPORT_AWARDS, exceptionalCount));
+  const selected: AwardCandidate[] = [];
+  const winners = new Set<string>();
 
-    return [{
-      id: definition.id,
-      label: definition.label,
-      emoji: definition.emoji,
-      who: winner.name,
-      detail: definition.detail(winner),
-    }];
-  });
+  for (const candidate of candidates) {
+    if (selected.length >= limit) break;
+    if (candidate.winnerKey !== "@collective" && !winners.has(candidate.winnerKey)) {
+      selected.push(candidate);
+      winners.add(candidate.winnerKey);
+    }
+  }
+  for (const candidate of candidates) {
+    if (selected.length >= limit) break;
+    if (!selected.includes(candidate)) selected.push(candidate);
+  }
 
-  const alternates = ALTERNATE_AWARDS
-    .filter((definition) => definition.qualifies(stats))
-    .map((definition) => definition.create(stats));
-
-  return [...primaryAwards, ...alternates].slice(0, MAX_REPORT_AWARDS);
+  return selected.map((candidate) => candidate.award);
 }
 
 export function getAwardMetricRule(awardId: string): AwardMetricRule | undefined {
-  const definition = ALL_AWARD_RULES.find((award) => award.id === awardId);
+  const definition = AWARD_RULES.find((award) => award.id === awardId);
   if (!definition) return undefined;
   return {
     metric: definition.metric,
@@ -288,46 +368,105 @@ export function getAwardMetricRule(awardId: string): AwardMetricRule | undefined
   };
 }
 
-export function getAwardMetricValue(
-  awardId: string,
-  person: PersonStats,
-): number | undefined {
-  return PRIMARY_AWARDS.find((award) => award.id === awardId)?.score(person);
+export function getAwardMetricValue(awardId: string, person: PersonStats): number | undefined {
+  return AWARD_RULES.find((award) => award.id === awardId)?.score?.(person);
 }
 
-export function getAwardLineDirectionError(
-  awardId: string,
-  line: string,
-  options: { tied?: boolean } = {},
-): string | null {
-  const definition = ALL_AWARD_RULES.find((award) => award.id === awardId);
+export function getAwardLineDirectionError(awardId: string, line: string, options: { tied?: boolean } = {}): string | null {
+  const definition = AWARD_RULES.find((award) => award.id === awardId);
   if (!definition) return `Unknown award id: ${awardId}.`;
+  if (definition.oppositeDirection?.test(line)) return `${definition.label} line describes the opposite metric direction.`;
   if (options.tied) {
-    const acknowledgesTie =
-      /\b(?:tie|tied|both|share|shared|equal|same|joint|co-winner|co-winners|matching|matched|identical|neither|everyone|each)\b/iu.test(
-        line,
-      );
-    if (definition.oppositeDirection?.test(line)) {
-      return `${definition.label} line describes the opposite metric direction.`;
-    }
-    if (
-      /\b(?:but|yet|however|still|tie-break|tiebreak)\b.{0,100}\b(?:longer|shorter|more|most|less|least|highest|lowest|slow|slower|slowest|fast|faster|fastest|large|larger|largest|small|smaller|smallest|few|fewer|fewest|lead|leader|led|beat|beats|won|winner|dominated|dominates|owned)\b/iu.test(
-        line,
-      )
-    ) {
+    if (/\b(?:but|yet|however|still|tie-break|tiebreak)\b.{0,100}\b(?:longer|shorter|more|most|less|least|highest|lowest|slow|slower|slowest|fast|faster|fastest|large|larger|largest|small|smaller|smallest|few|fewer|fewest|lead|leader|led|beat|beats|won|winner|dominated|dominates|owned)\b/iu.test(line)) {
       return `${definition.label} line claims a strict winner even though the metric is tied.`;
     }
-    return acknowledgesTie
-      ? null
-      : `${definition.label} line must explicitly acknowledge that the winning metric is tied.`;
+    if (!/\b(?:tie|tied|both|share|shared|equal|same|joint|co-winner|co-winners|matching|matched|identical|neither|everyone|each)\b/iu.test(line)) {
+      return `${definition.label} line must explicitly acknowledge that the winning metric is tied.`;
+    }
   }
-  if (definition.oppositeDirection?.test(line)) {
-    return `${definition.label} line describes the opposite metric direction.`;
-  }
-  if (!definition.lineMustMatch.test(line)) {
-    return `${definition.label} line must describe ${definition.meaning}.`;
-  }
+  if (!definition.lineMustMatch.test(line)) return `${definition.label} line must describe ${definition.meaning}.`;
   return null;
+}
+
+interface PersonRuleOptions extends Omit<AwardRuleDefinition, "candidate"> {
+  score: (person: PersonStats) => number;
+  direction: "max" | "min";
+  eligible?: (person: PersonStats) => boolean;
+  qualifies: (winner: PersonStats, stats: AwardStats) => boolean;
+  detail: (winner: PersonStats) => string;
+  strength: (winner: PersonStats, people: readonly PersonStats[]) => number;
+}
+
+function personRule(options: PersonRuleOptions): AwardRuleDefinition {
+  return {
+    ...options,
+    candidate: (stats) => {
+      const people = stats.people.filter((person) => options.eligible?.(person) ?? true);
+      if (people.length === 0) return null;
+      const winner = people.reduce((best, person) => {
+        const difference = options.score(person) - options.score(best);
+        return options.direction === "max" ? (difference > 0 ? person : best) : (difference < 0 ? person : best);
+      });
+      if (!options.qualifies(winner, stats)) return null;
+      return {
+        award: { id: options.id, label: options.label, emoji: options.emoji, who: winner.name, detail: options.detail(winner) },
+        winnerKey: winner.name,
+        strength: options.strength(winner, people),
+        order: 0,
+      };
+    },
+  };
+}
+
+interface SharedRuleOptions extends Omit<AwardRuleDefinition, "candidate"> {
+  qualifies: (stats: AwardStats) => boolean;
+  create: (stats: AwardStats) => { who: string; detail: string; strength: number };
+}
+
+function sharedRule(options: SharedRuleOptions): AwardRuleDefinition {
+  return {
+    ...options,
+    candidate: (stats) => {
+      if (!options.qualifies(stats)) return null;
+      const created = options.create(stats);
+      return {
+        award: { id: options.id, label: options.label, emoji: options.emoji, who: created.who, detail: created.detail },
+        winnerKey: "@collective",
+        strength: created.strength,
+        order: 0,
+      };
+    },
+  };
+}
+
+function higherSignal(winner: number, second: number, threshold: number): number {
+  return winner / Math.max(threshold, 0.001) + Math.max(0, winner - second) / Math.max(winner, 0.001);
+}
+
+function lowerSignal(winner: number, second: number, threshold: number): number {
+  return threshold / Math.max(winner, 0.001) + Math.max(0, second - winner) / Math.max(second, 0.001);
+}
+
+function runnerUp(people: readonly PersonStats[], score: (person: PersonStats) => number): number {
+  return [...people].map(score).sort((left, right) => right - left)[1] ?? 0;
+}
+
+function runnerDown(people: readonly PersonStats[], score: (person: PersonStats) => number): number {
+  return [...people].map(score).sort((left, right) => left - right)[1] ?? 0;
+}
+
+function sum(people: readonly PersonStats[], score: (person: PersonStats) => number): number {
+  return people.reduce((total, person) => total + score(person), 0);
+}
+
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((left, right) => left - right);
+  const midpoint = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[midpoint - 1] + sorted[midpoint]) / 2 : sorted[midpoint];
+}
+
+function replyGap(people: readonly PersonStats[]): number {
+  return Math.abs(people[0].medianReplyTimeMin - people[1].medianReplyTimeMin);
 }
 
 function joinPeople(people: readonly PersonStats[]): string {
@@ -335,6 +474,7 @@ function joinPeople(people: readonly PersonStats[]): string {
 }
 
 function formatMinutes(minutes: number): string {
+  if (minutes < 1) return "<1m";
   const rounded = Math.round(minutes);
   if (rounded < 60) return `${rounded}m`;
   const hours = Math.floor(rounded / 60);

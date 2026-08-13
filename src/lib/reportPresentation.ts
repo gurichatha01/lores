@@ -52,6 +52,14 @@ export function formatSpanLabel(spanDays: number): string {
   return `${spanDays} days, in messages`;
 }
 
+export function formatParticipantTitle(
+  people: readonly { name: string }[],
+): string {
+  const names = people.map((person) => person.name);
+  if (names.length <= 3) return names.join(" & ");
+  return `${names[0]} & ${names.length - 1} others`;
+}
+
 export function buildSweetheartStatCards(stats: ReportStats): SweetheartStatCard[] {
   return buildModeStatCards("sweetheart", stats);
 }

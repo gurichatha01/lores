@@ -2,6 +2,7 @@ import { getModePreset } from "./modePresets";
 import {
   formatCount,
   formatLocalReportDate,
+  formatParticipantTitle,
   formatSpanLabel,
   formatWordCountWithNovels,
 } from "./reportPresentation";
@@ -24,7 +25,7 @@ export interface PdfDocumentData {
   span: string;
   dateRange: string;
   storyPages: PdfChapter[][];
-  additionalPeoplePages: PersonStats[][];
+  peoplePages: PersonStats[][];
 }
 
 export interface PdfCanvas {
@@ -53,13 +54,13 @@ export function buildPdfDocumentData(report: ReportSessionData): PdfDocumentData
     modeLabel: preset.label,
     accent: preset.accent,
     surface: preset.treatment === "soft" ? preset.surface : PAPER,
-    names: report.stats.people.map((person) => person.name).join(" & "),
+    names: formatParticipantTitle(report.stats.people),
     span: formatSpanLabel(report.stats.spanDays).replace(", in messages", ""),
     dateRange: `${formatLocalReportDate(report.stats.firstMessageDate.slice(0, 10))} - ${formatLocalReportDate(
       report.stats.lastMessageDate.slice(0, 10),
     )}`,
     storyPages: paginateChapters(chapters),
-    additionalPeoplePages: chunk(report.stats.people.slice(4), 8),
+    peoplePages: chunk(report.stats.people, 8),
   };
 }
 
@@ -72,10 +73,10 @@ export function renderReportPdfPages(
 
   pages.push(renderPage(createCanvas, (context) => drawCover(context, data)));
   pages.push(renderPage(createCanvas, (context) => drawMetrics(context, data)));
-  pages.push(renderPage(createCanvas, (context) => drawAwardsAndPeople(context, data)));
+  pages.push(renderPage(createCanvas, (context) => drawAwards(context, data)));
   let pageNumber = 4;
-  for (const people of data.additionalPeoplePages) {
-    pages.push(renderPage(createCanvas, (context) => drawPeopleContinuation(context, data, people, pageNumber)));
+  for (const [index, people] of data.peoplePages.entries()) {
+    pages.push(renderPage(createCanvas, (context) => drawPeoplePage(context, data, people, index, pageNumber)));
     pageNumber += 1;
   }
   for (const [index, chapters] of data.storyPages.entries()) {
@@ -195,10 +196,10 @@ function drawMetrics(context: CanvasRenderingContext2D, data: PdfDocumentData): 
   drawPageNumber(context, 2, data.accent, false);
 }
 
-function drawAwardsAndPeople(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
+function drawAwards(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
   fillPage(context, PAPER);
   drawSectionHeader(context, data, "03 - the awards");
-  const { awards, stats } = data.report;
+  const { awards } = data.report;
 
   awards.forEach((award, index) => {
     const column = index % 2;
@@ -218,29 +219,13 @@ function drawAwardsAndPeople(context: CanvasRenderingContext2D, data: PdfDocumen
     context.fillText(award.label.toUpperCase(), x + 88, y + 32);
     archivo(context, 22, 700);
     context.fillStyle = highlighted ? "rgba(255,255,255,.82)" : MUTED;
-    context.fillText(award.who, x + 88, y + 76);
+    fitAndDrawText(context, award.who, x + 88, y + 76, 410, 22, 16, 700);
   });
 
-  sectionRule(context, "PER-PERSON TOP WORDS", 760);
-  const visiblePeople = stats.people.slice(0, 4);
-  visiblePeople.forEach((person, index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
-    const x = PAGE_MARGIN + column * 548;
-    const y = 824 + row * 142;
-    context.strokeStyle = INK;
-    context.lineWidth = 3;
-    context.strokeRect(x, y, 528, 118);
-    context.fillStyle = INK;
-    archivo(context, 25, 900);
-    context.fillText(person.name, x + 20, y + 17);
-    context.fillStyle = MUTED;
-    archivo(context, 20, 600);
-    drawTextBlock(context, person.topWords.join(" - ") || "no repeated words", x + 20, y + 54, 490, 27, 2);
-  });
-
-  sectionRule(context, "MILESTONES", visiblePeople.length > 2 ? 1155 : 1030);
-  const milestoneTop = visiblePeople.length > 2 ? 1218 : 1093;
+  const awardRows = Math.ceil(awards.length / 2);
+  const milestoneRuleY = Math.max(870, 190 + awardRows * 176 + 30);
+  sectionRule(context, "MILESTONES", milestoneRuleY);
+  const milestoneTop = milestoneRuleY + 63;
   const milestones = buildMilestones(data);
   milestones.forEach((milestone, index) => {
     const y = milestoneTop + index * 62;
@@ -254,22 +239,22 @@ function drawAwardsAndPeople(context: CanvasRenderingContext2D, data: PdfDocumen
     context.textAlign = "left";
   });
 
-  if (stats.people.length > 4) {
-    context.fillStyle = MUTED;
-    mono(context, 18, 400);
-    context.fillText(`+ ${stats.people.length - 4} more participants in the chat`, PAGE_MARGIN, 1588);
-  }
   drawPageNumber(context, 3, data.accent, false);
 }
 
-function drawPeopleContinuation(
+function drawPeoplePage(
   context: CanvasRenderingContext2D,
   data: PdfDocumentData,
   people: readonly PersonStats[],
+  peoplePageIndex: number,
   pageNumber: number,
 ): void {
   fillPage(context, PAPER);
-  drawSectionHeader(context, data, "03 - who's who");
+  drawSectionHeader(
+    context,
+    data,
+    `04 - the people${data.peoplePages.length > 1 ? ` - ${peoplePageIndex + 1}` : ""}`,
+  );
   people.forEach((person, index) => {
     const column = index % 2;
     const row = Math.floor(index / 2);
@@ -282,7 +267,7 @@ function drawPeopleContinuation(
     context.strokeRect(x, y, 528, 258);
     context.fillStyle = data.accent;
     archivo(context, 34, 900);
-    context.fillText(person.name, x + 24, y + 24);
+    fitAndDrawText(context, person.name, x + 24, y + 24, 478, 34, 22, 900);
     context.fillStyle = MUTED;
     mono(context, 18, 700, 2);
     context.fillText(`${formatCount(person.messageCount)} MESSAGES`, x + 24, y + 80);
@@ -310,7 +295,7 @@ function drawStory(
   pageNumber: number,
 ): void {
   fillPage(context, PAPER);
-  drawSectionHeader(context, data, `04 - the story${data.storyPages.length > 1 ? ` - ${storyIndex + 1}` : ""}`);
+  drawSectionHeader(context, data, `05 - the story${data.storyPages.length > 1 ? ` - ${storyIndex + 1}` : ""}`);
   let y = 200;
 
   for (const [index, chapter] of chapters.entries()) {
@@ -605,6 +590,34 @@ function archivo(context: CanvasRenderingContext2D, size: number, weight: number
 function mono(context: CanvasRenderingContext2D, size: number, weight: number, spacing = 0): void {
   context.font = `${weight} ${size}px 'Space Mono', monospace`;
   context.letterSpacing = `${spacing}px`;
+}
+
+function fitAndDrawText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxSize: number,
+  minSize: number,
+  weight: number,
+): void {
+  let size = maxSize;
+  archivo(context, size, weight);
+  while (size > minSize && context.measureText(text).width > maxWidth) {
+    size -= 1;
+    archivo(context, size, weight);
+  }
+  context.fillText(ellipsize(context, text, maxWidth), x, y);
+}
+
+function ellipsize(context: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (context.measureText(text).width <= maxWidth) return text;
+  let value = text;
+  while (value.length > 1 && context.measureText(`${value}…`).width > maxWidth) {
+    value = value.slice(0, -1);
+  }
+  return `${value.trimEnd()}…`;
 }
 
 function drawTextBlock(

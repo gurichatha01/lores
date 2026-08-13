@@ -14,6 +14,7 @@ import {
   buildModeStatCards,
   formatCount,
   formatNovelsComparison,
+  formatParticipantTitle,
   formatSpanLabel,
 } from "@/lib/reportPresentation";
 import type { ReportSessionData } from "@/lib/types";
@@ -48,7 +49,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const preset = getModePreset(report.mode);
   const soft = preset.treatment === "soft";
   const dark = preset.treatment === "dark";
-  const names = stats.people.map((person) => person.name).join(" & ");
+  const names = formatParticipantTitle(stats.people);
   const cards = buildModeStatCards(report.mode, stats);
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
   const receipt = content.highlights.find((highlight) => highlight.bubble) ?? content.highlights[0];

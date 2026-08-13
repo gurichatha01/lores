@@ -10,6 +10,7 @@ export interface Message {
 export interface ParsedWhatsAppExport {
   messages: Message[];
   mediaCount: number;
+  mediaBySender?: Record<string, number>;
 }
 
 export interface PersonStats {
@@ -19,10 +20,20 @@ export interface PersonStats {
   wordCount: number;
   avgWordsPerMessage: number;
   medianReplyTimeMin: number;
+  replyCount: number;
   conversationStarts: number;
   lastOfDayCount: number;
   lateNightCount: number;
   laughCount: number;
+  emojiCount: number;
+  emojisPerMessage: number;
+  linkCount: number;
+  mediaCount: number;
+  maxConsecutiveMessages: number;
+  silenceRevivalCount: number;
+  weekendMessageCount: number;
+  weekendShare: number;
+  activeSpanShare: number;
   topEmojis: { emoji: string; count: number }[];
   topWords: string[];
 }
