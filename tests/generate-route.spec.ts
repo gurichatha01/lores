@@ -72,7 +72,7 @@ describe("POST /api/generate", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("maps missing configuration safely and falls back on invalid model output", async () => {
+  it("maps missing configuration and exhausted JSON repairs to safe errors", async () => {
     vi.stubEnv("LLM_API_KEY", "");
     const missingKey = await POST(request(createTestGenerateInput()));
     expect(missingKey.status).toBe(503);
@@ -83,20 +83,13 @@ describe("POST /api/generate", () => {
       vi.fn().mockImplementation(() => Promise.resolve(geminiResponse("not JSON"))),
     );
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const badOutput = await POST(request(createTestGenerateInput()));
-    expect(badOutput.status).toBe(200);
-    await expect(badOutput.json()).resolves.toEqual(
-      expect.objectContaining({
-        title: "Your chat, by the numbers",
-        heroLine: expect.stringContaining("could not be completed"),
-      }),
-    );
+    expect(badOutput.status).toBe(502);
+    await expect(badOutput.json()).resolves.toEqual({ error: "Report generation failed." });
   });
 
-  it("returns a stats-only report instead of 502 when Gemini blocks both attempts", async () => {
+  it("returns a generation error instead of placeholder content when both requests are blocked", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal(
       "fetch",
@@ -108,10 +101,7 @@ describe("POST /api/generate", () => {
     );
 
     const response = await POST(request(createTestGenerateInput("group")));
-    const report = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(report.title).toBe("Your chat, by the numbers");
-    expect(report.heroLine).toContain("could not be processed safely");
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: "Report generation failed." });
   });
 });

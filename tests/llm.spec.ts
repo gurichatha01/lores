@@ -6,6 +6,7 @@ import {
   buildSystemPrompt,
   generateReport,
   LlmConfigurationError,
+  LlmOutputError,
   LlmRequestError,
   stripCodeFences,
   MODE_VOICE_BLOCKS,
@@ -52,6 +53,15 @@ describe("generateReport", () => {
     expect(body.generationConfig).not.toHaveProperty("top_k");
     expect(body.contents.at(-1)?.role).toBe("user");
     expect(body.safetySettings).toEqual(GEMINI_SAFETY_SETTINGS);
+    expect(body.safetySettings.every((setting: { threshold: string }) => setting.threshold === "BLOCK_NONE")).toBe(true);
+    expect(body.generationConfig.responseSchema.properties.awardLines.minItems).toBe(
+      providerInput.awards.length,
+    );
+    expect(body.generationConfig.responseSchema.properties.awardLines.maxItems).toBe(
+      providerInput.awards.length,
+    );
+    expect(body.generationConfig.responseSchema.properties.highlights.items.properties.bubbleIndex)
+      .toEqual({ type: "INTEGER" });
     expect(providerInput.userContext).toBe("Together since university.");
     expect(body.contents[0].parts[0].text).toContain(
       '\"userContext\":\"Together since university.\"',
@@ -200,10 +210,11 @@ describe("generateReport", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("logs a safety block and retries with source wording withheld", async () => {
+  it("masks slurs before the first request and removes masked messages on a safety retry", async () => {
     const input = createTestGenerateInput("group");
-    input.userContext = "Context containing friend-group profanity.";
-    input.sample[0] = { ...input.sample[0], text: "Profane source wording." };
+    const slur = ["n", "igger"].join("");
+    input.userContext = `Context containing ${slur} and ordinary damn profanity.`;
+    input.sample[0] = { ...input.sample[0], text: `Source used ${slur} here. Damn.` };
     const cleanReport = {
       ...VALID_REPORT,
       highlights: VALID_REPORT.highlights.map(({ bubble: _bubble, ...highlight }) => highlight),
@@ -224,33 +235,23 @@ describe("generateReport", () => {
     );
     const firstRequest = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     const cleanRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
-    expect(firstRequest.contents[0].parts[0].text).toContain("Profane source wording.");
-    expect(cleanRequest.contents[0].parts[0].text).not.toContain("Profane source wording.");
-    expect(cleanRequest.contents[0].parts[0].text).toContain(
-      "[Message text withheld during a clean safety retry.]",
-    );
-    expect(cleanRequest.contents[0].parts[0].text).not.toContain(input.userContext);
-    for (const person of input.stats.people) {
-      for (const word of person.topWords) {
-        expect(cleanRequest.contents[0].parts[0].text).not.toContain(`\"${word}\"`);
-      }
-    }
+    expect(firstRequest.contents[0].parts[0].text).not.toContain(slur);
+    expect(firstRequest.contents[0].parts[0].text).toContain("[slur removed]");
+    expect(firstRequest.contents[0].parts[0].text).toContain("ordinary damn profanity");
+    expect(cleanRequest.contents[0].parts[0].text).not.toContain(slur);
+    expect(cleanRequest.contents[0].parts[0].text).not.toContain("Source used [slur removed] here. Damn.");
   });
 
-  it("returns a friendly stats-only report when the clean retry is also blocked", async () => {
+  it("throws instead of returning a placeholder report when the sanitized retry is blocked", async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(geminiSafetyBlockResponse()));
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
-    const report = await generateReport(createTestGenerateInput("group"));
-
+    await expect(generateReport(createTestGenerateInput("group"))).rejects.toBeInstanceOf(
+      LlmRequestError,
+    );
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(report.title).toBe("Your chat, by the numbers");
-    expect(report.heroLine).toContain("could not be processed safely");
-    expect(report.chapters).toHaveLength(4);
-    expect(report.awardLines).toHaveLength(createTestGenerateInput("group").awards.length);
   });
 
   it.each([null, ""])(
@@ -270,6 +271,48 @@ describe("generateReport", () => {
       expect(report.highlights[0]).not.toHaveProperty("bubble");
     },
   );
+
+  it("materializes an indexed receipt as one exact sanitized sample message", async () => {
+    const input = createTestGenerateInput();
+    const indexedReport = {
+      ...VALID_REPORT,
+      highlights: [
+        {
+          label: VALID_REPORT.highlights[0].label,
+          body: VALID_REPORT.highlights[0].body,
+          bubbleIndex: 0,
+        },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(indexedReport));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await generateReport(input);
+
+    expect(report.highlights[0].bubble).toBe(input.sample[0].text);
+  });
+
+  it("repairs a response that omits any computed award line", async () => {
+    const incomplete = {
+      ...VALID_REPORT,
+      awardLines: VALID_REPORT.awardLines.slice(0, -1),
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(incomplete))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "Include exactly one non-empty awardLines entry for every ID",
+    );
+  });
 
   it("retries when a highlight bubble is not a verbatim sampled message", async () => {
     const ungrounded = {
@@ -391,20 +434,16 @@ describe("generateReport", () => {
     );
   });
 
-  it("falls back to stats after two invalid outputs without adding more retries", async () => {
+  it("fails after three invalid outputs without returning placeholder copy", async () => {
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(geminiResponse('{"title":"incomplete"}')),
     );
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
-    const report = await generateReport(createTestGenerateInput());
-
-    expect(report.title).toBe("Your chat, by the numbers");
-    expect(report.heroLine).toContain("could not be completed");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await expect(generateReport(createTestGenerateInput())).rejects.toBeInstanceOf(LlmOutputError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("rejects unsupported providers, missing keys, and HTTP failures", async () => {

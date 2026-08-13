@@ -7,15 +7,18 @@ import {
   getAwardMetricValue,
 } from "./assignAwards";
 import { parseReportContent, ReportValidationError } from "./reportValidation";
+import { maskSlurs, sanitizeLlmInput, SLUR_PLACEHOLDER } from "./sanitizeLlmInput";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 export const NARRATIVE_LENGTH = "180–240";
 export const GEMINI_SAFETY_SETTINGS = [
-  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 ] as const;
+
+const MAX_GENERATION_ATTEMPTS = 3;
 
 const REPORT_SCHEMA = {
   type: "OBJECT",
@@ -30,7 +33,7 @@ const REPORT_SCHEMA = {
         properties: {
           label: { type: "STRING" },
           body: { type: "STRING" },
-          bubble: { type: "STRING" },
+          bubbleIndex: { type: "INTEGER" },
         },
         required: ["label", "body"],
       },
@@ -96,6 +99,7 @@ FIELD RULES:
 - narrative — ${NARRATIVE_LENGTH} words. Open with a concrete detail, never a summary. Tell their actual story with their actual specifics. Close on a line that hits.
 - chapters — exactly 4, chronological, forming an arc across the whole span. Use the milestone dates and the by-month data to structure it (quiet start → peak → dip → now, or whatever the data actually shows). Each title is specific to THIS chat (never "The Beginning" — something like "The Meme Era" or "The 2AM Debate Club"). Each body is 2–3 sentences grounded in real details from that stretch.
 - highlights — pull real moments/patterns from the sample. Each is a genuine receipt or a specific pattern, briefly labeled.
+- highlight bubbleIndex — optional. Use the zero-based index of one COMPLETE supplied sample message; never write message text into this field. Omit bubbleIndex if no sample directly supports the highlight. Never select a message containing ${SLUR_PLACEHOLDER}; describe the surrounding behavior without a receipt instead.
 - heroLine / title / wrappedLine — one punchy line each, specific to them, no mush.
 
 FEW-SHOT: THE FIX, SHOWN
@@ -173,15 +177,14 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model,
   )}:generateContent`;
+  const sanitizedInput = sanitizeLlmInput(input);
+  let requestInput = sanitizedInput;
   let lastOutputError: Error | undefined;
   let validationFailures = 0;
-  let cleanRetry = false;
+  let safetyRetries = 0;
 
-  while (validationFailures < 2) {
-    const requestInput = cleanRetry ? buildCleanRetryInput(input) : input;
-    const repairInstruction = lastOutputError
-      ? `\n\nYour previous output failed validation: ${lastOutputError.message} Return a fresh, complete report that fixes this.`
-      : "";
+  while (validationFailures < MAX_GENERATION_ATTEMPTS) {
+    const repairInstruction = buildRepairInstruction(lastOutputError, requestInput);
     const request = {
       systemInstruction: { parts: [{ text: buildSystemPrompt(requestInput) }] },
       contents: [
@@ -192,7 +195,7 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
       ],
       generationConfig: {
         responseMimeType: "application/json",
-        responseSchema: REPORT_SCHEMA,
+        responseSchema: buildReportSchema(requestInput),
       },
       safetySettings: GEMINI_SAFETY_SETTINGS,
     };
@@ -212,13 +215,13 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
       const upstream = summarizeGeminiUpstreamError(response.status, responseBody, responseText);
       console.error("[lores] Gemini upstream error", upstream);
       if (isSafetyRelatedBlock(responseBody, responseText)) {
-        if (!cleanRetry) {
-          cleanRetry = true;
+        if (safetyRetries === 0) {
+          safetyRetries += 1;
+          requestInput = buildSafetyRetryInput(sanitizedInput);
           lastOutputError = undefined;
           continue;
         }
-        console.warn("[lores] Gemini clean retry was blocked; returning stats-only report.");
-        return buildStatsOnlyReport(input);
+        throw new LlmRequestError("Gemini blocked the sanitized report request for safety.");
       }
       throw new LlmRequestError(`Gemini request failed with status ${response.status}.`);
     }
@@ -226,19 +229,23 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
     const block = getGeminiBlockFeedback(responseBody);
     if (block) {
       console.error("[lores] Gemini content block", block);
-      if (!cleanRetry) {
-        cleanRetry = true;
+      if (safetyRetries === 0) {
+        safetyRetries += 1;
+        requestInput = buildSafetyRetryInput(sanitizedInput);
         lastOutputError = undefined;
         continue;
       }
-      console.warn("[lores] Gemini clean retry was blocked; returning stats-only report.");
-      return buildStatsOnlyReport(input);
+      throw new LlmRequestError("Gemini blocked the sanitized report request for safety.");
     }
 
     let generatedValue: unknown;
     try {
-      generatedValue = JSON.parse(stripCodeFences(extractGeminiText(responseBody)));
+      generatedValue = materializeHighlightBubbles(
+        JSON.parse(stripCodeFences(extractGeminiText(responseBody))),
+        requestInput,
+      );
       const content = parseReportContent(generatedValue);
+      assertNoSlursInOutput(content);
       assertAwardLinesMatch(input, content);
       assertAwardLinesUseWinnerMetrics(input, content);
       assertHighlightBubblesGrounded(requestInput, content);
@@ -256,74 +263,107 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
     }
   }
 
-  console.warn("[lores] Gemini returned invalid report JSON twice; returning stats-only report.", {
-    message: lastOutputError?.message ?? null,
-  });
-  return buildStatsOnlyReport(input, "generation");
+  throw new LlmOutputError(
+    `Gemini returned invalid report JSON ${MAX_GENERATION_ATTEMPTS} times${lastOutputError ? `: ${lastOutputError.message}` : "."}`,
+  );
 }
 
-function buildCleanRetryInput(input: GenerateReportInput): GenerateReportInput {
+function buildSafetyRetryInput(input: GenerateReportInput): GenerateReportInput {
+  const unmaskedSample = input.sample.filter(
+    (message) => !message.text.includes(SLUR_PLACEHOLDER),
+  );
   return {
     ...input,
-    userContext: input.userContext ? "[Context withheld during a clean safety retry.]" : "",
-    stats: {
-      ...input.stats,
-      people: input.stats.people.map((person) => ({ ...person, topWords: [] })),
-    },
-    sample: input.sample.map((message) => ({
-      ...message,
-      text: "[Message text withheld during a clean safety retry.]",
-      wordCount: 0,
-      hasEmoji: false,
-      emojis: [],
-    })),
+    userContext: input.userContext.includes(SLUR_PLACEHOLDER) ? "" : input.userContext,
+    sample: unmaskedSample.length > 0 ? unmaskedSample : input.sample,
   };
 }
 
-function buildStatsOnlyReport(
+function buildRepairInstruction(
+  error: Error | undefined,
   input: GenerateReportInput,
-  reason: "safety" | "generation" = "safety",
-): ReportContent {
-  const stats = input.stats;
-  const messages = formatInteger(stats.totalMessages);
-  const words = formatInteger(stats.totalWords);
-  const people = stats.people.length;
-  const firstDate = stats.firstMessageDate.slice(0, 10);
-  const lastDate = stats.lastMessageDate.slice(0, 10);
+): string {
+  if (!error) return "";
+  const awardIds = input.awards.map((award) => award.id).join(", ");
+  return `\n\nREPAIR REQUIRED. Your previous JSON was rejected: ${error.message}
+Return a fresh COMPLETE report object, not a patch. Include exactly one non-empty awardLines entry for every ID: ${awardIds || "none"}.
+Keep every required top-level field and all 4 chapters. A highlight bubbleIndex is optional: omit it unless it points to one complete supporting sample message. Never write or paraphrase message text into bubbleIndex.`;
+}
 
-  return {
-    title: "Your chat, by the numbers",
-    heroLine:
-      reason === "safety"
-        ? "Some language in this chat could not be processed safely, so this edition sticks to verified stats."
-        : "The written edition could not be completed, so this edition sticks to verified stats instead.",
-    wrappedLine: `${messages} messages. The numbers still tell the story.`,
-    highlights: [
-      {
-        label: "The archive",
-        body: `${people} ${people === 1 ? "person" : "people"} sent ${messages} messages and ${words} words across ${formatInteger(stats.spanDays)} days.`,
-      },
-      {
-        label: "Peak traffic",
-        body: `${stats.busiestDay.date} was the busiest day, with ${formatInteger(stats.busiestDay.count)} messages.`,
-      },
-      {
-        label: "The rhythm",
-        body: `The longest all-participant streak was ${formatInteger(stats.longestStreakDays)} days; the longest silence was ${formatInteger(stats.longestSilenceDays)} days.`,
-      },
-    ],
-    awardLines: input.awards.map((award) => ({
-      awardId: award.id,
-      line: `${award.detail}. Computed directly from the chat.`,
-    })),
-    narrative: `This is a stats-only edition of the report. From ${firstDate} to ${lastDate}, the chat recorded ${messages} messages and ${words} words across ${people} ${people === 1 ? "participant" : "participants"}. ${reason === "safety" ? "The creative writer could not safely process some of the source language, so no source wording has been repeated or invented here." : "The creative writer did not return a usable edition, so no generated wording has been included here."} Every number, award, and timeline marker shown in this edition still comes directly from the parsed chat.`,
-    chapters: [
-      { title: "The first page", body: `The archive begins on ${firstDate}.` },
-      { title: "The busiest day", body: `${stats.busiestDay.date} reached ${formatInteger(stats.busiestDay.count)} messages.` },
-      { title: "The running rhythm", body: `Everyone stayed active together for a longest streak of ${formatInteger(stats.longestStreakDays)} days.` },
-      { title: "The latest page", body: `The current archive runs through ${lastDate}, totaling ${messages} messages.` },
-    ],
+function buildReportSchema(input: GenerateReportInput): object {
+  const highlightProperties: Record<string, unknown> = {
+    label: { type: "STRING" },
+    body: { type: "STRING" },
+    bubbleIndex: { type: "INTEGER" },
   };
+  const awardIds = input.awards.map((award) => award.id);
+  return {
+    ...REPORT_SCHEMA,
+    properties: {
+      ...REPORT_SCHEMA.properties,
+      highlights: {
+        type: "ARRAY",
+        items: {
+          type: "OBJECT",
+          properties: highlightProperties,
+          required: ["label", "body"],
+        },
+      },
+      awardLines: {
+        type: "ARRAY",
+        minItems: awardIds.length,
+        maxItems: awardIds.length,
+        items: {
+          type: "OBJECT",
+          properties: {
+            awardId:
+              awardIds.length > 0
+                ? { type: "STRING", enum: awardIds }
+                : { type: "STRING" },
+            line: { type: "STRING" },
+          },
+          required: ["awardId", "line"],
+        },
+      },
+    },
+  };
+}
+
+function materializeHighlightBubbles(
+  value: unknown,
+  input: GenerateReportInput,
+): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const report = value as Record<string, unknown>;
+  if (!Array.isArray(report.highlights)) return value;
+  return {
+    ...report,
+    highlights: report.highlights.map((highlight) => {
+      if (!highlight || typeof highlight !== "object" || Array.isArray(highlight)) {
+        return highlight;
+      }
+      const { bubbleIndex, ...fields } = highlight as Record<string, unknown>;
+      if (!Number.isInteger(bubbleIndex)) return fields;
+      const message = input.sample[bubbleIndex as number];
+      if (
+        !message ||
+        message.text.length > 1_000 ||
+        message.text.includes(SLUR_PLACEHOLDER)
+      ) {
+        return fields;
+      }
+      return { ...fields, bubble: message.text };
+    }),
+  };
+}
+
+function assertNoSlursInOutput(content: ReportContent): void {
+  const serialized = JSON.stringify(content);
+  if (maskSlurs(serialized) !== serialized) {
+    throw new LlmOutputError(
+      "Report output must not reproduce slurs; describe the behavior without quoting the term.",
+    );
+  }
 }
 
 function parseJsonSafely(value: string): unknown {
@@ -404,10 +444,6 @@ function summarizeReportShape(value: unknown): Record<string, unknown> {
       };
     }),
   };
-}
-
-function formatInteger(value: number): string {
-  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 function extractGeminiText(value: unknown): string {
