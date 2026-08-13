@@ -122,12 +122,18 @@ export function parseReportContent(value: unknown): ReportContent {
   const highlights = asArray(content.highlights, "report.highlights").map((value, index) => {
     const highlight = asRecord(value, `report.highlights[${index}]`);
     assertExactKeys(highlight, ["label", "body", "bubble"], `report.highlights[${index}]`, ["bubble"]);
+    const bubble = highlight.bubble;
+    const hasBubble = !(
+      bubble === undefined ||
+      bubble === null ||
+      (typeof bubble === "string" && bubble.trim().length === 0)
+    );
     return {
       label: asString(highlight.label, `report.highlights[${index}].label`, 160),
       body: asString(highlight.body, `report.highlights[${index}].body`, 2_000),
-      ...(highlight.bubble === undefined
-        ? {}
-        : { bubble: asString(highlight.bubble, `report.highlights[${index}].bubble`, 1_000) }),
+      ...(hasBubble
+        ? { bubble: asString(bubble, `report.highlights[${index}].bubble`, 1_000) }
+        : {}),
     };
   });
   const awardLines = asArray(content.awardLines, "report.awardLines").map((value, index) => {

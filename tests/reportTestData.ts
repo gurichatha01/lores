@@ -148,7 +148,7 @@ export const ALTERNATE_REPORT: ReportContent = {
   ],
 };
 
-export function geminiResponse(content: ReportContent | string): Response {
+export function geminiResponse(content: unknown): Response {
   const text = typeof content === "string" ? content : JSON.stringify(content);
   return Response.json({
     candidates: [{ content: { parts: [{ text }] } }],

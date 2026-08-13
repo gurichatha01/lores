@@ -10,6 +10,12 @@ import { parseReportContent, ReportValidationError } from "./reportValidation";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
 export const NARRATIVE_LENGTH = "180–240";
+export const GEMINI_SAFETY_SETTINGS = [
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+] as const;
 
 const REPORT_SCHEMA = {
   type: "OBJECT",
@@ -113,6 +119,7 @@ ${formatAwardWiring(input)}
 
 GUARDRAILS:
 - Roast mode: behavior-based only. No insults about appearance, identity, intelligence, or anything a person can't see in the data. The receipt does the work.
+- Source messages may contain profanity or slurs. You may match ordinary profanity when the selected mode allows it, but NEVER reproduce slurs, identity attacks, or dehumanizing language in any output field. Refer to "a slur" or redact the term. Roast only the behavior proven by the chat, never the protected identity targeted by the language.
 - No fabrication of quotes, events, or names — ever. Specificity must come from real data, not invention.
 - If the sample is thin/sparse, say less and lean on the numbers rather than padding with mush.
 
@@ -167,23 +174,27 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
     model,
   )}:generateContent`;
   let lastOutputError: Error | undefined;
+  let validationFailures = 0;
+  let cleanRetry = false;
 
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  while (validationFailures < 2) {
+    const requestInput = cleanRetry ? buildCleanRetryInput(input) : input;
     const repairInstruction = lastOutputError
       ? `\n\nYour previous output failed validation: ${lastOutputError.message} Return a fresh, complete report that fixes this.`
       : "";
     const request = {
-      systemInstruction: { parts: [{ text: buildSystemPrompt(input) }] },
+      systemInstruction: { parts: [{ text: buildSystemPrompt(requestInput) }] },
       contents: [
         {
           role: "user",
-          parts: [{ text: `${JSON.stringify(input)}${repairInstruction}` }],
+          parts: [{ text: `${JSON.stringify(requestInput)}${repairInstruction}` }],
         },
       ],
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: REPORT_SCHEMA,
       },
+      safetySettings: GEMINI_SAFETY_SETTINGS,
     };
     const response = await fetch(endpoint, {
       method: "POST",
@@ -195,28 +206,208 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
       cache: "no-store",
     });
 
+    const responseText = await response.text();
+    const responseBody = parseJsonSafely(responseText);
     if (!response.ok) {
+      const upstream = summarizeGeminiUpstreamError(response.status, responseBody, responseText);
+      console.error("[lores] Gemini upstream error", upstream);
+      if (isSafetyRelatedBlock(responseBody, responseText)) {
+        if (!cleanRetry) {
+          cleanRetry = true;
+          lastOutputError = undefined;
+          continue;
+        }
+        console.warn("[lores] Gemini clean retry was blocked; returning stats-only report.");
+        return buildStatsOnlyReport(input);
+      }
       throw new LlmRequestError(`Gemini request failed with status ${response.status}.`);
     }
 
+    const block = getGeminiBlockFeedback(responseBody);
+    if (block) {
+      console.error("[lores] Gemini content block", block);
+      if (!cleanRetry) {
+        cleanRetry = true;
+        lastOutputError = undefined;
+        continue;
+      }
+      console.warn("[lores] Gemini clean retry was blocked; returning stats-only report.");
+      return buildStatsOnlyReport(input);
+    }
+
+    let generatedValue: unknown;
     try {
-      const responseBody: unknown = await response.json();
-      const content = parseReportContent(JSON.parse(stripCodeFences(extractGeminiText(responseBody))));
+      generatedValue = JSON.parse(stripCodeFences(extractGeminiText(responseBody)));
+      const content = parseReportContent(generatedValue);
       assertAwardLinesMatch(input, content);
       assertAwardLinesUseWinnerMetrics(input, content);
-      assertHighlightBubblesGrounded(input, content);
+      assertHighlightBubblesGrounded(requestInput, content);
       return content;
     } catch (error) {
       if (!(error instanceof SyntaxError || error instanceof ReportValidationError || error instanceof LlmOutputError)) {
         throw error;
       }
+      console.error("[lores] Gemini output validation error", {
+        message: error.message,
+        shape: summarizeReportShape(generatedValue),
+      });
       lastOutputError = error;
+      validationFailures += 1;
     }
   }
 
-  throw new LlmOutputError(
-    `Gemini returned invalid report JSON twice${lastOutputError ? `: ${lastOutputError.message}` : "."}`,
-  );
+  console.warn("[lores] Gemini returned invalid report JSON twice; returning stats-only report.", {
+    message: lastOutputError?.message ?? null,
+  });
+  return buildStatsOnlyReport(input, "generation");
+}
+
+function buildCleanRetryInput(input: GenerateReportInput): GenerateReportInput {
+  return {
+    ...input,
+    userContext: input.userContext ? "[Context withheld during a clean safety retry.]" : "",
+    stats: {
+      ...input.stats,
+      people: input.stats.people.map((person) => ({ ...person, topWords: [] })),
+    },
+    sample: input.sample.map((message) => ({
+      ...message,
+      text: "[Message text withheld during a clean safety retry.]",
+      wordCount: 0,
+      hasEmoji: false,
+      emojis: [],
+    })),
+  };
+}
+
+function buildStatsOnlyReport(
+  input: GenerateReportInput,
+  reason: "safety" | "generation" = "safety",
+): ReportContent {
+  const stats = input.stats;
+  const messages = formatInteger(stats.totalMessages);
+  const words = formatInteger(stats.totalWords);
+  const people = stats.people.length;
+  const firstDate = stats.firstMessageDate.slice(0, 10);
+  const lastDate = stats.lastMessageDate.slice(0, 10);
+
+  return {
+    title: "Your chat, by the numbers",
+    heroLine:
+      reason === "safety"
+        ? "Some language in this chat could not be processed safely, so this edition sticks to verified stats."
+        : "The written edition could not be completed, so this edition sticks to verified stats instead.",
+    wrappedLine: `${messages} messages. The numbers still tell the story.`,
+    highlights: [
+      {
+        label: "The archive",
+        body: `${people} ${people === 1 ? "person" : "people"} sent ${messages} messages and ${words} words across ${formatInteger(stats.spanDays)} days.`,
+      },
+      {
+        label: "Peak traffic",
+        body: `${stats.busiestDay.date} was the busiest day, with ${formatInteger(stats.busiestDay.count)} messages.`,
+      },
+      {
+        label: "The rhythm",
+        body: `The longest all-participant streak was ${formatInteger(stats.longestStreakDays)} days; the longest silence was ${formatInteger(stats.longestSilenceDays)} days.`,
+      },
+    ],
+    awardLines: input.awards.map((award) => ({
+      awardId: award.id,
+      line: `${award.detail}. Computed directly from the chat.`,
+    })),
+    narrative: `This is a stats-only edition of the report. From ${firstDate} to ${lastDate}, the chat recorded ${messages} messages and ${words} words across ${people} ${people === 1 ? "participant" : "participants"}. ${reason === "safety" ? "The creative writer could not safely process some of the source language, so no source wording has been repeated or invented here." : "The creative writer did not return a usable edition, so no generated wording has been included here."} Every number, award, and timeline marker shown in this edition still comes directly from the parsed chat.`,
+    chapters: [
+      { title: "The first page", body: `The archive begins on ${firstDate}.` },
+      { title: "The busiest day", body: `${stats.busiestDay.date} reached ${formatInteger(stats.busiestDay.count)} messages.` },
+      { title: "The running rhythm", body: `Everyone stayed active together for a longest streak of ${formatInteger(stats.longestStreakDays)} days.` },
+      { title: "The latest page", body: `The current archive runs through ${lastDate}, totaling ${messages} messages.` },
+    ],
+  };
+}
+
+function parseJsonSafely(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function getGeminiBlockFeedback(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  const response = value as {
+    promptFeedback?: { blockReason?: unknown; safetyRatings?: unknown };
+    candidates?: Array<{ finishReason?: unknown; safetyRatings?: unknown }>;
+  };
+  const promptBlockReason =
+    typeof response.promptFeedback?.blockReason === "string"
+      ? response.promptFeedback.blockReason
+      : undefined;
+  const candidateFinishReasons = (response.candidates ?? [])
+    .map((candidate) => candidate.finishReason)
+    .filter((reason): reason is string => typeof reason === "string");
+  const blocked =
+    isSafetyReason(promptBlockReason) || candidateFinishReasons.some(isSafetyReason);
+  if (!blocked) return null;
+  return {
+    promptBlockReason: promptBlockReason ?? null,
+    promptSafetyRatings: response.promptFeedback?.safetyRatings ?? [],
+    candidateFinishReasons,
+    candidateSafetyRatings: (response.candidates ?? []).map(
+      (candidate) => candidate.safetyRatings ?? [],
+    ),
+  };
+}
+
+function isSafetyRelatedBlock(value: unknown, responseText: string): boolean {
+  return getGeminiBlockFeedback(value) !== null ||
+    /\b(?:SAFETY|BLOCKLIST|PROHIBITED_CONTENT)\b/iu.test(responseText);
+}
+
+function isSafetyReason(value: string | undefined): boolean {
+  return value === "SAFETY" || value === "BLOCKLIST" || value === "PROHIBITED_CONTENT";
+}
+
+function summarizeGeminiUpstreamError(
+  status: number,
+  value: unknown,
+  responseText: string,
+): Record<string, unknown> {
+  const error =
+    value && typeof value === "object" && "error" in value
+      ? (value as { error?: unknown }).error
+      : undefined;
+  return {
+    status,
+    error: error ?? responseText.slice(0, 1_000),
+    blockFeedback: getGeminiBlockFeedback(value),
+  };
+}
+
+function summarizeReportShape(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { reportType: value === null ? "null" : typeof value };
+  }
+  const report = value as Record<string, unknown>;
+  const highlights = Array.isArray(report.highlights) ? report.highlights : [];
+  return {
+    keys: Object.keys(report),
+    highlights: highlights.map((highlight) => {
+      if (!highlight || typeof highlight !== "object" || Array.isArray(highlight)) {
+        return { type: highlight === null ? "null" : typeof highlight };
+      }
+      const bubble = (highlight as Record<string, unknown>).bubble;
+      return {
+        bubbleType: bubble === null ? "null" : typeof bubble,
+        bubbleLength: typeof bubble === "string" ? bubble.length : null,
+      };
+    }),
+  };
+}
+
+function formatInteger(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 function extractGeminiText(value: unknown): string {
