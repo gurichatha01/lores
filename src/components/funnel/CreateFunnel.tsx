@@ -118,11 +118,15 @@ export function CreateFunnel() {
   }
 
   return (
-    <main className="min-h-screen bg-[#dcdcd7] px-0 py-0 sm:px-6 sm:py-10">
+    <main
+      className="min-h-screen px-0 py-0 sm:flex sm:items-center sm:justify-center sm:px-8 sm:py-12 lg:py-16"
+      style={{
+        backgroundColor: preset.surface,
+        backgroundImage: `radial-gradient(circle at 50% 12%, ${preset.accentSoft} 0, transparent 42rem), repeating-linear-gradient(135deg, rgba(10,10,10,.025) 0 1px, transparent 1px 12px)`,
+      }}
+    >
       <section
-        className={`mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-hidden px-6 pb-8 pt-6 shadow-editorial sm:min-h-[760px] sm:px-8 sm:pb-10 sm:pt-8 ${
-          preset.treatment === "soft" ? "sm:rounded-[44px]" : "sm:rounded-[8px]"
-        }`}
+        className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-hidden px-6 pb-8 pt-6 shadow-editorial sm:min-h-[760px] sm:rounded-[8px] sm:border-2 sm:px-8 sm:pb-10 sm:pt-8"
         style={{ background: "#f3f3ef", color: "#0a0a0a" }}
         data-funnel-step={step}
       >
