@@ -135,21 +135,25 @@ export function CreateFunnel() {
 
   return (
     <main
-      className="min-h-screen px-0 py-0 sm:flex sm:items-center sm:justify-center sm:px-8 sm:py-12 lg:py-16"
+      className="min-h-screen px-0 py-0 sm:flex sm:items-center sm:justify-center sm:px-8 sm:py-12 lg:grid lg:grid-cols-[minmax(360px,42fr)_minmax(600px,58fr)] lg:items-stretch lg:px-0 lg:py-0"
       style={{
         backgroundColor: preset.surface,
         backgroundImage: `radial-gradient(circle at 50% 12%, ${preset.accentSoft} 0, transparent 42rem), repeating-linear-gradient(135deg, rgba(10,10,10,.025) 0 1px, transparent 1px 12px)`,
       }}
     >
+      <DesktopBrandPanel mode={mode} />
       <section
-        className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-hidden px-6 pb-8 pt-6 shadow-editorial sm:min-h-[760px] sm:rounded-[8px] sm:border-2 sm:px-8 sm:pb-10 sm:pt-8"
+        className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-hidden px-6 pb-8 pt-6 shadow-editorial sm:min-h-[760px] sm:rounded-[8px] sm:border-2 sm:px-8 sm:pb-10 sm:pt-8 lg:mx-0 lg:min-h-screen lg:max-w-none lg:rounded-none lg:border-0 lg:px-[clamp(3.5rem,7vw,9rem)] lg:pb-12 lg:pt-12 lg:shadow-none"
         style={{ background: "#f3f3ef", color: "#0a0a0a" }}
         data-funnel-step={step}
       >
         <header className="flex items-center justify-between border-b-2 pb-3" style={{ borderColor: preset.text }}>
-          <Link href="/" className="text-2xl font-black tracking-[-1px]">
+          <Link href="/" className="text-2xl font-black tracking-[-1px] lg:hidden">
             lores<span style={{ color: preset.accent }}>_</span>
           </Link>
+          <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink/45 lg:block">
+            {preset.emoji} {preset.label} edition
+          </span>
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: preset.accent }}>
             {String(STEP_NUMBER[step]).padStart(2, "0")} / 05
           </span>
@@ -215,6 +219,38 @@ function StepIntro({ eyebrow, title, body }: { eyebrow: string; title: string; b
       <h1 className="mt-3 text-[42px] font-black leading-[0.92] tracking-[-2px]">{title}</h1>
       <p className="mt-4 text-[14px] font-medium leading-relaxed text-ink/55">{body}</p>
     </div>
+  );
+}
+
+function DesktopBrandPanel({ mode }: { mode: ReportMode }) {
+  const preset = getModePreset(mode);
+  const panelText = mode === "family" ? "#0a0a0a" : "#ffffff";
+
+  return (
+    <aside
+      className="hidden min-h-screen flex-col justify-between border-r-2 border-ink p-12 lg:flex xl:p-16"
+      style={{ background: preset.accent, color: panelText }}
+      aria-label={`${preset.label} edition`}
+    >
+      <Link href="/" className="w-fit text-[54px] font-black leading-none tracking-[-4px]">
+        lores<span>_</span>
+      </Link>
+      <div className="max-w-[32rem]">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">
+          {preset.emoji} {preset.label} edition
+        </p>
+        <p className="mt-5 text-[clamp(3.25rem,5vw,5.8rem)] font-black leading-[0.84] tracking-[-5px]">
+          the story hiding in your messages
+        </p>
+        <div className="mt-8 h-2 w-24" style={{ background: panelText }} aria-hidden="true" />
+      </div>
+      <p
+        className="max-w-sm border-t-2 pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] opacity-70"
+        style={{ borderColor: panelText }}
+      >
+        private by design · counted exactly
+      </p>
+    </aside>
   );
 }
 
@@ -377,8 +413,9 @@ function UploadStep({ file, error, onFile }: { file: File | null; error: string 
 function GeneratingScreen({ mode, stage }: { mode: ReportMode; stage: GenerationStage }) {
   const preset = getModePreset(mode);
   return (
-    <main className="grid min-h-screen place-items-center px-6 py-12" style={{ background: preset.surface, color: preset.text }}>
-      <section className="w-full max-w-[430px] text-center" aria-live="polite">
+    <main className="grid min-h-screen place-items-center px-6 py-12 lg:grid-cols-[minmax(360px,42fr)_minmax(600px,58fr)] lg:place-items-stretch lg:p-0" style={{ background: preset.surface, color: preset.text }}>
+      <DesktopBrandPanel mode={mode} />
+      <section className="w-full max-w-[430px] text-center lg:m-auto lg:max-w-[520px] lg:px-12" aria-live="polite">
         <div className="mx-auto grid size-24 place-items-center border-2 bg-white shadow-[8px_8px_0_var(--generating-accent)]" style={{ "--generating-accent": preset.accent, borderColor: preset.text } as React.CSSProperties}>
           <span className="lore-generating-mark text-5xl font-black" style={{ color: preset.accent }}>_</span>
         </div>
