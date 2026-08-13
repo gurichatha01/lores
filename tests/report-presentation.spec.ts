@@ -18,15 +18,15 @@ describe("Sweetheart report presentation", () => {
     expect(formatLocalReportDate("not-a-date")).toBe("not-a-date");
   });
 
-  it("builds the four designed stat cards only from deterministic stats", () => {
+  it("builds four designed stat cards only when they carry real signal", () => {
     const cards = buildSweetheartStatCards(createTestGenerateInput().stats);
 
     expect(cards).toHaveLength(4);
     expect(cards.map((card) => card.label)).toEqual([
       "texts first",
       "avg reply",
-      "longest streak",
       "midnight–4am",
+      "main character",
     ]);
     expect(cards.every((card) => card.value.length > 0 && card.detail.length > 0)).toBe(true);
   });
@@ -39,6 +39,37 @@ describe("Sweetheart report presentation", () => {
       expect(cards).toHaveLength(4);
       expect(cards.every((card) => card.value.length > 0 && card.detail.length > 0)).toBe(true);
     }
+  });
+
+  it("replaces flat or zero-signal slots with meaningful metrics from the pool", () => {
+    const input = createTestGenerateInput("roast");
+    const stats = {
+      ...input.stats,
+      people: input.stats.people.map((person) => ({
+        ...person,
+        messageShare: 0.5,
+        replyCount: 0,
+        conversationStarts: 1,
+        lateNightCount: 0,
+        laughCount: 0,
+        lastOfDayCount: 1,
+        mediaCount: 0,
+      })),
+      longestSilenceDays: 0,
+      totalMessages: 80,
+      totalWords: 600,
+      spanDays: 90,
+      busiestDay: { ...input.stats.busiestDay, count: 12 },
+      messagesByHour: input.stats.messagesByHour.map((count, index) => (index === 9 ? 12 : count)),
+      topEmojis: [],
+    };
+
+    expect(buildModeStatCards("roast", stats)).toEqual([
+      { label: "message count", value: "80", detail: "texts worth keeping receipts for" },
+      { label: "word count", value: "600", detail: "a lot said out loud" },
+      { label: "time together", value: "3 months", detail: "of real chat history" },
+      { label: "peak traffic", value: "12", detail: formatLocalReportDate(stats.busiestDay.date) },
+    ]);
   });
 
   it("formats spans and reply times compactly", () => {

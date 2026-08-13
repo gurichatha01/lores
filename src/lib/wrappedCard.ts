@@ -18,7 +18,7 @@ export interface WrappedCardContent {
   heroLabel: "total messages";
   heroValue: string;
   heroDetail: string;
-  stats: readonly [ModeStatCard, ModeStatCard, ModeStatCard, ModeStatCard];
+  stats: readonly ModeStatCard[];
   headlineAward: Award;
   punchLine: string;
   fileName: string;
@@ -33,9 +33,6 @@ export function buildWrappedCard(report: ReportSessionData): WrappedCardContent 
   }
 
   const stats = buildModeStatCards(report.mode, report.stats);
-  if (stats.length !== 4) {
-    throw new Error("A Wrapped card requires exactly four deterministic stats.");
-  }
   const span = formatSpanLabel(report.stats.spanDays).replace(", in messages", "");
 
   return {
@@ -52,7 +49,7 @@ export function buildWrappedCard(report: ReportSessionData): WrappedCardContent 
       report.stats.totalWords,
       report.stats.novelsEquivalent,
     ),
-    stats: [stats[0], stats[1], stats[2], stats[3]],
+    stats,
     headlineAward: { ...headlineAward },
     punchLine: report.content.wrappedLine,
     fileName: `lores-${report.mode}-wrapped.png`,

@@ -33,13 +33,17 @@ export interface AwardMetricRule {
 
 export const AWARD_THRESHOLDS = {
   certifiedGhostMinMinutesExclusive: 30,
+  certifiedGhostMinReplies: 5,
   lateNightMinMessagesExclusive: 20,
   oneWordMaxAverageExclusive: 4,
   comedianMinLaughMessagesExclusive: 30,
   sailorMinCurseMessages: 10,
   mainCharacterMinShareExclusive: 0.6,
   initiatorMinShareExclusive: 0.6,
+  initiatorMinStarts: 5,
   perfectlyInSyncMaxGapMinutes: 5,
+  perfectlyInSyncMinReplies: 5,
+  twoWayStreetMinMessages: 20,
   metronomeMinStreakDays: 7,
   lurkerMaxEvenShareRatio: 0.6,
   lurkerMinActiveSpanShare: 0.75,
@@ -67,6 +71,7 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
     emoji: "👻",
     score: (person) => person.medianReplyTimeMin,
     direction: "max",
+    eligible: (person) => person.replyCount >= AWARD_THRESHOLDS.certifiedGhostMinReplies,
     qualifies: (winner) => winner.medianReplyTimeMin > AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive,
     detail: (person) => `median reply ${formatMinutes(person.medianReplyTimeMin)}`,
     strength: (winner, people) => higherSignal(winner.medianReplyTimeMin, runnerUp(people, (person) => person.medianReplyTimeMin), AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive),
@@ -83,7 +88,7 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
     emoji: "🎭",
     score: (person) => person.messageShare,
     direction: "max",
-    qualifies: (winner) => winner.messageShare > AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
+    qualifies: (winner) => winner.messageCount >= 20 && winner.messageShare > AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
     detail: (person) => `${Math.round(person.messageShare * 100)}% of all messages`,
     strength: (winner, people) => higherSignal(winner.messageShare, runnerUp(people, (person) => person.messageShare), AWARD_THRESHOLDS.mainCharacterMinShareExclusive),
     metric: "message share",
@@ -169,7 +174,9 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
     emoji: "🚀",
     score: (person) => person.conversationStarts,
     direction: "max",
-    qualifies: (winner, stats) => winner.conversationStarts / sum(stats.people, (person) => person.conversationStarts) > AWARD_THRESHOLDS.initiatorMinShareExclusive,
+    qualifies: (winner, stats) =>
+      winner.conversationStarts >= AWARD_THRESHOLDS.initiatorMinStarts &&
+      winner.conversationStarts / sum(stats.people, (person) => person.conversationStarts) > AWARD_THRESHOLDS.initiatorMinShareExclusive,
     detail: (person) => `${formatCount(person.conversationStarts)} conversation starts`,
     strength: (winner, people) => higherSignal(winner.conversationStarts / Math.max(1, sum(people, (person) => person.conversationStarts)), 0, AWARD_THRESHOLDS.initiatorMinShareExclusive),
     metric: "conversation-start count",
@@ -306,7 +313,10 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
     id: "perfectly-in-sync",
     label: "Perfectly In Sync",
     emoji: "🫶",
-    qualifies: (stats) => stats.people.length === 2 && replyGap(stats.people) <= AWARD_THRESHOLDS.perfectlyInSyncMaxGapMinutes,
+    qualifies: (stats) =>
+      stats.people.length === 2 &&
+      stats.people.every((person) => person.replyCount >= AWARD_THRESHOLDS.perfectlyInSyncMinReplies) &&
+      replyGap(stats.people) <= AWARD_THRESHOLDS.perfectlyInSyncMaxGapMinutes,
     create: (stats) => ({
       who: joinPeople(stats.people),
       detail: replyGap(stats.people) === 0 ? `matching ${formatMinutes(stats.people[0].medianReplyTimeMin)} median replies` : `reply medians within ${formatMinutes(replyGap(stats.people))}`,
@@ -322,7 +332,10 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
     id: "two-way-street",
     label: "Two-Way Street",
     emoji: "↔️",
-    qualifies: (stats) => stats.people.length === 2 && Math.max(...stats.people.map((person) => person.messageShare)) <= AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
+    qualifies: (stats) =>
+      stats.people.length === 2 &&
+      sum(stats.people, (person) => person.messageCount) >= AWARD_THRESHOLDS.twoWayStreetMinMessages &&
+      Math.max(...stats.people.map((person) => person.messageShare)) <= AWARD_THRESHOLDS.mainCharacterMinShareExclusive,
     create: (stats) => ({
       who: joinPeople(stats.people),
       detail: `${stats.people.map((person) => `${Math.round(person.messageShare * 100)}%`).join(" / ")} message split`,

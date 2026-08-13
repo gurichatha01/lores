@@ -232,6 +232,22 @@ describe("computeStats", () => {
     expect(assignAwards(stats, "roast").some((award) => award.id === "the-sailor")).toBe(false);
   });
 
+  it("keeps a totally clean chat out of The Sailor and selects a real alternative", () => {
+    const messages = Array.from({ length: 24 }, (_, index) =>
+      message(
+        `2024-04-${String(Math.floor(index / 2) + 1).padStart(2, "0")}T18:${String(index % 2).padStart(2, "0")}:00`,
+        index % 2 === 0 ? "A" : "B",
+        index % 2 === 0 ? "Looking forward to catching up after work today" : "Same here, lets make a plan for later",
+      ),
+    );
+    const stats = computeStats(messages);
+    const awards = assignAwards(stats, "roast");
+
+    expect(stats.people.every((participant) => participant.profanityMessageCount === 0)).toBe(true);
+    expect(awards.some((award) => award.id === "the-sailor")).toBe(false);
+    expect(awards.map((award) => award.id)).toContain("two-way-street");
+  });
+
   it("requires every participant on consecutive days for the longest streak", () => {
     const stats = computeStats([
       message("2024-02-01T09:00:00", "A"),
@@ -447,6 +463,7 @@ describe("assignAwards", () => {
               messageShare: 0.7,
               avgWordsPerMessage: 8,
               medianReplyTimeMin: 5,
+              replyCount: 20,
               conversationStarts: 70,
               lateNightCount: 30,
               laughCount: 40,
@@ -457,6 +474,7 @@ describe("assignAwards", () => {
               messageShare: 0.3,
               avgWordsPerMessage: 2,
               medianReplyTimeMin: 45,
+              replyCount: 20,
               conversationStarts: 20,
               lateNightCount: 5,
               laughCount: 3,
@@ -511,6 +529,7 @@ describe("assignAwards", () => {
         messageShare: 0.5,
         avgWordsPerMessage: AWARD_THRESHOLDS.oneWordMaxAverageExclusive,
         medianReplyTimeMin: AWARD_THRESHOLDS.certifiedGhostMinMinutesExclusive,
+        replyCount: AWARD_THRESHOLDS.perfectlyInSyncMinReplies,
         conversationStarts: 3,
         lateNightCount: AWARD_THRESHOLDS.lateNightMinMessagesExclusive,
         laughCount: AWARD_THRESHOLDS.comedianMinLaughMessagesExclusive,
@@ -567,6 +586,7 @@ describe("assignAwards", () => {
               messageShare: 0.53,
               avgWordsPerMessage: 5.1,
               medianReplyTimeMin: 1,
+              replyCount: 20,
               conversationStarts: 174,
               lateNightCount: 259,
               laughCount: 143,
@@ -577,6 +597,7 @@ describe("assignAwards", () => {
               messageShare: 0.47,
               avgWordsPerMessage: 4.2,
               medianReplyTimeMin: 1,
+              replyCount: 20,
               conversationStarts: 140,
               lateNightCount: 152,
               laughCount: 121,
@@ -617,6 +638,7 @@ describe("assignAwards", () => {
       people: computed.people.map((candidate) => ({
         ...candidate,
         medianReplyTimeMin: 45,
+        replyCount: AWARD_THRESHOLDS.certifiedGhostMinReplies,
       })),
     };
 

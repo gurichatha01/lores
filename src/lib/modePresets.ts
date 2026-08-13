@@ -12,7 +12,13 @@ export type StatMetric =
   | "media"
   | "busiest-day"
   | "word-count"
-  | "silence";
+  | "silence"
+  | "message-count"
+  | "chat-span"
+  | "busiest-hour"
+  | "top-emoji"
+  | "good-mornings"
+  | "i-love-yous";
 
 export interface ModePreset {
   id: ReportMode;

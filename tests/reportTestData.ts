@@ -52,6 +52,10 @@ export function createTestGenerateInput(mode: ReportMode = "sweetheart"): Genera
   const stats = {
     ...computed,
     totalMessages: 100,
+    totalWords: 600,
+    spanDays: 90,
+    busiestDay: { ...computed.busiestDay, count: 12 },
+    messagesByHour: computed.messagesByHour.map((count, index) => (index === 0 ? 12 : count)),
     people: computed.people.map((person) =>
       person.name === "A"
         ? {
@@ -60,6 +64,7 @@ export function createTestGenerateInput(mode: ReportMode = "sweetheart"): Genera
             messageShare: 0.7,
             avgWordsPerMessage: 8,
             medianReplyTimeMin: 5,
+            replyCount: 20,
             conversationStarts: 70,
             lateNightCount: 30,
             laughCount: 40,
@@ -70,6 +75,7 @@ export function createTestGenerateInput(mode: ReportMode = "sweetheart"): Genera
             messageShare: 0.3,
             avgWordsPerMessage: 2,
             medianReplyTimeMin: 45,
+            replyCount: 20,
             conversationStarts: 20,
             lateNightCount: 5,
             laughCount: 3,
