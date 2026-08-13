@@ -130,9 +130,9 @@ describe("group report integrity", () => {
   it("lists every participant once in unified PDF cards with no cutoff", () => {
     const data = buildPdfDocumentData(groupReport());
     expect(data.detailPages.flatMap((page) => page.people).map((person) => person.name)).toEqual(names);
-    expect(data.detailPages).toHaveLength(3);
+    expect(data.detailPages).toHaveLength(5);
     expect(data.detailPages.filter((page) => page.highlights.length > 0)).toHaveLength(2);
-    expect(data.detailPages.at(-1)?.people).toHaveLength(9);
+    expect(data.detailPages.filter((page) => page.people.length > 0).map((page) => page.people.length)).toEqual([4, 4, 1]);
     expect(data.awardCards.every((card) => card.line.length > 0)).toBe(true);
   });
 

@@ -1,4 +1,5 @@
 import { getModePreset } from "./modePresets";
+import { buildPlayerCards, type PlayerCardModel } from "./playerCards";
 import {
   formatCount,
   formatLocalReportDate,
@@ -489,7 +490,9 @@ function drawDetailsPage(
   drawSectionHeader(
     context,
     data,
-    `04 - ${hasHighlights ? "the receipts" : "the people"}${data.detailPages.length > 1 ? ` - ${detailPageIndex + 1}` : ""}`,
+    hasHighlights
+      ? `04 - the receipts${data.detailPages.length > 1 ? ` - ${detailPageIndex + 1}` : ""}`
+      : "04 - the people",
   );
 
   if (hasHighlights) {
@@ -514,41 +517,230 @@ function drawDetailsPage(
     return;
   }
 
-  const columns = 3;
-  const cardWidth = 342;
-  const cardHeight = 310;
-  const gapX = 25;
-  const rowGap = 28;
-  const peopleTop = 194;
+  const columns = 2;
+  const gapX = 28;
+  const cardWidth = (PDF_PAGE_WIDTH - PAGE_MARGIN * 2 - gapX) / columns;
+  const compact = details.people.length > 2;
+  const cardHeight = compact ? 690 : 1_388;
+  const rowGap = 26;
+  const peopleTop = 178;
+  const cardsByName = new Map(buildPlayerCards(data.report).map((card) => [card.personName, card]));
   details.people.forEach((person, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
     const x = PAGE_MARGIN + column * (cardWidth + gapX);
     const y = peopleTop + row * (cardHeight + rowGap);
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = INK;
-    context.lineWidth = 3;
-    context.fillRect(x, y, cardWidth, cardHeight);
-    context.strokeRect(x, y, cardWidth, cardHeight);
-    context.fillStyle = data.accent;
-    fitAndDrawText(context, person.name, x + 20, y + 20, cardWidth - 40, 29, 19, 900);
-    context.fillStyle = MUTED;
-    mono(context, 15, 700, 1.5);
-    context.fillText(`${formatCount(person.messageCount)} MESSAGES`, x + 20, y + 68);
-    context.letterSpacing = "0px";
-    context.fillStyle = INK;
-    archivo(context, 21, 600);
-    drawTextBlock(
-      context,
-      person.topWords.join(" - ") || "no repeated words",
-      x + 20,
-      y + 105,
-      cardWidth - 40,
-      31,
-      6,
-    );
+    const card = cardsByName.get(person.name);
+    if (card) drawPlayerCard(context, data, card, x, y, cardWidth, cardHeight, compact);
   });
   drawPageNumber(context, pageNumber, data.accent, false);
+}
+
+function drawPlayerCard(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  card: PlayerCardModel,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  compact: boolean,
+): void {
+  const headerHeight = compact ? 154 : 276;
+  const padding = compact ? 20 : 28;
+  const headerText = readableCanvasTextColor(data.accent);
+
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = INK;
+  context.lineWidth = 4;
+  context.fillRect(x, y, width, height);
+  context.strokeRect(x, y, width, height);
+  context.fillStyle = data.accent;
+  context.fillRect(x + 2, y + 2, width - 4, headerHeight - 2);
+
+  if (card.watermarkEmoji) {
+    context.save();
+    context.beginPath();
+    context.rect(x + 2, y + 2, width - 4, headerHeight - 2);
+    context.clip();
+    context.globalAlpha = 0.14;
+    context.fillStyle = headerText;
+    context.font = `${compact ? 132 : 224}px 'Segoe UI Emoji', Arial, sans-serif`;
+    context.fillText(card.watermarkEmoji, x + width - (compact ? 144 : 238), y - (compact ? 26 : 42));
+    context.restore();
+  }
+
+  context.fillStyle = headerText;
+  mono(context, compact ? 13 : 17, 700, compact ? 1.5 : 2.5);
+  context.globalAlpha = 0.76;
+  context.fillText(card.role.toUpperCase(), x + padding, y + (compact ? 20 : 32));
+  context.globalAlpha = 1;
+  context.letterSpacing = "0px";
+  fitAndDrawText(
+    context,
+    card.personName,
+    x + padding,
+    y + (compact ? 50 : 79),
+    width - padding * 2,
+    compact ? 37 : 54,
+    compact ? 24 : 32,
+    900,
+  );
+  mono(context, compact ? 12 : 16, 700, 0.4);
+  context.globalAlpha = 0.82;
+  context.fillText(card.summary.toUpperCase(), x + padding, y + (compact ? 111 : 205));
+  context.globalAlpha = 1;
+  context.letterSpacing = "0px";
+
+  const signatureY = y + headerHeight + (compact ? 22 : 42);
+  drawPlayerLabel(context, "TALKS LIKE", x + padding, signatureY, compact);
+  drawSignatureWords(
+    context,
+    card.signatureWords,
+    x + padding,
+    signatureY + (compact ? 28 : 39),
+    width - padding * 2,
+    data.accent,
+    compact,
+  );
+
+  const statY = y + (compact ? 276 : 548);
+  const statHeight = compact ? 142 : 218;
+  const statWidth = (width - padding * 2) / 3;
+  context.strokeStyle = INK;
+  context.lineWidth = 3;
+  context.strokeRect(x + padding, statY, statWidth * 3, statHeight);
+  card.stats.forEach((stat, index) => {
+    const statX = x + padding + index * statWidth;
+    if (index > 0) {
+      context.beginPath();
+      context.moveTo(statX, statY);
+      context.lineTo(statX, statY + statHeight);
+      context.stroke();
+    }
+    context.fillStyle = data.accent;
+    fitAndDrawText(
+      context,
+      stat.value,
+      statX + (compact ? 9 : 14),
+      statY + (compact ? 18 : 30),
+      statWidth - (compact ? 18 : 28),
+      compact ? 29 : 43,
+      compact ? 18 : 26,
+      900,
+    );
+    context.fillStyle = MUTED;
+    mono(context, compact ? 10 : 13, 700, 0.7);
+    drawTextBlock(
+      context,
+      stat.label.toUpperCase(),
+      statX + (compact ? 9 : 14),
+      statY + (compact ? 79 : 116),
+      statWidth - (compact ? 18 : 28),
+      compact ? 15 : 20,
+      2,
+    );
+  });
+  context.letterSpacing = "0px";
+
+  const secondaryY = y + (compact ? 443 : 824);
+  card.secondary.forEach((item, index) => {
+    const itemX = x + padding + index * ((width - padding * 2) / 2);
+    drawPlayerLabel(context, item.label.toUpperCase(), itemX, secondaryY, compact);
+    context.fillStyle = INK;
+    if (index === 0 && card.watermarkEmoji) {
+      context.font = `${compact ? 24 : 34}px 'Segoe UI Emoji', Arial, sans-serif`;
+      context.fillText(card.watermarkEmoji, itemX, secondaryY + (compact ? 24 : 36));
+      const emojiWidth = context.measureText(card.watermarkEmoji).width;
+      archivo(context, compact ? 22 : 31, 800);
+      const count = item.value.slice(card.watermarkEmoji.length).trim();
+      context.fillText(count, itemX + emojiWidth + (compact ? 7 : 10), secondaryY + (compact ? 28 : 42));
+    } else {
+      fitAndDrawText(
+        context,
+        item.value,
+        itemX,
+        secondaryY + (compact ? 28 : 42),
+        (width - padding * 2) / 2 - 10,
+        compact ? 22 : 31,
+        compact ? 15 : 20,
+        800,
+      );
+    }
+  });
+
+  const verdictY = y + (compact ? 536 : 1_018);
+  context.save();
+  context.setLineDash([compact ? 7 : 10, compact ? 7 : 10]);
+  context.strokeStyle = "rgba(10,10,10,.2)";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(x + padding, verdictY);
+  context.lineTo(x + width - padding, verdictY);
+  context.stroke();
+  context.restore();
+  drawPlayerLabel(context, "VERDICT", x + padding, verdictY + (compact ? 18 : 30), compact);
+  context.fillStyle = INK;
+  archivo(context, compact ? 17 : 25, 600);
+  drawTextBlock(
+    context,
+    card.verdict,
+    x + padding,
+    verdictY + (compact ? 46 : 72),
+    width - padding * 2,
+    compact ? 23 : 34,
+    compact ? 4 : 7,
+  );
+}
+
+function drawPlayerLabel(
+  context: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  compact: boolean,
+): void {
+  context.fillStyle = MUTED;
+  mono(context, compact ? 10 : 13, 700, compact ? 1.2 : 1.8);
+  context.fillText(label, x, y);
+  context.letterSpacing = "0px";
+}
+
+function drawSignatureWords(
+  context: CanvasRenderingContext2D,
+  words: readonly string[],
+  x: number,
+  y: number,
+  maxWidth: number,
+  accent: string,
+  compact: boolean,
+): void {
+  archivo(context, compact ? 17 : 23, 700);
+  const lineHeight = compact ? 24 : 34;
+  let cursorX = x;
+  let cursorY = y;
+  words.forEach((word, index) => {
+    const token = index === 0 ? word : ` · ${word}`;
+    const tokenWidth = context.measureText(token).width;
+    if (cursorX > x && cursorX + tokenWidth > x + maxWidth) {
+      cursorX = x;
+      cursorY += lineHeight;
+    }
+    context.fillStyle = index === 0 ? accent : INK;
+    context.fillText(index > 0 && cursorX === x ? word : token, cursorX, cursorY);
+    cursorX += context.measureText(index > 0 && cursorX === x ? word : token).width;
+  });
+}
+
+function readableCanvasTextColor(background: string): string {
+  const hex = background.replace("#", "");
+  if (!/^[\da-f]{6}$/iu.test(hex)) return "#ffffff";
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const linear = channels.map((channel) =>
+    channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
+  );
+  const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  return luminance > 0.179 ? INK : "#ffffff";
 }
 
 function drawFullHighlight(
@@ -952,8 +1144,8 @@ function buildDetailPages(
     });
     highlightIndex += canSharePage ? 2 : 1;
   }
-  for (let personIndex = 0; personIndex < people.length; personIndex += 12) {
-    pages.push({ highlights: [], people: people.slice(personIndex, personIndex + 12) });
+  for (let personIndex = 0; personIndex < people.length; personIndex += 4) {
+    pages.push({ highlights: [], people: people.slice(personIndex, personIndex + 4) });
   }
 
   return pages;

@@ -89,7 +89,7 @@ function ReadingDemo() {
     <div className="reading-demo">
       <p className="reading-demo__label">illustrative chat</p>
       <div className="reading-demo__bubble reading-demo__bubble--one">
-        <span>Dev</span>
+        <span>Alisha</span>
         still on for eight?
       </div>
       <div className="reading-demo__bubble reading-demo__bubble--two">
@@ -97,7 +97,7 @@ function ReadingDemo() {
         obviously. bringing snacks.
       </div>
       <div className="reading-demo__bubble reading-demo__bubble--three">
-        <span>Dev</span>
+        <span>Alisha</span>
         hero behavior
       </div>
       <div className="reading-demo__pill">
@@ -114,7 +114,7 @@ function ReportDemo() {
       <div className="report-demo">
         <BrandWordmark accent="#ff5c1a" contrastPlate className="report-demo__brand" />
         <p className="report-demo__edition">ride or die / 2026</p>
-        <p className="report-demo__names">YOU &amp; DEV</p>
+        <p className="report-demo__names">YOU &amp; Alisha</p>
         <div className="report-demo__stat">
           <strong>2,487</strong>
           <span>messages</span>

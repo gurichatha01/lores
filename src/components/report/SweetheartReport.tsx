@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { AwardBadge, StatCard } from "@/components/ui";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
+import { PeoplePlayerCards } from "@/components/report/PeoplePlayerCards";
 import { ReportBackdrop } from "@/components/report/ReportBackdrop";
 import {
   buildSweetheartStatCards,
@@ -86,6 +87,8 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
             />
           ))}
         </section>
+
+        <PeoplePlayerCards report={report} />
 
         {content.highlights.length > 0 ? (
           <>

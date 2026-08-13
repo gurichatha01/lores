@@ -4,6 +4,7 @@ import { BrandWordmark } from "@/components/BrandWordmark";
 import { WrappedCard } from "@/components/cards/WrappedCard";
 import { ReportPdfDownload } from "@/components/pdf/ReportPdfDownload";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
+import { PeoplePlayerCards } from "@/components/report/PeoplePlayerCards";
 import { ReportBackdrop } from "@/components/report/ReportBackdrop";
 import { getModePreset } from "@/lib/modePresets";
 import {
@@ -145,6 +146,8 @@ export function ModeReport({ report }: ModeReportProps) {
             );
           })}
         </section>
+
+        <PeoplePlayerCards report={report} />
 
         {content.highlights.length > 0 ? (
           <>
