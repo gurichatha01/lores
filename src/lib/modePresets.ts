@@ -25,6 +25,7 @@ export interface ModePreset {
   label: string;
   emoji: string;
   note: string;
+  descriptor: string;
   defaultSubtype: string;
   treatment: ReportTreatment;
   accent: string;
@@ -54,6 +55,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     label: "Sweetheart",
     emoji: "💕",
     note: "rose · soft glow",
+    descriptor: "for a partner or crush",
     defaultSubtype: "partner",
     treatment: "soft",
     accent: "#f0568a",
@@ -72,6 +74,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     label: "Ride or Die",
     emoji: "👯",
     note: "hot-orange · best-friend energy",
+    descriptor: "for your best friend",
     defaultSubtype: "best friends",
     treatment: "editorial",
     accent: "#ff5c1a",
@@ -90,6 +93,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     label: "Group Wrapped",
     emoji: "🏆",
     note: "cobalt · scoreboard",
+    descriptor: "for the group chat",
     defaultSubtype: "group chat",
     treatment: "editorial",
     accent: "#2b2bef",
@@ -108,6 +112,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     label: "Family",
     emoji: "🏡",
     note: "cozy amber",
+    descriptor: "for the family",
     defaultSubtype: "family",
     treatment: "soft",
     accent: "#e8940c",
@@ -126,6 +131,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     label: "Work",
     emoji: "💼",
     note: "cool teal · office edition",
+    descriptor: "for the team",
     defaultSubtype: "team",
     treatment: "editorial",
     accent: "#0f8f8f",
@@ -144,6 +150,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     label: "Roast 🔥",
     emoji: "🔥",
     note: "red heat · dark",
+    descriptor: "no mercy",
     defaultSubtype: "no mercy",
     treatment: "dark",
     accent: "#e11400",

@@ -1,6 +1,6 @@
 /**
  * Client-side Razorpay Checkout glue. Loads the hosted checkout script and
- * exposes a tiny typed surface. No amounts or prices are decided here — the
+ * exposes a tiny typed surface. No amounts or prices are decided here · the
  * order (with its server-decided amount) comes from /api/order.
  */
 

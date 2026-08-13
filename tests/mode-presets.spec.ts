@@ -25,4 +25,15 @@ describe("report mode presets", () => {
       expect(parseGenerateReportInput(createTestGenerateInput(mode)).mode).toBe(mode);
     }
   });
+
+  it("defines a concise funnel descriptor for every mode", () => {
+    expect(Object.fromEntries(REPORT_MODES.map((mode) => [mode, MODE_PRESETS[mode].descriptor]))).toEqual({
+      sweetheart: "for a partner or crush",
+      "ride-or-die": "for your best friend",
+      group: "for the group chat",
+      family: "for the family",
+      work: "for the team",
+      roast: "no mercy",
+    });
+  });
 });

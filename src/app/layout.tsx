@@ -16,7 +16,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "lores — the story inside your chats",
+  title: "lores · the story inside your chats",
   description: "Private, personal reports from the chats that matter.",
 };
 

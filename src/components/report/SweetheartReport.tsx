@@ -79,7 +79,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
               detail={
                 <>
                   <span className="font-bold text-ink/70">{award.who}</span>
-                  {" — "}{awardLines.get(award.id)}
+                  {" · "}{awardLines.get(award.id)}
                 </>
               }
               className="px-4 py-3"
@@ -128,7 +128,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
           <div className="flex items-end justify-between gap-4">
             <p className="font-mono text-[9px] uppercase leading-relaxed tracking-[0.08em] text-ink/40">
               {formatLocalReportDate(stats.firstMessageDate.slice(0, 10))}
-              {" — "}
+              {" · "}
               {formatLocalReportDate(stats.lastMessageDate.slice(0, 10))}
               <br />built from a locally parsed export
             </p>

@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { assignAwards } from "@/lib/assignAwards";
+import { readableTextColor } from "@/lib/colorContrast";
 import { computeStats } from "@/lib/computeStats";
 import { curateSample } from "@/lib/curateSample";
 import {
@@ -117,7 +118,7 @@ export function CreateFunnel() {
           typeof responseBody === "object" &&
           typeof (responseBody as { error?: unknown }).error === "string"
             ? (responseBody as { error: string }).error
-            : "The report writer could not finish this one. Your file is still here — please try again.";
+            : "The report writer could not finish this one. Your file is still here · please try again.";
         throw new Error(detail);
       }
 
@@ -273,11 +274,18 @@ function ModeStep({ mode, subtype, onMode, onSubtype }: { mode: ReportMode; subt
               type="button"
               aria-pressed={selected}
               onClick={() => onMode(modeId)}
-              className="min-h-[74px] border-2 px-3 py-2.5 text-left transition-transform active:translate-y-px"
-              style={{ background: selected ? option.accent : option.card, borderColor: selected ? option.accent : option.text, color: selected ? "#fff" : option.text }}
+              className="min-h-[92px] border-2 px-3 py-2.5 text-left transition-transform active:translate-y-px"
+              style={{
+                background: selected ? option.accent : option.card,
+                borderColor: selected ? option.accent : option.text,
+                color: selected ? readableTextColor(option.accent) : option.text,
+              }}
             >
               <span className="block text-base" aria-hidden="true">{option.emoji}</span>
               <span className="mt-1 block text-[12px] font-extrabold leading-tight">{option.label}</span>
+              <span className="mt-1 block text-[10px] font-semibold leading-tight opacity-65">
+                {option.descriptor}
+              </span>
             </button>
           );
         })}

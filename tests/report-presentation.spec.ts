@@ -25,7 +25,7 @@ describe("Sweetheart report presentation", () => {
     expect(cards.map((card) => card.label)).toEqual([
       "texts first",
       "avg reply",
-      "midnight–4am",
+      "midnight to 4am",
       "main character",
     ]);
     expect(cards.every((card) => card.value.length > 0 && card.detail.length > 0)).toBe(true);
@@ -75,7 +75,7 @@ describe("Sweetheart report presentation", () => {
   it("formats spans and reply times compactly", () => {
     expect(formatSpanLabel(744)).toBe("2 years, in messages");
     expect(formatSpanLabel(90)).toBe("3 months, in messages");
-    expect(formatReplyTime(0, 0)).toBe("—");
+    expect(formatReplyTime(0, 0)).toBe("n/a");
     expect(formatReplyTime(0, 12)).toBe("<1m");
     expect(formatReplyTime(90)).toBe("1.5h");
   });

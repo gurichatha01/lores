@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 /**
  * Server-side signature verification. Only a valid HMAC signature unlocks the
- * report — a client claiming success is never trusted. Razorpay Checkout
+ * report · a client claiming success is never trusted. Razorpay Checkout
  * returns { razorpay_order_id, razorpay_payment_id, razorpay_signature } and we
  * recompute the HMAC with the key secret to confirm it.
  */

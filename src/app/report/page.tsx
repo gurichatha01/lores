@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ReportPageClient } from "@/components/report";
 
 export const metadata: Metadata = {
-  title: "your lores — chat report",
+  title: "your lores · chat report",
   description: "Your private lores chat report.",
 };
 

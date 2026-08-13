@@ -2,7 +2,7 @@
  * Single source of truth for unlock pricing.
  *
  * India is priced in INR, everyone else in USD. The two prices are NOT a
- * currency conversion of each other ($2.99 ≈ ₹249) — ₹149 is a deliberate
+ * currency conversion of each other ($2.99 ≈ ₹249) · ₹149 is a deliberate
  * India-specific price, not a bug. One unlock unlocks everything (full report
  * + PDF + Wrapped card).
  *
@@ -36,7 +36,7 @@ export interface PriceQuote {
 /**
  * International Payments (accepting non-INR/foreign cards) requires extra KYC
  * and approval on the Razorpay account. Until it's approved, keep this off and
- * everyone is quoted INR — do NOT block launch on international approval.
+ * everyone is quoted INR · do NOT block launch on international approval.
  */
 export function isInternationalEnabled(): boolean {
   return process.env.RAZORPAY_INTERNATIONAL_ENABLED?.trim().toLowerCase() === "true";

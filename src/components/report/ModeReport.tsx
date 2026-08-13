@@ -138,7 +138,7 @@ export function ModeReport({ report }: ModeReportProps) {
                   </div>
                   <div className="text-[11px] font-semibold leading-snug opacity-65">
                     <span className="font-bold">{award.who}</span>
-                    {" — "}{awardLines.get(award.id)}
+                    {" · "}{awardLines.get(award.id)}
                   </div>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export function ModeReport({ report }: ModeReportProps) {
               style={{ color: preset.muted }}
             >
               {formatLocalReportDate(stats.firstMessageDate.slice(0, 10))}
-              {" — "}
+              {" · "}
               {formatLocalReportDate(stats.lastMessageDate.slice(0, 10))}
               <br />built from a locally parsed export
             </p>

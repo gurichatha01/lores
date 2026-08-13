@@ -35,7 +35,7 @@ export function formatWordCountWithNovels(totalWords: number, novelsEquivalent: 
 }
 
 export function formatReplyTime(minutes: number, replyCount = 1): string {
-  if (replyCount === 0) return "—";
+  if (replyCount === 0) return "n/a";
   if (minutes < 1) return "<1m";
   if (minutes < 60) return `${Math.round(minutes)}m`;
   if (minutes < 1_440) return `${round(minutes / 60)}h`;
@@ -109,7 +109,7 @@ function buildStatCard(metric: StatMetric, stats: ReportStats): ModeStatCard | n
         : null;
     case "late-night":
       return lateNight.lateNightCount >= 3
-        ? { label: "midnight–4am", value: lateNight.name, detail: `${formatCount(lateNight.lateNightCount)} late-night messages` }
+        ? { label: "midnight to 4am", value: lateNight.name, detail: `${formatCount(lateNight.lateNightCount)} late-night messages` }
         : null;
     case "message-share":
       return mainCharacter.messageCount >= 5 && mainCharacter.messageShare >= 0.55

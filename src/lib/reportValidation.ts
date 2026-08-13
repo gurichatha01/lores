@@ -143,8 +143,8 @@ export function parseReportContent(value: unknown): ReportContent {
     const highlight = asRecord(value, `report.highlights[${index}]`);
     assertExactKeys(highlight, ["label", "body", "snippet"], `report.highlights[${index}]`);
     return {
-      label: asString(highlight.label, `report.highlights[${index}].label`, 160),
-      body: asString(highlight.body, `report.highlights[${index}].body`, 2_000),
+      label: asDisplayString(highlight.label, `report.highlights[${index}].label`, 160),
+      body: asDisplayString(highlight.body, `report.highlights[${index}].body`, 2_000),
       snippet: parseReceiptSnippet(highlight.snippet, index),
     };
   });
@@ -153,15 +153,15 @@ export function parseReportContent(value: unknown): ReportContent {
     assertExactKeys(line, ["awardId", "line"], `report.awardLines[${index}]`);
     return {
       awardId: asString(line.awardId, `report.awardLines[${index}].awardId`, 100),
-      line: asString(line.line, `report.awardLines[${index}].line`, 1_000),
+      line: asDisplayString(line.line, `report.awardLines[${index}].line`, 1_000),
     };
   });
   const chapters = asArray(content.chapters, "report.chapters").map((value, index) => {
     const chapter = asRecord(value, `report.chapters[${index}]`);
     assertExactKeys(chapter, ["title", "body"], `report.chapters[${index}]`);
     return {
-      title: asString(chapter.title, `report.chapters[${index}].title`, 160),
-      body: asString(chapter.body, `report.chapters[${index}].body`, 4_000),
+      title: asDisplayString(chapter.title, `report.chapters[${index}].title`, 160),
+      body: asDisplayString(chapter.body, `report.chapters[${index}].body`, 4_000),
     };
   });
   if (chapters.length !== 4) {
@@ -169,12 +169,12 @@ export function parseReportContent(value: unknown): ReportContent {
   }
 
   return {
-    title: asString(content.title, "report.title", 200),
-    heroLine: asString(content.heroLine, "report.heroLine", 500),
-    wrappedLine: asString(content.wrappedLine, "report.wrappedLine", 500),
+    title: asDisplayString(content.title, "report.title", 200),
+    heroLine: asDisplayString(content.heroLine, "report.heroLine", 500),
+    wrappedLine: asDisplayString(content.wrappedLine, "report.wrappedLine", 500),
     highlights,
     awardLines,
-    narrative: asString(content.narrative, "report.narrative", 8_000),
+    narrative: asDisplayString(content.narrative, "report.narrative", 8_000),
     chapters,
   };
 }
@@ -444,6 +444,16 @@ function asString(value: unknown, label: string, maxLength: number, allowEmpty =
     throw new ReportValidationError(`${label} must be a valid string.`);
   }
   return value;
+}
+
+function asDisplayString(value: unknown, label: string, maxLength: number): string {
+  return normalizeDisplayDashes(asString(value, label, maxLength));
+}
+
+export function normalizeDisplayDashes(value: string): string {
+  return value
+    .replace(/(\d)\s*[–‑‒]\s*(\d)/gu, "$1-$2")
+    .replace(/\s*[—–‑‒―]\s*/gu, ", ");
 }
 
 function asBoolean(value: unknown, label: string): boolean {

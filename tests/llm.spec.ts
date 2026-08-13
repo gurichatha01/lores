@@ -69,7 +69,7 @@ describe("generateReport", () => {
       '\"userContext\":\"Together since university.\"',
     );
     expect(body.systemInstruction.parts[0].text).toContain(
-      "userContext — optional background supplied by the user in the create flow",
+      "userContext · optional background supplied by the user in the create flow",
     );
     expect(body.systemInstruction.parts[0].text).toContain(
       "Use it to interpret the relationship, situation, and tone",
@@ -162,6 +162,8 @@ describe("generateReport", () => {
     expect(prompt).toContain("murgh malai tikka vs dal roti");
     expect(prompt).toContain("The Whale Phase");
     expect(prompt).toContain("No insults about appearance, identity, intelligence");
+    expect(prompt).toContain("Never use em dashes or en dashes");
+    expect(prompt).not.toMatch(/[—–‑‒―]/u);
     expect(prompt).toContain("exactly 4");
     expect(prompt).toContain('"wrappedLine"');
     expect(prompt).not.toContain("[INJECT");
@@ -186,7 +188,7 @@ describe("generateReport", () => {
     );
     const tiedPrompt = buildSystemPrompt(createTiedGenerateInput("sweetheart"));
     expect(tiedPrompt).toContain(
-      'TIE RULE — MANDATORY FOR THIS LINE: "A" and "B" share this metric value. Explicitly use "tied", "shared", or "matched" in the line.',
+      'TIE RULE · MANDATORY FOR THIS LINE: "A" and "B" share this metric value. Explicitly use "tied", "shared", or "matched" in the line.',
     );
   });
 

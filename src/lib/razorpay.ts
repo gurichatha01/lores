@@ -35,7 +35,7 @@ export function getRazorpayKeys(): RazorpayKeys {
 
 /**
  * Best-effort country detection from platform geo headers. Never trusts a
- * client-supplied value — pricing is decided from these headers only. A
+ * client-supplied value · pricing is decided from these headers only. A
  * DEV_COUNTRY_OVERRIDE env is honored for local testing where no geo header
  * exists (both prices can then be exercised without a VPN).
  */
@@ -119,7 +119,7 @@ export interface VerifySignatureParams {
 /**
  * Verifies the Razorpay Checkout signature: HMAC-SHA256 of
  * `${orderId}|${paymentId}` keyed with the key secret must equal the returned
- * signature. This is the ONLY thing that unlocks — a client saying "I paid"
+ * signature. This is the ONLY thing that unlocks · a client saying "I paid"
  * means nothing without this passing. Constant-time comparison.
  */
 export function verifyPaymentSignature({

@@ -103,7 +103,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         return;
       }
       setStatus("error");
-      setMessage("We couldn't verify that payment. If you were charged, nothing was unlocked — please contact support.");
+      setMessage("We couldn't verify that payment. If you were charged, nothing was unlocked · please contact support.");
     } catch {
       setStatus("error");
       setMessage("We couldn't reach the server to verify the payment. Please try again.");
@@ -120,7 +120,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
       const orderResponse = await fetch("/api/order", { method: "POST" });
       if (orderResponse.status === 503) {
         setStatus("unavailable");
-        setMessage("Payments aren't switched on yet — nothing was charged.");
+        setMessage("Payments aren't switched on yet · nothing was charged.");
         return;
       }
       if (!orderResponse.ok) {
@@ -158,7 +158,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         ondismiss: () => {
           setStatus((previous) => (previous === "checkout" ? "cancelled" : previous));
           setMessage((previous) =>
-            previous ?? "Checkout closed — no charge. Your report is still here whenever you're ready.",
+            previous ?? "Checkout closed · no charge. Your report is still here whenever you're ready.",
           );
         },
       },

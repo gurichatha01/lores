@@ -4,7 +4,7 @@ import { curateSample } from "../src/lib/curateSample";
 import { testMessage } from "./reportTestData";
 
 describe("curateSample", () => {
-  it("selects 20–30 messages per person from heuristics and a repeatable time spread", () => {
+  it("selects 20-30 messages per person from heuristics and a repeatable time spread", () => {
     const messages = ["A", "B"].flatMap((sender, senderIndex) =>
       Array.from({ length: 45 }, (_, index) => {
         let text = `${sender} ordinary message ${index}`;

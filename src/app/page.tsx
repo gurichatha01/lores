@@ -34,7 +34,7 @@ export default function LandingPage() {
             </h1>
             <p className="mt-7 max-w-xl text-[clamp(1.4rem,5vw,2.25rem)] font-semibold leading-[1.12] tracking-[-1px]">
               upload your chat.<br />
-              get <span className="bg-pink px-1.5 text-white">lores</span> — every stat nobody remembers.
+              get <span className="bg-pink px-1.5 text-white">lores</span> · every stat nobody remembers.
             </p>
             <Link
               href="/create"
