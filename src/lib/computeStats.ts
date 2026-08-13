@@ -8,6 +8,7 @@ import type {
 import { sanitizeEvidenceText } from "./evidenceHygiene";
 
 export const REPLY_GAP_CAP_MIN = 6 * 60;
+export const NO_REPLY_MEDIAN_MIN = 0;
 
 interface MutablePersonStats {
   name: string;
@@ -195,7 +196,9 @@ export function computeStats(
 ): ChatStats {
   const parsedExport = isParsedExport(input);
   const sourceMessages = parsedExport ? input.messages : input;
-  const mediaCount = parsedExport ? input.mediaCount : explicitMediaCount;
+  const mediaCount = safeNonNegativeInteger(
+    parsedExport ? input.mediaCount : explicitMediaCount,
+  );
   const mediaBySender = parsedExport ? input.mediaBySender ?? {} : {};
   const messages = [...sourceMessages].sort(
     (left, right) => left.timestamp.getTime() - right.timestamp.getTime(),
@@ -227,6 +230,12 @@ export function computeStats(
   let previous: Message | undefined;
   let runSender = "";
   let runLength = 0;
+
+  // Media-only messages are filtered by the parser, but their senders still
+  // belong in the participant list and need a complete zero-default record.
+  for (const sender of Object.keys(mediaBySender)) {
+    getOrCreatePerson(people, sender);
+  }
 
   for (const message of messages) {
     const person = getOrCreatePerson(people, message.sender);
@@ -300,9 +309,9 @@ export function computeStats(
   const personStats = Array.from(people.values(), (person): PersonStats => ({
     name: person.name,
     messageCount: person.messageCount,
-    messageShare: person.messageCount / messages.length,
+    messageShare: safeDivide(person.messageCount, messages.length),
     wordCount: person.wordCount,
-    avgWordsPerMessage: person.wordCount / person.messageCount,
+    avgWordsPerMessage: safeDivide(person.wordCount, person.messageCount),
     medianReplyTimeMin: median(person.replyTimesMin),
     replyCount: person.replyCount,
     conversationStarts: person.conversationStarts,
@@ -310,17 +319,20 @@ export function computeStats(
     lateNightCount: person.lateNightCount,
     laughCount: person.laughCount,
     emojiCount: person.emojiCount,
-    emojisPerMessage: round(person.emojiCount / person.messageCount, 3),
+    emojisPerMessage: round(safeDivide(person.emojiCount, person.messageCount), 3),
     linkCount: person.linkCount,
-    mediaCount: mediaBySender[person.name] ?? 0,
+    mediaCount: safeNonNegativeInteger(mediaBySender[person.name] ?? 0),
     maxConsecutiveMessages: person.maxConsecutiveMessages,
     silenceRevivalCount: person.silenceRevivalCount,
     weekendMessageCount: person.weekendMessageCount,
-    weekendShare: round(person.weekendMessageCount / person.messageCount, 3),
+    weekendShare: round(safeDivide(person.weekendMessageCount, person.messageCount), 3),
     activeSpanShare: round(
-      ((person.firstMessageDate && person.lastMessageDate
+      safeDivide(
+        person.firstMessageDate && person.lastMessageDate
         ? localDayNumber(person.lastMessageDate) - localDayNumber(person.firstMessageDate) + 1
-        : 0) / spanDays),
+        : 0,
+        spanDays,
+      ),
       3,
     ),
     topEmojis: topEntries(person.emojis, TOP_EMOJI_LIMIT).map(([emoji, count]) => ({ emoji, count })),
@@ -409,9 +421,20 @@ function getOrCreateSet(map: Map<number, Set<string>>, key: number): Set<string>
 }
 
 function safeWordCount(message: Message): number {
-  return Number.isFinite(message.wordCount) && message.wordCount >= 0
-    ? message.wordCount
-    : message.text.match(WORD)?.length ?? 0;
+  const textWithoutLinks = message.text.replace(LINK, " ");
+  return textWithoutLinks.match(WORD)?.length ?? 0;
+}
+
+function safeDivide(numerator: number, denominator: number): number {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+    return 0;
+  }
+  const value = numerator / denominator;
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function safeNonNegativeInteger(value: number): number {
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 }
 
 function countEmojis(counts: Map<string, number>, emojis: readonly string[]): void {
@@ -437,11 +460,12 @@ function elapsedMinutes(previous: Message, current: Message): number {
 }
 
 function median(values: readonly number[]): number {
-  if (values.length === 0) {
-    return 0;
+  const validValues = values.filter((value) => Number.isFinite(value) && value >= 0);
+  if (validValues.length === 0) {
+    return NO_REPLY_MEDIAN_MIN;
   }
 
-  const sorted = [...values].sort((left, right) => left - right);
+  const sorted = [...validValues].sort((left, right) => left - right);
   const midpoint = Math.floor(sorted.length / 2);
   const value =
     sorted.length % 2 === 0

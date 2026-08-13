@@ -3,8 +3,12 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { assignAwards } from "../src/lib/assignAwards";
+import { computeStats } from "../src/lib/computeStats";
+import { curateSample } from "../src/lib/curateSample";
 import { parseWhatsApp } from "../src/lib/parseWhatsApp";
-import { formatLocalDateTime } from "../src/lib/reportTransport";
+import { parseGenerateReportInput } from "../src/lib/reportValidation";
+import { formatLocalDateTime, serializeGenerateReportInput } from "../src/lib/reportTransport";
 
 const realExportPath = process.env.REAL_WHATSAPP_EXPORT;
 
@@ -14,6 +18,15 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
     const bytes = await readFile(resolvedPath);
     const input = Object.assign(new Blob([bytes]), { name: path.basename(resolvedPath) });
     const result = await parseWhatsApp(input);
+    const stats = computeStats(result);
+    const serialized = serializeGenerateReportInput({
+      mode: stats.isGroup ? "group" : "ride-or-die",
+      subtype: stats.isGroup ? "friend group" : "close friend",
+      userContext: "",
+      stats,
+      awards: assignAwards(stats),
+      sample: curateSample(result.messages),
+    });
     const senders = new Map<string, number>();
 
     for (const message of result.messages) {
@@ -36,11 +49,20 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
       firstMessageLocal: first ? formatLocalDateTime(first) : undefined,
       lastMessageLocal: last ? formatLocalDateTime(last) : undefined,
       spanDays,
+      personSchemaValidation: "passed; no missing fields",
+      personStatKeys: stats.people.map((person) => ({
+        name: person.name,
+        keys: Object.keys(person),
+        nonFiniteFields: Object.entries(person)
+          .filter(([, value]) => typeof value === "number" && !Number.isFinite(value))
+          .map(([key]) => key),
+      })),
     });
 
     expect(result.messages.length).toBeGreaterThan(0);
     expect(senders.size).toBeGreaterThanOrEqual(2);
     expect(spanDays).toBeGreaterThan(300);
     expect(result.mediaCount).toBeGreaterThanOrEqual(0);
+    expect(() => parseGenerateReportInput(serialized)).not.toThrow();
   });
 });

@@ -431,8 +431,11 @@ function assertExactKeys(
   if (Object.keys(value).some((key) => !allowed.has(key))) {
     throw new ReportValidationError(`${label} contains an unsupported field.`);
   }
-  if (keys.some((key) => !optionalSet.has(key) && !(key in value))) {
-    throw new ReportValidationError(`${label} is missing a required field.`);
+  const missing = keys.filter((key) => !optionalSet.has(key) && !(key in value));
+  if (missing.length > 0) {
+    throw new ReportValidationError(
+      `${label} is missing required ${missing.length === 1 ? "field" : "fields"}: ${missing.join(", ")}.`,
+    );
   }
 }
 

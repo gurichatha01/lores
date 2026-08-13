@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { assignAwards, AWARD_THRESHOLDS } from "../src/lib/assignAwards";
-import { computeStats, REPLY_GAP_CAP_MIN } from "../src/lib/computeStats";
+import {
+  computeStats,
+  NO_REPLY_MEDIAN_MIN,
+  REPLY_GAP_CAP_MIN,
+} from "../src/lib/computeStats";
 import { parseWhatsAppText } from "../src/lib/parseWhatsApp";
 import type { Message } from "../src/lib/types";
 
@@ -76,6 +80,46 @@ describe("computeStats", () => {
       { label: "2-4h", count: 0 },
       { label: "4-6h", count: 0 },
     ]);
+  });
+
+  it("returns complete finite defaults for link, media, and blank-only participants", () => {
+    const stats = computeStats({
+      messages: [
+        message("2024-01-01T09:00:00", "Sparse", "https://example.com/only-a-link"),
+        message("2024-01-01T09:01:00", "Sparse", ""),
+        message("2024-01-01T18:00:00", "Words", "A countable message"),
+      ],
+      mediaCount: 4,
+      mediaBySender: { Sparse: 2, "Media only": 2 },
+    });
+
+    for (const name of ["Sparse", "Media only"]) {
+      const sparse = person(stats, name);
+      expect(sparse.topWords).toEqual([]);
+      expect(sparse.topEmojis).toEqual([]);
+      expect(sparse.avgWordsPerMessage).toBe(0);
+      expect(sparse.medianReplyTimeMin).toBe(NO_REPLY_MEDIAN_MIN);
+      const numericValues = Object.values(sparse).filter(
+        (value): value is number => typeof value === "number",
+      );
+      expect(numericValues.every(Number.isFinite)).toBe(true);
+    }
+
+    expect(person(stats, "Sparse")).toMatchObject({
+      messageCount: 2,
+      wordCount: 0,
+      linkCount: 1,
+      mediaCount: 2,
+    });
+    expect(person(stats, "Media only")).toMatchObject({
+      messageCount: 0,
+      messageShare: 0,
+      wordCount: 0,
+      emojisPerMessage: 0,
+      weekendShare: 0,
+      activeSpanShare: 0,
+      mediaCount: 2,
+    });
   });
 
   it("requires every participant on consecutive days for the longest streak", () => {

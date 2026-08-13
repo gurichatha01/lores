@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseGenerateReportInput } from "../src/lib/reportValidation";
+import type { PersonStats } from "../src/lib/types";
 import { createTestGenerateInput } from "./reportTestData";
 
 describe("report transport", () => {
@@ -26,5 +27,14 @@ describe("report transport", () => {
       rawChat: "the complete export must never cross this boundary",
     };
     expect(() => parseGenerateReportInput(withExtraField)).toThrow("unsupported field");
+  });
+
+  it("names the exact missing person-stat field", () => {
+    const input = structuredClone(createTestGenerateInput());
+    delete (input.stats.people[0] as Partial<PersonStats>).topWords;
+
+    expect(() => parseGenerateReportInput(input)).toThrow(
+      "stats.people[0] is missing required field: topWords",
+    );
   });
 });
