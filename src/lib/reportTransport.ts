@@ -4,6 +4,7 @@ import type {
   GenerateReportInput,
   Message,
   ReportMode,
+  ReceiptExchange,
   ReportSampleMessage,
   ReportStats,
 } from "./types";
@@ -15,6 +16,7 @@ export interface CreateGenerateReportInput {
   stats: ChatStats;
   awards: readonly Award[];
   sample: readonly Message[];
+  receiptExchanges?: readonly ReceiptExchange[];
 }
 
 /** Serialize an API payload while preserving WhatsApp's naive local frame. */
@@ -28,6 +30,10 @@ export function serializeGenerateReportInput(
     stats: serializeStats(input.stats),
     awards: input.awards.map((award) => ({ ...award })),
     sample: input.sample.map(serializeMessage),
+    receiptExchanges: (input.receiptExchanges ?? []).map((exchange) => ({
+      ...exchange,
+      messages: exchange.messages.map((message) => ({ ...message })),
+    })),
   };
 }
 

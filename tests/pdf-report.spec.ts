@@ -31,10 +31,39 @@ describe("PDF keepsake", () => {
 
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
     const report = createReportSession(createTestGenerateInput("work"), VALID_REPORT);
-    report.content.highlights[0].bubble = Array.from(
+    report.content.highlights[0].snippet.messages[0].text = Array.from(
       { length: 90 },
       (_, index) => `receipt-word-${index + 1}`,
     ).join(" ");
+    report.content.highlights = [
+      report.content.highlights[0],
+      {
+        ...structuredClone(report.content.highlights[0]),
+        label: "The follow-up",
+        body: "The conversation continued with the full context intact.",
+        snippet: {
+          ...structuredClone(report.content.highlights[0].snippet),
+          exchangeId: "exchange-02",
+          messages: structuredClone(report.content.highlights[0].snippet.messages).map(
+            (message, index) =>
+              index === 0 ? { ...message, text: "The draft was worth staying up for." } : message,
+          ),
+        },
+      },
+      {
+        ...structuredClone(report.content.highlights[0]),
+        label: "The final word",
+        body: "A third real exchange closes the receipt section without a sparse page.",
+        snippet: {
+          ...structuredClone(report.content.highlights[0].snippet),
+          exchangeId: "exchange-03",
+          messages: structuredClone(report.content.highlights[0].snippet.messages).map(
+            (message, index) =>
+              index === 0 ? { ...message, text: "That callback landed perfectly." } : message,
+          ),
+        },
+      },
+    ];
     report.stats.totalWords = 80_000;
     report.stats.novelsEquivalent = 1;
     const pdf = createReportPdf(
@@ -44,7 +73,7 @@ describe("PDF keepsake", () => {
     const bytes = new Uint8Array(pdf.output("arraybuffer"));
 
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
-    expect(pdf.getNumberOfPages()).toBe(7);
+    expect(pdf.getNumberOfPages()).toBe(8);
     expect(pdf.internal.pageSize.getWidth()).toBeCloseTo(210, 1);
     expect(pdf.internal.pageSize.getHeight()).toBeCloseTo(297, 1);
     expect(bytes.byteLength).toBeGreaterThan(100_000);
@@ -52,5 +81,5 @@ describe("PDF keepsake", () => {
     if (process.env.PDF_QA_OUTPUT) {
       await writeFile(process.env.PDF_QA_OUTPUT, bytes);
     }
-  });
+  }, 15_000);
 });

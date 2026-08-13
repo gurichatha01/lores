@@ -1,6 +1,7 @@
 import { assignAwards } from "../src/lib/assignAwards";
 import { computeStats } from "../src/lib/computeStats";
 import { serializeGenerateReportInput } from "../src/lib/reportTransport";
+import { buildReceiptExchanges } from "../src/lib/receiptExchanges";
 import { getModePreset } from "../src/lib/modePresets";
 import type { GenerateReportInput, Message, ReportContent, ReportMode } from "../src/lib/types";
 
@@ -12,7 +13,19 @@ export const VALID_REPORT: ReportContent = {
     {
       label: "The vibe",
       body: "Warm, funny, and reliably present.",
-      bubble: "I remember this 😂",
+      snippet: {
+        exchangeId: "exchange-01",
+        startIndex: 0,
+        endIndex: 3,
+        startTimestamp: "2024-08-12T00:15:00",
+        endTimestamp: "2024-08-12T00:28:00",
+        messages: [
+          { messageIndex: 0, timestamp: "2024-08-12T00:15:00", sender: "A", text: "I remember this 😂" },
+          { messageIndex: 1, timestamp: "2024-08-12T00:20:00", sender: "B", text: "Me too" },
+          { messageIndex: 2, timestamp: "2024-08-12T00:24:00", sender: "A", text: "That whole night was ridiculous" },
+          { messageIndex: 3, timestamp: "2024-08-12T00:28:00", sender: "B", text: "Still one of the funniest stories" },
+        ],
+      },
     },
   ],
   awardLines: [
@@ -47,6 +60,8 @@ export function createTestGenerateInput(mode: ReportMode = "sweetheart"): Genera
   const messages = [
     testMessage(new Date(2024, 7, 12, 0, 15, 0), "A", "I remember this 😂"),
     testMessage(new Date(2024, 7, 12, 0, 20, 0), "B", "Me too"),
+    testMessage(new Date(2024, 7, 12, 0, 24, 0), "A", "That whole night was ridiculous"),
+    testMessage(new Date(2024, 7, 12, 0, 28, 0), "B", "Still one of the funniest stories"),
   ];
   const computed = computeStats(messages);
   const stats = {
@@ -89,6 +104,7 @@ export function createTestGenerateInput(mode: ReportMode = "sweetheart"): Genera
     stats,
     awards: assignAwards(stats, mode),
     sample: messages,
+    receiptExchanges: buildReceiptExchanges(messages, messages),
   });
 }
 

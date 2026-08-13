@@ -38,7 +38,7 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
     });
     const expectedReport = {
       ...VALID_REPORT,
-      highlights: VALID_REPORT.highlights.map(({ bubble: _bubble, ...highlight }) => highlight),
+      highlights: [],
       awardLines: awards.map((award) => ({
         awardId: award.id,
         line: testAwardLine(award.id, award.detail),

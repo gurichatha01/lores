@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AwardBadge, StatCard } from "@/components/ui";
+import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
 import {
   buildSweetheartStatCards,
   formatCount,
@@ -99,18 +100,14 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
                   <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-ink/45">
                     {highlight.label}
                   </h2>
-                  {highlight.bubble ? (
-                    <div
-                      className={`mt-2 w-fit max-w-[88%] px-3.5 py-2.5 text-sm font-semibold leading-snug ${
-                        index % 2 === 0
-                          ? "rounded-[16px_16px_16px_4px] bg-[#fdeef4]"
-                          : "ml-auto rounded-[16px_16px_4px_16px] bg-sweetheart text-white"
-                      }`}
-                    >
-                      {highlight.bubble}
-                    </div>
-                  ) : null}
                   <p className="mt-2.5 text-sm font-medium leading-relaxed text-ink/70">{highlight.body}</p>
+                  <ReceiptSnippet
+                    snippet={highlight.snippet}
+                    accent="#f0568a"
+                    accentSoft="#fdeef4"
+                    text="#0a0a0a"
+                    muted="rgba(10,10,10,.52)"
+                  />
                 </div>
               ))}
             </section>

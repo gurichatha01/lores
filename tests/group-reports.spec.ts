@@ -46,6 +46,23 @@ function groupPeople(): PersonStats[] {
   }));
 }
 
+function groupSnippet(startIndex: number) {
+  const messages = names.slice(startIndex, startIndex + 3).map((sender, offset) => ({
+    messageIndex: startIndex + offset,
+    timestamp: `2025-01-${String(startIndex + offset + 1).padStart(2, "0")}T12:00:00`,
+    sender,
+    text: `message number ${startIndex + offset + 1}`,
+  }));
+  return {
+    exchangeId: `exchange-${startIndex + 1}`,
+    startIndex,
+    endIndex: startIndex + 2,
+    startTimestamp: messages[0].timestamp,
+    endTimestamp: messages[2].timestamp,
+    messages,
+  };
+}
+
 function groupReport() {
   const computed = computeStats(names.map((_, index) => message(index)));
   const stats = { ...computed, people: groupPeople(), totalMessages: 810, spanDays: 365 };
@@ -55,9 +72,9 @@ function groupReport() {
     heroLine: "Nine people kept this chat moving.",
     wrappedLine: "One group, nine distinct chat habits.",
     highlights: [
-      { label: "Travel Agent", body: "A whole itinerary emerged.", bubble: "message number 1" },
-      { label: "Trip Math", body: "Every split was audited.", bubble: "message number 2" },
-      { label: "Gig Logistics", body: "Tickets ran the calendar.", bubble: "message number 3" },
+      { label: "Travel Agent", body: "A whole itinerary emerged.", snippet: groupSnippet(0) },
+      { label: "Trip Math", body: "Every split was audited.", snippet: groupSnippet(3) },
+      { label: "Gig Logistics", body: "Tickets ran the calendar.", snippet: groupSnippet(6) },
     ],
     awardLines: awards.map((award) => ({ awardId: award.id, line: award.detail })),
     narrative: "A deterministic group fixture.",
@@ -113,8 +130,8 @@ describe("group report integrity", () => {
   it("lists every participant once in unified PDF cards with no cutoff", () => {
     const data = buildPdfDocumentData(groupReport());
     expect(data.detailPages.flatMap((page) => page.people).map((person) => person.name)).toEqual(names);
-    expect(data.detailPages).toHaveLength(4);
-    expect(data.detailPages.filter((page) => page.highlights.length > 0)).toHaveLength(3);
+    expect(data.detailPages).toHaveLength(3);
+    expect(data.detailPages.filter((page) => page.highlights.length > 0)).toHaveLength(2);
     expect(data.detailPages.at(-1)?.people).toHaveLength(9);
     expect(data.awardCards.every((card) => card.line.length > 0)).toBe(true);
   });

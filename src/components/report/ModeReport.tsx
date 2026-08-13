@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { WrappedCard } from "@/components/cards/WrappedCard";
 import { ReportPdfDownload } from "@/components/pdf/ReportPdfDownload";
+import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
 import { getModePreset } from "@/lib/modePresets";
 import {
   buildModeStatCards,
@@ -165,27 +166,17 @@ export function ModeReport({ report }: ModeReportProps) {
                   >
                     {highlight.label}
                   </h2>
-                  {highlight.bubble ? (
-                    <div
-                      className={`mt-2 w-fit max-w-[88%] px-3.5 py-2.5 text-sm font-semibold leading-snug ${
-                        soft
-                          ? index % 2 === 0
-                            ? "rounded-[16px_16px_16px_4px]"
-                            : "ml-auto rounded-[16px_16px_4px_16px] text-white"
-                          : "border-2"
-                      }`}
-                      style={{
-                        background: index % 2 === 0 ? preset.accentSoft : preset.accent,
-                        borderColor: preset.accent,
-                        color: index % 2 === 0 && !dark ? preset.text : "#ffffff",
-                      }}
-                    >
-                      {highlight.bubble}
-                    </div>
-                  ) : null}
                   <p className="mt-2.5 text-sm font-medium leading-relaxed" style={{ color: preset.muted }}>
                     {highlight.body}
                   </p>
+                  <ReceiptSnippet
+                    snippet={highlight.snippet}
+                    accent={preset.accent}
+                    accentSoft={preset.accentSoft}
+                    text={preset.text}
+                    muted={preset.muted}
+                    dark={dark}
+                  />
                 </div>
               ))}
             </section>

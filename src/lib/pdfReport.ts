@@ -274,7 +274,23 @@ function drawDetailsPage(
   );
 
   if (hasHighlights) {
-    drawFullHighlight(context, data, details.highlights[0], detailPageIndex);
+    const gap = 26;
+    const top = 188;
+    const availableHeight = 1390;
+    const cardHeight =
+      details.highlights.length === 1
+        ? availableHeight
+        : (availableHeight - gap) / details.highlights.length;
+    details.highlights.forEach((highlight, index) =>
+      drawFullHighlight(
+        context,
+        data,
+        highlight,
+        precedingHighlightCount(data.detailPages, detailPageIndex) + index,
+        top + index * (cardHeight + gap),
+        cardHeight,
+      ),
+    );
     drawPageNumber(context, pageNumber, data.accent, false);
     return;
   }
@@ -321,11 +337,11 @@ function drawFullHighlight(
   data: PdfDocumentData,
   highlight: ReportContent["highlights"][number],
   receiptIndex: number,
+  y: number,
+  cardHeight: number,
 ): void {
   const x = PAGE_MARGIN;
-  const y = 188;
   const cardWidth = PDF_PAGE_WIDTH - PAGE_MARGIN * 2;
-  const cardHeight = 1390;
   context.fillStyle = "#ffffff";
   context.strokeStyle = INK;
   context.lineWidth = 3;
@@ -348,23 +364,85 @@ function drawFullHighlight(
     36,
   );
 
-  if (highlight.bubble) {
-    const receiptTop = bodyBottom + 38;
-    archivo(context, 22, 700);
-    const receiptLines = wrapLines(
-      context,
-      `“${highlight.bubble}”`,
-      cardWidth - 108,
-      Number.POSITIVE_INFINITY,
-    );
-    const receiptHeight = receiptLines.length * 31 + 60;
-    context.fillStyle = `${data.accent}18`;
-    context.fillRect(x + 28, receiptTop, cardWidth - 56, receiptHeight);
-    context.fillStyle = INK;
-    receiptLines.forEach((line, index) =>
-      context.fillText(line, x + 54, receiptTop + 30 + index * 31),
-    );
+  drawConversationSnippet(
+    context,
+    data,
+    highlight.snippet.messages,
+    x + 28,
+    bodyBottom + 28,
+    cardWidth - 56,
+    y + cardHeight - 28,
+  );
+}
+
+function drawConversationSnippet(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  messages: ReportContent["highlights"][number]["snippet"]["messages"],
+  x: number,
+  top: number,
+  width: number,
+  bottom: number,
+): void {
+  let fontSize = 22;
+  let lineHeight = 29;
+  let layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight);
+  while (layouts.totalHeight > bottom - top && fontSize > 10) {
+    fontSize -= 1;
+    lineHeight = fontSize + 7;
+    layouts = layoutSnippetMessages(context, messages, width, fontSize, lineHeight);
   }
+
+  let y = top;
+  const firstSender = messages[0]?.sender;
+  for (const layout of layouts.items) {
+    const outgoing = layout.message.sender !== firstSender;
+    const bubbleWidth = Math.min(width * 0.84, Math.max(width * 0.48, layout.maxLineWidth + 56));
+    const bubbleX = outgoing ? x + width - bubbleWidth : x;
+    context.fillStyle = outgoing ? data.accent : `${data.accent}18`;
+    context.fillRect(bubbleX, y, bubbleWidth, layout.height);
+    context.fillStyle = outgoing ? "rgba(255,255,255,.78)" : data.accent;
+    mono(context, Math.max(12, fontSize - 7), 700, 0.5);
+    context.fillText(layout.message.sender, bubbleX + 22, y + 14);
+    context.textAlign = "right";
+    context.fillText(formatSnippetTime(layout.message.timestamp), bubbleX + bubbleWidth - 22, y + 14);
+    context.textAlign = "left";
+    context.letterSpacing = "0px";
+    context.fillStyle = outgoing ? "#ffffff" : INK;
+    archivo(context, fontSize, 600);
+    layout.lines.forEach((line, lineIndex) =>
+      context.fillText(line, bubbleX + 22, y + 42 + lineIndex * lineHeight),
+    );
+    y += layout.height + 14;
+  }
+}
+
+function layoutSnippetMessages(
+  context: CanvasRenderingContext2D,
+  messages: ReportContent["highlights"][number]["snippet"]["messages"],
+  width: number,
+  fontSize: number,
+  lineHeight: number,
+) {
+  archivo(context, fontSize, 600);
+  const items = messages.map((message) => {
+    const lines = wrapLines(context, message.text, width * 0.84 - 44, Number.POSITIVE_INFINITY);
+    return {
+      message,
+      lines,
+      maxLineWidth: Math.max(0, ...lines.map((line) => context.measureText(line).width)),
+      height: 58 + lines.length * lineHeight,
+    };
+  });
+  return {
+    items,
+    totalHeight: items.reduce((total, item) => total + item.height + 14, 0),
+  };
+}
+
+function formatSnippetTime(timestamp: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/u.exec(timestamp);
+  return match ? `${match[3]}/${match[2]} ${match[4]}:${match[5]}` : timestamp;
 }
 
 function drawStory(
@@ -641,14 +719,39 @@ function buildDetailPages(
   people: readonly PersonStats[],
 ): PdfDocumentData["detailPages"] {
   const pages: PdfDocumentData["detailPages"] = [];
-  for (const highlight of highlights) {
-    pages.push({ highlights: [highlight], people: [] });
+  let highlightIndex = 0;
+  while (highlightIndex < highlights.length) {
+    const current = highlights[highlightIndex];
+    const next = highlights[highlightIndex + 1];
+    const canSharePage = next && receiptLayoutWeight(current) + receiptLayoutWeight(next) <= 1_150;
+    pages.push({
+      highlights: canSharePage ? [current, next] : [current],
+      people: [],
+    });
+    highlightIndex += canSharePage ? 2 : 1;
   }
   for (let personIndex = 0; personIndex < people.length; personIndex += 12) {
     pages.push({ highlights: [], people: people.slice(personIndex, personIndex + 12) });
   }
 
   return pages;
+}
+
+function receiptLayoutWeight(highlight: ReportContent["highlights"][number]): number {
+  return (
+    highlight.body.length +
+    highlight.snippet.messages.reduce((total, message) => total + message.text.length, 0) +
+    highlight.snippet.messages.length * 75
+  );
+}
+
+function precedingHighlightCount(
+  pages: readonly PdfDocumentData["detailPages"][number][],
+  pageIndex: number,
+): number {
+  return pages
+    .slice(0, pageIndex)
+    .reduce((total, page) => total + page.highlights.length, 0);
 }
 
 function fillPage(context: CanvasRenderingContext2D, color: string): void {

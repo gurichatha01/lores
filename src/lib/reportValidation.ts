@@ -3,12 +3,14 @@ import type {
   GenerateReportInput,
   PersonStats,
   ReportContent,
+  ReceiptExchange,
+  ReceiptSnippet,
   ReportSampleMessage,
   ReportStats,
 } from "./types";
 import { isReportMode } from "./modePresets";
 
-const INPUT_KEYS = ["mode", "subtype", "userContext", "stats", "awards", "sample"] as const;
+const INPUT_KEYS = ["mode", "subtype", "userContext", "stats", "awards", "sample", "receiptExchanges"] as const;
 const STATS_KEYS = [
   "isGroup",
   "people",
@@ -81,6 +83,7 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   const stats = parseReportStats(input.stats);
   const awards = parseAwards(input.awards);
   const sample = asArray(input.sample, "sample").map(parseSampleMessage);
+  const receiptExchanges = asArray(input.receiptExchanges, "receiptExchanges").map(parseReceiptSnippet);
   const people = new Set(stats.people.map((person) => person.name));
   const collectiveRecipients = new Set([
     "the group",
@@ -96,6 +99,12 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
   if (sample.some((message) => !people.has(message.sender))) {
     throw new ReportValidationError("Every sample sender must exist in stats.people.");
   }
+  if (receiptExchanges.length > 12) {
+    throw new ReportValidationError("receiptExchanges must contain at most 12 exchanges.");
+  }
+  if (receiptExchanges.some((exchange) => exchange.messages.some((message) => !people.has(message.sender)))) {
+    throw new ReportValidationError("Every receipt exchange sender must exist in stats.people.");
+  }
   if (awards.some((award) => !people.has(award.who) && !collectiveRecipients.has(award.who))) {
     throw new ReportValidationError(
       "Every award recipient must be one participant or a concise collective label.",
@@ -109,6 +118,7 @@ export function parseGenerateReportInput(value: unknown): GenerateReportInput {
     stats,
     awards,
     sample,
+    receiptExchanges,
   };
 }
 
@@ -122,19 +132,11 @@ export function parseReportContent(value: unknown): ReportContent {
 
   const highlights = asArray(content.highlights, "report.highlights").map((value, index) => {
     const highlight = asRecord(value, `report.highlights[${index}]`);
-    assertExactKeys(highlight, ["label", "body", "bubble"], `report.highlights[${index}]`, ["bubble"]);
-    const bubble = highlight.bubble;
-    const hasBubble = !(
-      bubble === undefined ||
-      bubble === null ||
-      (typeof bubble === "string" && bubble.trim().length === 0)
-    );
+    assertExactKeys(highlight, ["label", "body", "snippet"], `report.highlights[${index}]`);
     return {
       label: asString(highlight.label, `report.highlights[${index}].label`, 160),
       body: asString(highlight.body, `report.highlights[${index}].body`, 2_000),
-      ...(hasBubble
-        ? { bubble: asString(bubble, `report.highlights[${index}].bubble`, 1_000) }
-        : {}),
+      snippet: parseReceiptSnippet(highlight.snippet, index),
     };
   });
   const awardLines = asArray(content.awardLines, "report.awardLines").map((value, index) => {
@@ -166,6 +168,46 @@ export function parseReportContent(value: unknown): ReportContent {
     narrative: asString(content.narrative, "report.narrative", 8_000),
     chapters,
   };
+}
+
+function parseReceiptSnippet(value: unknown, index: number): ReceiptSnippet {
+  const path = `receipt snippet[${index}]`;
+  const snippet = asRecord(value, path);
+  assertExactKeys(
+    snippet,
+    ["exchangeId", "startIndex", "endIndex", "startTimestamp", "endTimestamp", "messages"],
+    path,
+  );
+  const startIndex = asNonNegativeInteger(snippet.startIndex, `${path}.startIndex`);
+  const endIndex = asNonNegativeInteger(snippet.endIndex, `${path}.endIndex`);
+  const messages = asArray(snippet.messages, `${path}.messages`).map((value, messageIndex) => {
+    const messagePath = `${path}.messages[${messageIndex}]`;
+    const message = asRecord(value, messagePath);
+    assertExactKeys(message, ["messageIndex", "timestamp", "sender", "text"], messagePath);
+    return {
+      messageIndex: asNonNegativeInteger(message.messageIndex, `${messagePath}.messageIndex`),
+      timestamp: asLocalDateTime(message.timestamp, `${messagePath}.timestamp`),
+      sender: asString(message.sender, `${messagePath}.sender`, 100),
+      text: asString(message.text, `${messagePath}.text`, 10_000),
+    };
+  });
+  if (messages.length < 3 || messages.length > 6) {
+    throw new ReportValidationError(`${path}.messages must contain 3 to 6 consecutive messages.`);
+  }
+  if (endIndex < startIndex || messages[0].messageIndex !== startIndex || messages.at(-1)!.messageIndex !== endIndex) {
+    throw new ReportValidationError(`${path} index range does not match its messages.`);
+  }
+  if (messages.some((message, messageIndex) => message.messageIndex !== startIndex + messageIndex)) {
+    throw new ReportValidationError(`${path}.messages must use consecutive source indexes.`);
+  }
+  return {
+    exchangeId: asString(snippet.exchangeId, `${path}.exchangeId`, 100),
+    startIndex,
+    endIndex,
+    startTimestamp: asLocalDateTime(snippet.startTimestamp, `${path}.startTimestamp`),
+    endTimestamp: asLocalDateTime(snippet.endTimestamp, `${path}.endTimestamp`),
+    messages,
+  } satisfies ReceiptExchange;
 }
 
 export function parseReportStats(value: unknown): ReportStats {

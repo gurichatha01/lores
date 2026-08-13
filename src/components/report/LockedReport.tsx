@@ -60,7 +60,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const names = formatParticipantTitle(stats.people);
   const cards = buildModeStatCards(report.mode, stats);
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
-  const receipt = content.highlights.find((highlight) => highlight.bubble) ?? content.highlights[0];
+  const receipt = content.highlights[0];
   const busy = status === "starting" || status === "checkout" || status === "verifying";
 
   useEffect(() => {
@@ -236,7 +236,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 
         <section className="mt-5 border-2 border-dashed p-4 text-center" style={{ background: preset.card, borderColor: dark ? preset.border : preset.text }} aria-label="Locked receipt">
           <p className="text-[15px] font-bold leading-snug">we found one of your receipts 👀</p>
-          <div className="mx-auto mt-3 w-fit max-w-[90%] rounded-[14px_14px_14px_3px] px-3 py-2 text-[13px] font-semibold text-white blur-[5px]" style={{ background: preset.accent }} aria-hidden="true">{receipt?.bubble ?? receipt?.body ?? content.title}</div>
+          <div className="mx-auto mt-3 w-fit max-w-[90%] rounded-[14px_14px_14px_3px] px-3 py-2 text-[13px] font-semibold text-white blur-[5px]" style={{ background: preset.accent }} aria-hidden="true">{receipt?.snippet.messages[0]?.text ?? receipt?.body ?? content.title}</div>
           <p className="mt-3 font-mono text-[10px] font-bold" style={{ color: preset.accent }}>🔒 unlock to read it</p>
         </section>
 

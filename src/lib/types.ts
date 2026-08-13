@@ -100,11 +100,33 @@ export interface ReportContent {
   title: string;
   heroLine: string;
   wrappedLine: string;
-  highlights: { label: string; body: string; bubble?: string }[];
+  highlights: {
+    label: string;
+    body: string;
+    snippet: ReceiptSnippet;
+  }[];
   awardLines: { awardId: string; line: string }[];
   narrative: string;
   chapters: { title: string; body: string }[];
 }
+
+export interface ReceiptSnippetMessage {
+  messageIndex: number;
+  timestamp: string;
+  sender: string;
+  text: string;
+}
+
+export interface ReceiptSnippet {
+  exchangeId: string;
+  startIndex: number;
+  endIndex: number;
+  startTimestamp: string;
+  endTimestamp: string;
+  messages: ReceiptSnippetMessage[];
+}
+
+export type ReceiptExchange = ReceiptSnippet;
 
 /** ChatStats serialized without converting local wall-clock dates to UTC. */
 export interface ReportStats extends Omit<
@@ -136,6 +158,7 @@ export interface GenerateReportInput {
   stats: ReportStats;
   awards: Award[];
   sample: ReportSampleMessage[];
+  receiptExchanges: ReceiptExchange[];
 }
 
 export interface ReportSessionData {

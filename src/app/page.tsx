@@ -105,7 +105,7 @@ export default function LandingPage() {
       <footer className="bg-surface px-5 py-8 sm:px-10 lg:px-14">
         <div className="mx-auto flex max-w-6xl items-end justify-between gap-6">
           <p className="max-w-md font-mono text-[9px] uppercase leading-relaxed tracking-[0.08em] text-ink/45">
-            parsed locally · only derived stats and a small curated sample reach the writer
+            parsed locally · only derived stats and a small curated message and receipt sample reach the writer
           </p>
           <div className="text-2xl font-black tracking-[-1px]">lores<span className="text-pink">_</span></div>
         </div>

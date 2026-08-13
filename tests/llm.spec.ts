@@ -43,7 +43,7 @@ describe("generateReport", () => {
     const body = JSON.parse(String(init.body));
     const providerInput = JSON.parse(body.contents[0].parts[0].text);
     expect(Object.keys(providerInput).sort()).toEqual(
-      ["mode", "subtype", "userContext", "stats", "awards", "sample"].sort(),
+      ["mode", "subtype", "userContext", "stats", "awards", "sample", "receiptExchanges"].sort(),
     );
     expect(JSON.stringify(body)).not.toContain("server-secret");
     expect(JSON.stringify(body)).not.toContain("rawChat");
@@ -60,8 +60,8 @@ describe("generateReport", () => {
     expect(body.generationConfig.responseSchema.properties.awardLines.maxItems).toBe(
       providerInput.awards.length,
     );
-    expect(body.generationConfig.responseSchema.properties.highlights.items.properties.bubbleIndex)
-      .toEqual({ type: "INTEGER" });
+    expect(body.generationConfig.responseSchema.properties.highlights.items.properties.exchangeId)
+      .toEqual({ type: "STRING", enum: ["exchange-01"] });
     expect(providerInput.userContext).toBe("Together since university.");
     expect(body.contents[0].parts[0].text).toContain(
       '\"userContext\":\"Together since university.\"',
@@ -233,10 +233,7 @@ describe("generateReport", () => {
     const slur = ["n", "igger"].join("");
     input.userContext = `Context containing ${slur} and ordinary damn profanity.`;
     input.sample[0] = { ...input.sample[0], text: `Source used ${slur} here. Damn.` };
-    const cleanReport = {
-      ...VALID_REPORT,
-      highlights: VALID_REPORT.highlights.map(({ bubble: _bubble, ...highlight }) => highlight),
-    };
+    const cleanReport = { ...VALID_REPORT, highlights: [] };
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(geminiSafetyBlockResponse())
@@ -272,25 +269,7 @@ describe("generateReport", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it.each([null, ""])(
-    "normalizes an empty optional highlight bubble (%s) instead of failing generation",
-    async (bubble) => {
-      const providerReport = {
-        ...VALID_REPORT,
-        highlights: [{ ...VALID_REPORT.highlights[0], bubble }],
-      };
-      const fetchMock = vi.fn().mockResolvedValue(geminiResponse(providerReport));
-      vi.stubEnv("LLM_API_KEY", "server-secret");
-      vi.stubGlobal("fetch", fetchMock);
-
-      const report = await generateReport(createTestGenerateInput());
-
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(report.highlights[0]).not.toHaveProperty("bubble");
-    },
-  );
-
-  it("materializes an indexed receipt as one exact sanitized sample message", async () => {
+  it("materializes an indexed receipt as the exact consecutive source exchange", async () => {
     const input = createTestGenerateInput();
     const indexedReport = {
       ...VALID_REPORT,
@@ -298,7 +277,7 @@ describe("generateReport", () => {
         {
           label: VALID_REPORT.highlights[0].label,
           body: VALID_REPORT.highlights[0].body,
-          bubbleIndex: 0,
+          exchangeId: "exchange-01",
         },
       ],
     };
@@ -308,7 +287,8 @@ describe("generateReport", () => {
 
     const report = await generateReport(input);
 
-    expect(report.highlights[0].bubble).toBe(input.sample[0].text);
+    expect(report.highlights[0].snippet).toEqual(input.receiptExchanges[0]);
+    expect(report.highlights[0].snippet.messages).toHaveLength(4);
   });
 
   it("repairs a response that omits any computed award line", async () => {
@@ -332,10 +312,10 @@ describe("generateReport", () => {
     );
   });
 
-  it("retries when a highlight bubble is not a verbatim sampled message", async () => {
+  it("retries when a highlight references an unknown source exchange", async () => {
     const ungrounded = {
       ...VALID_REPORT,
-      highlights: [{ ...VALID_REPORT.highlights[0], bubble: "a paraphrased message" }],
+      highlights: [{ label: "Wrong receipt", body: "Not grounded.", exchangeId: "exchange-99" }],
     };
     const fetchMock = vi
       .fn()
@@ -350,7 +330,7 @@ describe("generateReport", () => {
     expect(repairRequest.contents).toHaveLength(1);
     expect(repairRequest.contents[0].role).toBe("user");
     expect(repairRequest.contents[0].parts[0].text).toContain(
-      "Every highlight bubble must exactly match",
+      "missing required field: snippet",
     );
   });
 

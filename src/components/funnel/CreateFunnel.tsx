@@ -18,6 +18,7 @@ import { parseWhatsApp } from "@/lib/parseWhatsApp";
 import { createReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
 import { serializeGenerateReportInput } from "@/lib/reportTransport";
 import { parseReportContent } from "@/lib/reportValidation";
+import { buildReceiptExchanges } from "@/lib/receiptExchanges";
 import type { ReportMode } from "@/lib/types";
 
 type FunnelStep = "mode" | "context" | "source" | "instructions" | "upload";
@@ -72,6 +73,7 @@ export function CreateFunnel() {
       const stats = computeStats(parsed);
       const awards = assignAwards(stats, mode);
       const sample = curateSample(parsed.messages);
+      const receiptExchanges = buildReceiptExchanges(parsed.messages, sample);
       const input = serializeGenerateReportInput({
         mode,
         subtype,
@@ -79,6 +81,7 @@ export function CreateFunnel() {
         stats,
         awards,
         sample,
+        receiptExchanges,
       });
 
       setGenerationStage("generating");
@@ -351,7 +354,7 @@ function UploadStep({ file, error, onFile }: { file: File | null; error: string 
       </label>
       <div className="mt-5 border-2 border-ink bg-acid p-4">
         <p className="text-sm font-black">🔒 privacy, in plain English</p>
-        <p className="mt-2 text-[12px] font-semibold leading-relaxed text-ink/65">Your full chat is parsed in this browser. Media is never uploaded. Only aggregate stats, awards, and a small curated message sample go to the report writer.</p>
+        <p className="mt-2 text-[12px] font-semibold leading-relaxed text-ink/65">Your full chat is parsed in this browser. Media is never uploaded. Only aggregate stats, awards, and a small curated message and receipt sample go to the report writer.</p>
       </div>
       {error ? <div role="alert" className="mt-4 border-2 border-roast bg-white px-4 py-3 text-sm font-semibold text-roast">{error}</div> : null}
     </>

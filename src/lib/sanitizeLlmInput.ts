@@ -36,5 +36,12 @@ export function sanitizeLlmInput(input: GenerateReportInput): GenerateReportInpu
       ...message,
       text: maskSlurs(message.text),
     })),
+    receiptExchanges: input.receiptExchanges.map((exchange) => ({
+      ...exchange,
+      messages: exchange.messages.map((message) => ({
+        ...message,
+        text: maskSlurs(message.text),
+      })),
+    })),
   };
 }

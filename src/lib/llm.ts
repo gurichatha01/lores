@@ -33,9 +33,9 @@ const REPORT_SCHEMA = {
         properties: {
           label: { type: "STRING" },
           body: { type: "STRING" },
-          bubbleIndex: { type: "INTEGER" },
+          exchangeId: { type: "STRING" },
         },
-        required: ["label", "body"],
+        required: ["label", "body", "exchangeId"],
       },
     },
     awardLines: {
@@ -98,8 +98,8 @@ FIELD RULES:
 - awardLines — the winner's name is already shown as a heading. Do NOT restate it or start with it. Don't describe the award ("kept us laughing as the Comedian"). State the behavior that earned it. Include the numeric value from the award's detail using digits, and obey the award wiring below. Make it land in one line.
 - narrative — ${NARRATIVE_LENGTH} words. Open with a concrete detail, never a summary. Tell their actual story with their actual specifics. Close on a line that hits.
 - chapters — exactly 4, chronological, forming an arc across the whole span. Use the milestone dates and the by-month data to structure it (quiet start → peak → dip → now, or whatever the data actually shows). Each title is specific to THIS chat (never "The Beginning" — something like "The Meme Era" or "The 2AM Debate Club"). Each body is 2–3 sentences grounded in real details from that stretch.
-- highlights — pull real moments/patterns from the sample. Each is a genuine receipt or a specific pattern, briefly labeled.
-- highlight bubbleIndex — optional. Use the zero-based index of one COMPLETE supplied sample message; never write message text into this field. Omit bubbleIndex if no sample directly supports the highlight. Never select a message containing ${SLUR_PLACEHOLDER}; describe the surrounding behavior without a receipt instead.
+- highlights — select only from receiptExchanges. Each highlight must describe the exact 3–6-message exchange selected by exchangeId; the body and label must be impossible to confuse with another exchange. Never pair a description with a merely adjacent or vaguely related exchange.
+- highlight exchangeId — required for every highlight. Copy one supplied receiptExchanges[].exchangeId exactly. The renderer pulls that indexed source range and renders the real consecutive messages; never write, paraphrase, reorder, or splice message text yourself. If no supplied exchange supports a worthwhile highlight, return fewer highlights. If receiptExchanges is empty, return []. Never select an exchange containing ${SLUR_PLACEHOLDER}.
 - heroLine / title / wrappedLine — one punchy line each, specific to them, no mush.
 
 FEW-SHOT: THE FIX, SHOWN
@@ -251,7 +251,7 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
 
     let generatedValue: unknown;
     try {
-      generatedValue = materializeHighlightBubbles(
+      generatedValue = materializeHighlightSnippets(
         JSON.parse(stripCodeFences(extractGeminiText(responseBody))),
         requestInput,
       );
@@ -259,7 +259,7 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
       assertNoSlursInOutput(content);
       assertAwardLinesMatch(input, content);
       assertAwardLinesUseWinnerMetrics(input, content);
-      assertHighlightBubblesGrounded(requestInput, content);
+      assertHighlightSnippetsGrounded(requestInput, content);
       return content;
     } catch (error) {
       if (!(error instanceof SyntaxError || error instanceof ReportValidationError || error instanceof LlmOutputError)) {
@@ -287,6 +287,9 @@ function buildSafetyRetryInput(input: GenerateReportInput): GenerateReportInput 
     ...input,
     userContext: input.userContext.includes(SLUR_PLACEHOLDER) ? "" : input.userContext,
     sample: unmaskedSample.length > 0 ? unmaskedSample : input.sample,
+    receiptExchanges: input.receiptExchanges.filter((exchange) =>
+      exchange.messages.every((message) => !message.text.includes(SLUR_PLACEHOLDER)),
+    ),
   };
 }
 
@@ -298,14 +301,19 @@ function buildRepairInstruction(
   const awardIds = input.awards.map((award) => award.id).join(", ");
   return `\n\nREPAIR REQUIRED. Your previous JSON was rejected: ${error.message}
 Return a fresh COMPLETE report object, not a patch. Include exactly one non-empty awardLines entry for every ID: ${awardIds || "none"}.
-Keep every required top-level field and all 4 chapters. A highlight bubbleIndex is optional: omit it unless it points to one complete supporting sample message. Never write or paraphrase message text into bubbleIndex.`;
+Keep every required top-level field and all 4 chapters. Every highlight must use one exact exchangeId from receiptExchanges and describe only that exchange. If none fit, return fewer highlights or an empty highlights array.`;
 }
 
 function buildReportSchema(input: GenerateReportInput): object {
   const highlightProperties: Record<string, unknown> = {
     label: { type: "STRING" },
     body: { type: "STRING" },
-    bubbleIndex: { type: "INTEGER" },
+    exchangeId: {
+      type: "STRING",
+      ...(input.receiptExchanges.length > 0
+        ? { enum: input.receiptExchanges.map((exchange) => exchange.exchangeId) }
+        : {}),
+    },
   };
   const awardIds = input.awards.map((award) => award.id);
   return {
@@ -314,10 +322,11 @@ function buildReportSchema(input: GenerateReportInput): object {
       ...REPORT_SCHEMA.properties,
       highlights: {
         type: "ARRAY",
+        ...(input.receiptExchanges.length === 0 ? { maxItems: 0 } : {}),
         items: {
           type: "OBJECT",
           properties: highlightProperties,
-          required: ["label", "body"],
+          required: ["label", "body", "exchangeId"],
         },
       },
       awardLines: {
@@ -340,7 +349,7 @@ function buildReportSchema(input: GenerateReportInput): object {
   };
 }
 
-function materializeHighlightBubbles(
+function materializeHighlightSnippets(
   value: unknown,
   input: GenerateReportInput,
 ): unknown {
@@ -353,17 +362,24 @@ function materializeHighlightBubbles(
       if (!highlight || typeof highlight !== "object" || Array.isArray(highlight)) {
         return highlight;
       }
-      const { bubbleIndex, ...fields } = highlight as Record<string, unknown>;
-      if (!Number.isInteger(bubbleIndex)) return fields;
-      const message = input.sample[bubbleIndex as number];
+      const { exchangeId, ...fields } = highlight as Record<string, unknown>;
+      if (typeof exchangeId !== "string") return fields;
+      const exchange = input.receiptExchanges.find(
+        (candidate) => candidate.exchangeId === exchangeId,
+      );
       if (
-        !message ||
-        message.text.length > 1_000 ||
-        message.text.includes(SLUR_PLACEHOLDER)
+        !exchange ||
+        exchange.messages.some((message) => message.text.includes(SLUR_PLACEHOLDER))
       ) {
         return fields;
       }
-      return { ...fields, bubble: message.text };
+      return {
+        ...fields,
+        snippet: {
+          ...exchange,
+          messages: exchange.messages.map((message) => ({ ...message })),
+        },
+      };
     }),
   };
 }
@@ -448,10 +464,13 @@ function summarizeReportShape(value: unknown): Record<string, unknown> {
       if (!highlight || typeof highlight !== "object" || Array.isArray(highlight)) {
         return { type: highlight === null ? "null" : typeof highlight };
       }
-      const bubble = (highlight as Record<string, unknown>).bubble;
+      const snippet = (highlight as Record<string, unknown>).snippet;
       return {
-        bubbleType: bubble === null ? "null" : typeof bubble,
-        bubbleLength: typeof bubble === "string" ? bubble.length : null,
+        snippetType: snippet === null ? "null" : typeof snippet,
+        snippetMessages:
+          snippet && typeof snippet === "object" && !Array.isArray(snippet)
+            ? (snippet as { messages?: unknown[] }).messages?.length ?? null
+            : null,
       };
     }),
   };
@@ -590,17 +609,20 @@ function extractNumericEvidence(value: string): string[] {
   return value.replace(/(?<=\d),(?=\d{3}\b)/gu, "").match(/\d+(?:\.\d+)?%?/gu) ?? [];
 }
 
-function assertHighlightBubblesGrounded(
+function assertHighlightSnippetsGrounded(
   input: GenerateReportInput,
   content: ReportContent,
 ): void {
-  const evidence = new Set(input.sample.map((message) => message.text));
-  const ungrounded = content.highlights.filter(
-    (highlight) => highlight.bubble !== undefined && !evidence.has(highlight.bubble),
+  const evidence = new Map(
+    input.receiptExchanges.map((exchange) => [exchange.exchangeId, exchange]),
   );
+  const ungrounded = content.highlights.filter((highlight) => {
+    const exchange = evidence.get(highlight.snippet.exchangeId);
+    return !exchange || JSON.stringify(exchange) !== JSON.stringify(highlight.snippet);
+  });
   if (ungrounded.length > 0) {
     throw new LlmOutputError(
-      "Every highlight bubble must exactly match one complete message from the supplied sample.",
+      "Every highlight snippet must exactly match one supplied indexed receipt exchange.",
     );
   }
 }
