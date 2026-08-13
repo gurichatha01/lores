@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { HowItWorks } from "@/components/landing/HowItWorks";
 import { getModePreset, REPORT_MODES } from "@/lib/modePresets";
 
 const credibilitySlots = [
@@ -77,6 +78,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <HowItWorks />
 
       {SHOW_CREDIBILITY_SECTION ? (
         <section className="border-y-2 border-ink bg-white px-5 py-12 sm:px-10 lg:px-14" aria-labelledby="credibility-title">
