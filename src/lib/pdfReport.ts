@@ -270,20 +270,21 @@ function drawDetailsPage(
   drawSectionHeader(
     context,
     data,
-    `04 - ${hasHighlights ? "receipts & people" : "the people"}${data.detailPages.length > 1 ? ` - ${detailPageIndex + 1}` : ""}`,
+    `04 - ${hasHighlights ? "the receipts" : "the people"}${data.detailPages.length > 1 ? ` - ${detailPageIndex + 1}` : ""}`,
   );
 
   if (hasHighlights) {
-    drawHighlights(context, data, details.highlights);
-    sectionRule(context, "THE PEOPLE", 564);
+    drawFullHighlight(context, data, details.highlights[0], detailPageIndex);
+    drawPageNumber(context, pageNumber, data.accent, false);
+    return;
   }
 
   const columns = 3;
   const cardWidth = 342;
-  const cardHeight = hasHighlights ? 250 : 310;
+  const cardHeight = 310;
   const gapX = 25;
-  const rowGap = hasHighlights ? 24 : 28;
-  const peopleTop = hasHighlights ? 638 : 194;
+  const rowGap = 28;
+  const peopleTop = 194;
   details.people.forEach((person, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
@@ -301,53 +302,69 @@ function drawDetailsPage(
     context.fillText(`${formatCount(person.messageCount)} MESSAGES`, x + 20, y + 68);
     context.letterSpacing = "0px";
     context.fillStyle = INK;
-    archivo(context, hasHighlights ? 19 : 21, 600);
+    archivo(context, 21, 600);
     drawTextBlock(
       context,
       person.topWords.join(" - ") || "no repeated words",
       x + 20,
       y + 105,
       cardWidth - 40,
-      hasHighlights ? 28 : 31,
-      hasHighlights ? 5 : 6,
+      31,
+      6,
     );
   });
   drawPageNumber(context, pageNumber, data.accent, false);
 }
 
-function drawHighlights(
+function drawFullHighlight(
   context: CanvasRenderingContext2D,
   data: PdfDocumentData,
-  highlights: ReportContent["highlights"],
+  highlight: ReportContent["highlights"][number],
+  receiptIndex: number,
 ): void {
-  const cardWidth = 342;
-  const gap = 25;
-  highlights.forEach((highlight, index) => {
-    const x = PAGE_MARGIN + index * (cardWidth + gap);
-    const y = 188;
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = INK;
-    context.lineWidth = 3;
-    context.fillRect(x, y, cardWidth, 330);
-    context.strokeRect(x, y, cardWidth, 330);
-    context.fillStyle = data.accent;
-    mono(context, 15, 700, 2);
-    context.fillText(String(index + 1).padStart(2, "0"), x + 20, y + 20);
-    context.letterSpacing = "0px";
-    context.fillStyle = INK;
-    fitAndDrawText(context, highlight.label, x + 20, y + 52, cardWidth - 40, 27, 19, 900);
-    context.fillStyle = MUTED;
-    archivo(context, 18, 600);
-    drawTextBlock(context, highlight.body, x + 20, y + 96, cardWidth - 40, 25, 3);
+  const x = PAGE_MARGIN;
+  const y = 188;
+  const cardWidth = PDF_PAGE_WIDTH - PAGE_MARGIN * 2;
+  const cardHeight = 1390;
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = INK;
+  context.lineWidth = 3;
+  context.fillRect(x, y, cardWidth, cardHeight);
+  context.strokeRect(x, y, cardWidth, cardHeight);
+  context.fillStyle = data.accent;
+  mono(context, 17, 700, 2);
+  context.fillText(`RECEIPT ${String(receiptIndex + 1).padStart(2, "0")}`, x + 34, y + 32);
+  context.letterSpacing = "0px";
+  context.fillStyle = INK;
+  fitAndDrawText(context, highlight.label, x + 34, y + 78, cardWidth - 68, 50, 38, 900);
+  context.fillStyle = MUTED;
+  archivo(context, 25, 600);
+  const bodyBottom = drawFullTextBlock(
+    context,
+    highlight.body,
+    x + 34,
+    y + 150,
+    cardWidth - 68,
+    36,
+  );
 
-    if (highlight.bubble) {
-      context.fillStyle = `${data.accent}18`;
-      context.fillRect(x + 16, y + 184, cardWidth - 32, 128);
-      context.fillStyle = INK;
-      archivo(context, 16, 700);
-      drawTextBlock(context, `“${highlight.bubble}”`, x + 28, y + 198, cardWidth - 56, 21, 5);
-    }
-  });
+  if (highlight.bubble) {
+    const receiptTop = bodyBottom + 38;
+    archivo(context, 22, 700);
+    const receiptLines = wrapLines(
+      context,
+      `“${highlight.bubble}”`,
+      cardWidth - 108,
+      Number.POSITIVE_INFINITY,
+    );
+    const receiptHeight = receiptLines.length * 31 + 60;
+    context.fillStyle = `${data.accent}18`;
+    context.fillRect(x + 28, receiptTop, cardWidth - 56, receiptHeight);
+    context.fillStyle = INK;
+    receiptLines.forEach((line, index) =>
+      context.fillText(line, x + 54, receiptTop + 30 + index * 31),
+    );
+  }
 }
 
 function drawStory(
@@ -624,16 +641,11 @@ function buildDetailPages(
   people: readonly PersonStats[],
 ): PdfDocumentData["detailPages"] {
   const pages: PdfDocumentData["detailPages"] = [];
-  let highlightIndex = 0;
-  let personIndex = 0;
-
-  while (highlightIndex < highlights.length || personIndex < people.length) {
-    const pageHighlights = highlights.slice(highlightIndex, highlightIndex + 3);
-    highlightIndex += pageHighlights.length;
-    const peopleCapacity = pageHighlights.length > 0 ? 9 : 12;
-    const pagePeople = people.slice(personIndex, personIndex + peopleCapacity);
-    personIndex += pagePeople.length;
-    pages.push({ highlights: pageHighlights, people: pagePeople });
+  for (const highlight of highlights) {
+    pages.push({ highlights: [highlight], people: [] });
+  }
+  for (let personIndex = 0; personIndex < people.length; personIndex += 12) {
+    pages.push({ highlights: [], people: people.slice(personIndex, personIndex + 12) });
   }
 
   return pages;
@@ -717,6 +729,19 @@ function drawTextBlock(
   return y + lines.length * lineHeight;
 }
 
+function drawFullTextBlock(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+): number {
+  const lines = wrapLines(context, text, maxWidth, Number.POSITIVE_INFINITY);
+  lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
+  return y + lines.length * lineHeight;
+}
+
 function drawCenteredTextBlock(
   context: CanvasRenderingContext2D,
   text: string,
@@ -752,7 +777,7 @@ function wrapLines(
     }
   }
   if (line && lines.length < maxLines) lines.push(line);
-  if (lines.join(" ").length < text.trim().length && lines.length > 0) {
+  if (Number.isFinite(maxLines) && lines.join(" ").length < text.trim().length && lines.length > 0) {
     lines[lines.length - 1] = `${lines.at(-1)!.replace(/[.,;:!?]?$/u, "")}…`;
   }
   return lines;

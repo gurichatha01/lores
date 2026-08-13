@@ -46,6 +46,7 @@ const PERSON_KEYS = [
   "lastOfDayCount",
   "lateNightCount",
   "laughCount",
+  "profanityMessageCount",
   "emojiCount",
   "emojisPerMessage",
   "linkCount",
@@ -304,6 +305,10 @@ function parsePerson(value: unknown, index: number): PersonStats {
     lastOfDayCount: asNonNegativeInteger(person.lastOfDayCount, `stats.people[${index}].lastOfDayCount`),
     lateNightCount: asNonNegativeInteger(person.lateNightCount, `stats.people[${index}].lateNightCount`),
     laughCount: asNonNegativeInteger(person.laughCount, `stats.people[${index}].laughCount`),
+    profanityMessageCount: asNonNegativeInteger(
+      person.profanityMessageCount,
+      `stats.people[${index}].profanityMessageCount`,
+    ),
     emojiCount: asNonNegativeInteger(person.emojiCount, `stats.people[${index}].emojiCount`),
     emojisPerMessage: asFiniteNumber(
       person.emojisPerMessage,

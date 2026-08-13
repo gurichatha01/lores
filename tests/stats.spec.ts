@@ -122,6 +122,42 @@ describe("computeStats", () => {
     });
   });
 
+  it("counts profane/slur messages once and gates The Sailor to Roast and Group", () => {
+    const messages = Array.from({ length: 14 }, (_, index) =>
+      message(
+        `2024-01-01T10:${String(index).padStart(2, "0")}:00`,
+        index < 12 ? "A" : "B",
+        index < 12 ? "fuck fuck" : "ordinary message",
+      ),
+    );
+    const stats = computeStats(messages);
+
+    expect(person(stats, "A").profanityMessageCount).toBe(12);
+    expect(person(stats, "B").profanityMessageCount).toBe(0);
+    for (const mode of ["roast", "group"] as const) {
+      expect(assignAwards(stats, mode).find((award) => award.id === "the-sailor")).toEqual({
+        id: "the-sailor",
+        label: "The Sailor",
+        emoji: "🤬",
+        who: "A",
+        detail: "12 curse-messages",
+      });
+    }
+    for (const mode of ["sweetheart", "family", "ride-or-die", "work"] as const) {
+      expect(assignAwards(stats, mode).some((award) => award.id === "the-sailor")).toBe(false);
+    }
+  });
+
+  it("requires The Sailor to clear its curse-message threshold", () => {
+    const stats = computeStats(
+      Array.from({ length: AWARD_THRESHOLDS.sailorMinCurseMessages - 1 }, (_, index) =>
+        message(`2024-01-01T11:${String(index).padStart(2, "0")}:00`, "A", "shit"),
+      ).concat([message("2024-01-01T12:00:00", "B", "ordinary")]),
+    );
+
+    expect(assignAwards(stats, "roast").some((award) => award.id === "the-sailor")).toBe(false);
+  });
+
   it("requires every participant on consecutive days for the longest streak", () => {
     const stats = computeStats([
       message("2024-02-01T09:00:00", "A"),
@@ -354,7 +390,7 @@ describe("assignAwards", () => {
       ),
     };
 
-    const awards = assignAwards(stats);
+    const awards = assignAwards(stats, "sweetheart");
     expect(Object.fromEntries(awards.map((award) => [award.id, award.who]))).toEqual({
       "certified-ghost": "B",
       "main-character": "A",
@@ -408,7 +444,7 @@ describe("assignAwards", () => {
       })),
     };
 
-    const awards = assignAwards(stats);
+    const awards = assignAwards(stats, "sweetheart");
     expect(awards.map((award) => award.id)).toEqual([
       "perfectly-in-sync",
       "two-way-street",
@@ -474,7 +510,7 @@ describe("assignAwards", () => {
       ),
     };
 
-    expect(assignAwards(stats).map((award) => award.id)).toEqual([
+    expect(assignAwards(stats, "sweetheart").map((award) => award.id)).toEqual([
       "3am-overthinker",
       "comedian",
       "perfectly-in-sync",
@@ -510,7 +546,7 @@ describe("assignAwards", () => {
       })),
     };
 
-    expect(assignAwards(stats).find((award) => award.id === "certified-ghost")?.who).toBe(
+    expect(assignAwards(stats, "sweetheart").find((award) => award.id === "certified-ghost")?.who).toBe(
       "First",
     );
   });

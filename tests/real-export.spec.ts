@@ -24,7 +24,7 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
       subtype: stats.isGroup ? "friend group" : "close friend",
       userContext: "",
       stats,
-      awards: assignAwards(stats),
+      awards: assignAwards(stats, stats.isGroup ? "group" : "ride-or-die"),
       sample: curateSample(result.messages),
     });
     const senders = new Map<string, number>();

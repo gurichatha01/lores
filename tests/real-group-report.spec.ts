@@ -24,7 +24,7 @@ describe.skipIf(!runRealGroup || !exportPath)("live 9-person group report", () =
     const file = Object.assign(new Blob([bytes]), { name: path.basename(resolvedPath) });
     const parsed = await parseWhatsApp(file);
     const stats = computeStats(parsed);
-    const awards = assignAwards(stats);
+    const awards = assignAwards(stats, "group");
     const input = serializeGenerateReportInput({
       mode: "group",
       subtype: "friend group",

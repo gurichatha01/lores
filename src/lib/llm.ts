@@ -497,7 +497,7 @@ function assertAwardLinesMatch(input: GenerateReportInput, content: ReportConten
 }
 
 function assertAwardInputsMatchStats(input: GenerateReportInput): void {
-  const expected = assignAwards(input.stats);
+  const expected = assignAwards(input.stats, input.mode);
   const actual = input.awards;
   const matches =
     expected.length === actual.length &&

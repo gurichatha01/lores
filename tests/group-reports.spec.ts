@@ -49,7 +49,7 @@ function groupPeople(): PersonStats[] {
 function groupReport() {
   const computed = computeStats(names.map((_, index) => message(index)));
   const stats = { ...computed, people: groupPeople(), totalMessages: 810, spanDays: 365 };
-  const awards = assignAwards(stats);
+  const awards = assignAwards(stats, "group");
   const content: ReportContent = {
     title: "The group report",
     heroLine: "Nine people kept this chat moving.",
@@ -81,7 +81,7 @@ function groupReport() {
 
 describe("group report integrity", () => {
   it("qualifies the group award pool, ranks by strength, and never exceeds eight", () => {
-    const awards = assignAwards({ people: groupPeople(), longestStreakDays: 0 });
+    const awards = assignAwards({ people: groupPeople(), longestStreakDays: 0 }, "group");
     expect(new Set(awards.map((award) => award.id))).toEqual(new Set([
       "the-lurker",
       "the-novelist",
@@ -102,7 +102,7 @@ describe("group report integrity", () => {
       messageShare: 1 / 9,
       medianReplyTimeMin: 2,
     }));
-    const awards = assignAwards({ people, longestStreakDays: 12 });
+    const awards = assignAwards({ people, longestStreakDays: 12 }, "group");
     expect(awards.map((award) => award.id)).not.toEqual(
       expect.arrayContaining(["perfectly-in-sync", "two-way-street"]),
     );
@@ -113,9 +113,9 @@ describe("group report integrity", () => {
   it("lists every participant once in unified PDF cards with no cutoff", () => {
     const data = buildPdfDocumentData(groupReport());
     expect(data.detailPages.flatMap((page) => page.people).map((person) => person.name)).toEqual(names);
-    expect(data.detailPages).toHaveLength(1);
-    expect(data.detailPages[0].people).toHaveLength(9);
-    expect(data.detailPages[0].highlights).toHaveLength(3);
+    expect(data.detailPages).toHaveLength(4);
+    expect(data.detailPages.filter((page) => page.highlights.length > 0)).toHaveLength(3);
+    expect(data.detailPages.at(-1)?.people).toHaveLength(9);
     expect(data.awardCards.every((card) => card.line.length > 0)).toBe(true);
   });
 

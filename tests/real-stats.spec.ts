@@ -16,7 +16,7 @@ describe.skipIf(!realExportPath)("real WhatsApp stats sanity check", () => {
     const input = Object.assign(new Blob([bytes]), { name: path.basename(resolvedPath) });
     const parsed = await parseWhatsApp(input);
     const stats = computeStats(parsed);
-    const awards = assignAwards(stats);
+    const awards = assignAwards(stats, stats.isGroup ? "group" : "ride-or-die");
 
     expect(stats.totalMessages).toBe(parsed.messages.length);
     expect(stats.totalWords).toBeGreaterThan(0);

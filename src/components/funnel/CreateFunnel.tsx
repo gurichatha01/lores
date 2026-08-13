@@ -70,7 +70,7 @@ export function CreateFunnel() {
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       const parsed = await parseWhatsApp(file);
       const stats = computeStats(parsed);
-      const awards = assignAwards(stats);
+      const awards = assignAwards(stats, mode);
       const sample = curateSample(parsed.messages);
       const input = serializeGenerateReportInput({
         mode,

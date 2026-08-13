@@ -26,7 +26,7 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
     const file = Object.assign(new Blob([bytes]), { name: path.basename(resolvedPath) });
     const parsed = await parseWhatsApp(file);
     const stats = computeStats(parsed);
-    const awards = assignAwards(stats);
+    const awards = assignAwards(stats, "sweetheart");
     const sample = curateSample(parsed.messages);
     const input = serializeGenerateReportInput({
       mode: "sweetheart",

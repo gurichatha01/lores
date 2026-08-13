@@ -31,6 +31,10 @@ describe("PDF keepsake", () => {
 
   it("renders a valid multi-page PDF without synthesizing chart values", async () => {
     const report = createReportSession(createTestGenerateInput("work"), VALID_REPORT);
+    report.content.highlights[0].bubble = Array.from(
+      { length: 90 },
+      (_, index) => `receipt-word-${index + 1}`,
+    ).join(" ");
     report.stats.totalWords = 80_000;
     report.stats.novelsEquivalent = 1;
     const pdf = createReportPdf(
@@ -40,7 +44,7 @@ describe("PDF keepsake", () => {
     const bytes = new Uint8Array(pdf.output("arraybuffer"));
 
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
-    expect(pdf.getNumberOfPages()).toBe(6);
+    expect(pdf.getNumberOfPages()).toBe(7);
     expect(pdf.internal.pageSize.getWidth()).toBeCloseTo(210, 1);
     expect(pdf.internal.pageSize.getHeight()).toBeCloseTo(297, 1);
     expect(bytes.byteLength).toBeGreaterThan(100_000);

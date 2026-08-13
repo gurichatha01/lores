@@ -6,6 +6,7 @@ import type {
   ReplyTimeBucket,
 } from "./types";
 import { sanitizeEvidenceText } from "./evidenceHygiene";
+import { containsProfanityOrSlur } from "./sanitizeLlmInput";
 
 export const REPLY_GAP_CAP_MIN = 6 * 60;
 export const NO_REPLY_MEDIAN_MIN = 0;
@@ -20,6 +21,7 @@ interface MutablePersonStats {
   lastOfDayCount: number;
   lateNightCount: number;
   laughCount: number;
+  profanityMessageCount: number;
   emojiCount: number;
   linkCount: number;
   maxConsecutiveMessages: number;
@@ -271,6 +273,9 @@ export function computeStats(
     }
 
     person.laughCount += message.text.match(LAUGH_TOKEN)?.length ?? 0;
+    if (containsProfanityOrSlur(message.text)) {
+      person.profanityMessageCount += 1;
+    }
     person.emojiCount += message.emojis.length;
     person.linkCount += message.text.match(LINK)?.length ?? 0;
     countEmojis(person.emojis, message.emojis);
@@ -318,6 +323,7 @@ export function computeStats(
     lastOfDayCount: person.lastOfDayCount,
     lateNightCount: person.lateNightCount,
     laughCount: person.laughCount,
+    profanityMessageCount: person.profanityMessageCount,
     emojiCount: person.emojiCount,
     emojisPerMessage: round(safeDivide(person.emojiCount, person.messageCount), 3),
     linkCount: person.linkCount,
@@ -396,6 +402,7 @@ function getOrCreatePerson(
     lastOfDayCount: 0,
     lateNightCount: 0,
     laughCount: 0,
+    profanityMessageCount: 0,
     emojiCount: 0,
     linkCount: 0,
     maxConsecutiveMessages: 0,

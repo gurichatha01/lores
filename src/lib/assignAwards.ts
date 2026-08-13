@@ -1,6 +1,6 @@
-import type { Award, ChatStats, PersonStats } from "./types";
+import type { Award, ChatStats, PersonStats, ReportMode } from "./types";
 
-type AwardStats = Pick<ChatStats, "people" | "longestStreakDays">;
+type AwardStats = Pick<ChatStats, "people" | "longestStreakDays"> & { mode: ReportMode };
 type AwardSelection = "highest" | "lowest" | "closest" | "balanced" | "longest";
 
 interface AwardRuleDefinition {
@@ -36,6 +36,7 @@ export const AWARD_THRESHOLDS = {
   lateNightMinMessagesExclusive: 20,
   oneWordMaxAverageExclusive: 4,
   comedianMinLaughMessagesExclusive: 30,
+  sailorMinCurseMessages: 10,
   mainCharacterMinShareExclusive: 0.6,
   initiatorMinShareExclusive: 0.6,
   perfectlyInSyncMaxGapMinutes: 5,
@@ -138,6 +139,29 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
     meaning: "the person with the most laugh-messages",
     lineInstruction: "Describe the winner's specific laughter pattern and cite the grounded laugh-message count.",
     lineMustMatch: /\b(?:laugh|laughing|funny|joke|comedy|comedian|lol|lmao|rofl)\b/iu,
+  }),
+  personRule({
+    id: "the-sailor",
+    label: "The Sailor",
+    emoji: "🤬",
+    score: (person) => person.profanityMessageCount,
+    direction: "max",
+    qualifies: (winner, stats) =>
+      (stats.mode === "roast" || stats.mode === "group") &&
+      winner.profanityMessageCount >= AWARD_THRESHOLDS.sailorMinCurseMessages,
+    detail: (person) => `${formatCount(person.profanityMessageCount)} curse-messages`,
+    strength: (winner, people) =>
+      higherSignal(
+        winner.profanityMessageCount,
+        runnerUp(people, (person) => person.profanityMessageCount),
+        AWARD_THRESHOLDS.sailorMinCurseMessages,
+      ),
+    metric: "profane-or-slur message count",
+    selection: "highest",
+    meaning: "the person who sent the most messages containing profanity or a slur",
+    lineInstruction:
+      "Describe only the volume or habit and cite the grounded curse-message count. Never quote, name, hint at, or reproduce any profane or slur term.",
+    lineMustMatch: /\b(?:curse|cursing|profanity|profane|language|messages?)\b/iu,
   }),
   personRule({
     id: "the-initiator",
@@ -329,11 +353,16 @@ const AWARD_RULES: readonly AwardRuleDefinition[] = [
 ];
 
 /** Select threshold-clearing awards, ranked by signal and diversified across winners. */
-export function assignAwards(stats: AwardStats): Award[] {
+export function assignAwards(
+  stats: Pick<ChatStats, "people" | "longestStreakDays">,
+  mode: ReportMode,
+): Award[] {
   if (stats.people.length === 0) return [];
 
+  const awardStats: AwardStats = { ...stats, mode };
+
   const candidates = AWARD_RULES.flatMap((rule, order) => {
-    const candidate = rule.candidate(stats);
+    const candidate = rule.candidate(awardStats);
     return candidate ? [{ ...candidate, order }] : [];
   }).sort((left, right) => right.strength - left.strength || left.order - right.order);
 

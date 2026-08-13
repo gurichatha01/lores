@@ -25,6 +25,7 @@ export interface PersonStats {
   lastOfDayCount: number;
   lateNightCount: number;
   laughCount: number;
+  profanityMessageCount: number;
   emojiCount: number;
   emojisPerMessage: number;
   linkCount: number;

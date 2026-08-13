@@ -81,7 +81,7 @@ export function createTestGenerateInput(mode: ReportMode = "sweetheart"): Genera
     subtype: getModePreset(mode).defaultSubtype,
     userContext: "Together since university.",
     stats,
-    awards: assignAwards(stats),
+    awards: assignAwards(stats, mode),
     sample: messages,
   });
 }
@@ -92,7 +92,7 @@ export function createTiedGenerateInput(mode: ReportMode = "sweetheart"): Genera
     ...person,
     medianReplyTimeMin: 45,
   }));
-  input.awards = assignAwards(input.stats);
+  input.awards = assignAwards(input.stats, mode);
   return input;
 }
 
@@ -133,7 +133,7 @@ export function createAlternateGenerateInput(
           laughCount: 121,
         },
   );
-  input.awards = assignAwards(input.stats);
+  input.awards = assignAwards(input.stats, mode);
   return input;
 }
 
