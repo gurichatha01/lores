@@ -8,6 +8,8 @@ import {
   REPLY_GAP_CAP_MIN,
 } from "../src/lib/computeStats";
 import { parseWhatsAppText } from "../src/lib/parseWhatsApp";
+import { serializeGenerateReportInput } from "../src/lib/reportTransport";
+import { parseGenerateReportInput } from "../src/lib/reportValidation";
 import type { Message } from "../src/lib/types";
 
 function message(timestamp: string, sender: string, text = "hello"): Message {
@@ -135,6 +137,63 @@ describe("computeStats", () => {
       activeSpanShare: 0,
       mediaCount: 2,
     });
+  });
+
+  it("serializes every complete person-stat field for a totally clean chat", () => {
+    const messages = [
+      message("2024-03-01T09:00:00", "A", "Morning. Are you free later?"),
+      message("2024-03-01T09:08:00", "B", "Yes, lets get coffee after work."),
+      message("2024-03-02T10:00:00", "A", "Perfect, see you then."),
+      message("2024-03-02T10:12:00", "B", "Looking forward to it."),
+    ];
+    const stats = computeStats(messages);
+    const expectedPersonKeys = [
+      "activeSpanShare",
+      "avgWordsPerMessage",
+      "conversationStarts",
+      "emojiCount",
+      "emojisPerMessage",
+      "lastOfDayCount",
+      "lateNightCount",
+      "laughCount",
+      "linkCount",
+      "maxConsecutiveMessages",
+      "medianReplyTimeMin",
+      "mediaCount",
+      "messageCount",
+      "messageShare",
+      "name",
+      "profanityMessageCount",
+      "replyCount",
+      "silenceRevivalCount",
+      "topEmojis",
+      "topWords",
+      "weekendMessageCount",
+      "weekendShare",
+      "wordCount",
+    ];
+
+    for (const participant of stats.people) {
+      expect(Object.keys(participant).sort()).toEqual(expectedPersonKeys.sort());
+      expect(participant.profanityMessageCount).toBe(0);
+      expect(Array.isArray(participant.topEmojis)).toBe(true);
+      expect(Array.isArray(participant.topWords)).toBe(true);
+      expect(
+        Object.values(participant)
+          .filter((value): value is number => typeof value === "number")
+          .every((value) => Number.isFinite(value) && value >= 0),
+      ).toBe(true);
+    }
+
+    const payload = serializeGenerateReportInput({
+      mode: "sweetheart",
+      subtype: "partner",
+      userContext: "",
+      stats,
+      awards: assignAwards(stats, "sweetheart"),
+      sample: messages,
+    });
+    expect(parseGenerateReportInput(payload).stats.people).toEqual(payload.stats.people);
   });
 
   it("counts profane/slur messages once and gates The Sailor to Roast and Group", () => {

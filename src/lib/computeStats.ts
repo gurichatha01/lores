@@ -323,7 +323,7 @@ export function computeStats(
       person.replyTimesMin.length >= MIN_CAPPED_REPLIES_FOR_MEDIAN
         ? person.replyTimesMin
         : person.allReplyTimesMin;
-    return {
+    return completePersonStats({
       name: person.name,
       messageCount: person.messageCount,
       messageShare: safeDivide(person.messageCount, messages.length),
@@ -358,7 +358,7 @@ export function computeStats(
         count,
       })),
       topWords: topEntries(person.words, TOP_WORD_LIMIT).map(([word]) => word),
-    };
+    });
   });
   const activeDays = [...dailyCounts.keys()].sort((left, right) => left - right);
   const busiest = findBusiestDay(dailyCounts);
@@ -458,6 +458,50 @@ function safeDivide(numerator: number, denominator: number): number {
 
 function safeNonNegativeInteger(value: number): number {
   return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+}
+
+/**
+ * The generation boundary requires every PersonStats key, even for people
+ * represented only by media markers or a completely clean/empty-text chat.
+ * Keep that contract explicit here so no later metric addition can leak an
+ * undefined or NaN through serialization.
+ */
+function completePersonStats(person: PersonStats): PersonStats {
+  return {
+    name: person.name,
+    messageCount: safeNonNegativeInteger(person.messageCount),
+    messageShare: safeShare(person.messageShare),
+    wordCount: safeNonNegativeInteger(person.wordCount),
+    avgWordsPerMessage: safeNonNegativeNumber(person.avgWordsPerMessage),
+    medianReplyTimeMin: safeNonNegativeNumber(person.medianReplyTimeMin),
+    replyCount: safeNonNegativeInteger(person.replyCount),
+    conversationStarts: safeNonNegativeInteger(person.conversationStarts),
+    lastOfDayCount: safeNonNegativeInteger(person.lastOfDayCount),
+    lateNightCount: safeNonNegativeInteger(person.lateNightCount),
+    laughCount: safeNonNegativeInteger(person.laughCount),
+    profanityMessageCount: safeNonNegativeInteger(person.profanityMessageCount),
+    emojiCount: safeNonNegativeInteger(person.emojiCount),
+    emojisPerMessage: safeNonNegativeNumber(person.emojisPerMessage),
+    linkCount: safeNonNegativeInteger(person.linkCount),
+    mediaCount: safeNonNegativeInteger(person.mediaCount),
+    maxConsecutiveMessages: safeNonNegativeInteger(person.maxConsecutiveMessages),
+    silenceRevivalCount: safeNonNegativeInteger(person.silenceRevivalCount),
+    weekendMessageCount: safeNonNegativeInteger(person.weekendMessageCount),
+    weekendShare: safeShare(person.weekendShare),
+    activeSpanShare: safeShare(person.activeSpanShare),
+    topEmojis: person.topEmojis
+      .filter((entry) => typeof entry.emoji === "string" && entry.emoji.length > 0)
+      .map((entry) => ({ emoji: entry.emoji, count: safeNonNegativeInteger(entry.count) })),
+    topWords: person.topWords.filter((word) => typeof word === "string" && word.length > 0),
+  };
+}
+
+function safeNonNegativeNumber(value: number): number {
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function safeShare(value: number): number {
+  return Math.min(1, safeNonNegativeNumber(value));
 }
 
 function countEmojis(counts: Map<string, number>, emojis: readonly string[]): void {
