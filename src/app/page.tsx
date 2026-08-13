@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { getModePreset, REPORT_MODES } from "@/lib/modePresets";
 
@@ -29,7 +30,7 @@ export default function LandingPage() {
               the story hiding in your messages
             </p>
             <h1 className="mt-4 text-[clamp(5.8rem,27vw,10rem)] font-black leading-[0.75] tracking-[-7px] sm:tracking-[-9px]">
-              lores<span className="text-group">_</span>
+              <BrandWordmark accent="#ff2d78" />
             </h1>
             <p className="mt-7 max-w-xl text-[clamp(1.4rem,5vw,2.25rem)] font-semibold leading-[1.12] tracking-[-1px]">
               upload your chat.<br />
@@ -110,7 +111,7 @@ export default function LandingPage() {
           <p className="max-w-md font-mono text-[9px] uppercase leading-relaxed tracking-[0.08em] text-ink/45">
             parsed locally · only derived stats and a small curated message and receipt sample reach the writer
           </p>
-          <div className="text-2xl font-black tracking-[-1px]">lores<span className="text-pink">_</span></div>
+          <BrandWordmark accent="#ff2d78" className="text-2xl font-black tracking-[-1px]" />
         </div>
       </footer>
     </main>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { narrativeFirstLine } from "@/lib/funnel";
 import { getModePreset } from "@/lib/modePresets";
 import { ReportBackdrop } from "@/components/report/ReportBackdrop";
@@ -264,7 +265,11 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
               ) : null}
               <p className="mt-1 font-mono text-[9px] leading-relaxed text-white/55">full report · PDF keepsake · Wrapped card</p>
             </div>
-            <div className="text-xl font-black">lores<span style={{ color: preset.accent }}>_</span></div>
+            <BrandWordmark
+              accent={preset.accent}
+              contrastPlate
+              className="text-xl font-black tracking-[-0.5px]"
+            />
           </div>
           <button
             type="button"

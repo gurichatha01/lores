@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { assignAwards } from "@/lib/assignAwards";
 import { computeStats } from "@/lib/computeStats";
 import { curateSample } from "@/lib/curateSample";
@@ -149,7 +150,7 @@ export function CreateFunnel() {
       >
         <header className="flex items-center justify-between border-b-2 pb-3" style={{ borderColor: preset.text }}>
           <Link href="/" className="text-2xl font-black tracking-[-1px] lg:hidden">
-            lores<span style={{ color: preset.accent }}>_</span>
+            <BrandWordmark accent={preset.accent} />
           </Link>
           <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink/45 lg:block">
             {preset.emoji} {preset.label} edition
@@ -233,7 +234,7 @@ function DesktopBrandPanel({ mode }: { mode: ReportMode }) {
       aria-label={`${preset.label} edition`}
     >
       <Link href="/" className="w-fit text-[54px] font-black leading-none tracking-[-4px]">
-        lores<span>_</span>
+        <BrandWordmark accent={preset.accent} contrastPlate />
       </Link>
       <div className="max-w-[32rem]">
         <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">

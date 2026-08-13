@@ -729,7 +729,7 @@ function drawClosing(context: CanvasRenderingContext2D, data: PdfDocumentData, p
   mono(context, 21, 400);
   context.fillText("MADE WITH LORES.IN", PAGE_MARGIN, 1625);
   drawLogo(context, PDF_PAGE_WIDTH - PAGE_MARGIN - 120, 1610, data.accent, true);
-  drawPageNumber(context, pageNumber, data.accent, true);
+  drawClosingPageNumber(context, pageNumber);
 }
 
 function drawHeader(
@@ -985,21 +985,45 @@ function fillPage(context: CanvasRenderingContext2D, color: string): void {
 }
 
 function drawLogo(context: CanvasRenderingContext2D, x: number, y: number, accent: string, dark: boolean): void {
-  context.fillStyle = dark ? PAPER : INK;
   archivo(context, 46, 900);
-  context.fillText("lores", x, y);
   const width = context.measureText("lores").width;
+  const underscoreWidth = context.measureText("_").width;
+  if (dark) {
+    context.fillStyle = PAPER;
+    context.fillRect(x - 12, y - 8, width + underscoreWidth + 24, 66);
+  }
+  context.fillStyle = INK;
+  context.fillText("lores", x, y);
   context.fillStyle = accent;
   context.fillText("_", x + width, y);
 }
 
 function drawPageNumber(context: CanvasRenderingContext2D, page: number, accent: string, dark: boolean): void {
-  context.fillStyle = dark ? "rgba(243,243,239,.42)" : MUTED;
+  mono(context, 17, 400);
+  const prefix = `${String(page).padStart(2, "0")} - `;
+  const brand = "lores";
+  const prefixWidth = context.measureText(prefix).width;
+  const brandWidth = context.measureText(brand).width;
+  const underscoreWidth = context.measureText("_").width;
+  const startX = PDF_PAGE_WIDTH - PAGE_MARGIN - prefixWidth - brandWidth - underscoreWidth;
+  if (dark) {
+    context.fillStyle = PAPER;
+    context.fillRect(startX - 10, 1669, prefixWidth + brandWidth + underscoreWidth + 20, 38);
+  }
+  context.textAlign = "left";
+  context.fillStyle = dark ? "rgba(10,10,10,.55)" : MUTED;
+  context.fillText(prefix, startX, 1680);
+  context.fillStyle = INK;
+  context.fillText(brand, startX + prefixWidth, 1680);
+  context.fillStyle = accent;
+  context.fillText("_", startX + prefixWidth + brandWidth, 1680);
+}
+
+function drawClosingPageNumber(context: CanvasRenderingContext2D, page: number): void {
+  context.fillStyle = "rgba(243,243,239,.42)";
   mono(context, 17, 400);
   context.textAlign = "right";
-  context.fillText(`${String(page).padStart(2, "0")} - lores`, PDF_PAGE_WIDTH - PAGE_MARGIN, 1680);
-  context.fillStyle = accent;
-  context.fillText("_", PDF_PAGE_WIDTH - PAGE_MARGIN + 8, 1680);
+  context.fillText(String(page).padStart(2, "0"), PDF_PAGE_WIDTH - PAGE_MARGIN, 1680);
   context.textAlign = "left";
 }
 

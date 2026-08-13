@@ -1,3 +1,5 @@
+import { BrandWordmark } from "@/components/BrandWordmark";
+
 const steps = [
   {
     number: "01",
@@ -110,7 +112,7 @@ function ReportDemo() {
   return (
     <div className="report-demo__viewport">
       <div className="report-demo">
-        <div className="report-demo__brand">lores<span>_</span></div>
+        <BrandWordmark accent="#ff5c1a" contrastPlate className="report-demo__brand" />
         <p className="report-demo__edition">ride or die / 2026</p>
         <p className="report-demo__names">YOU &amp; DEV</p>
         <div className="report-demo__stat">

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { AwardBadge, StatCard } from "@/components/ui";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
 import { ReportBackdrop } from "@/components/report/ReportBackdrop";
@@ -131,9 +132,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
               {formatLocalReportDate(stats.lastMessageDate.slice(0, 10))}
               <br />built from a locally parsed export
             </p>
-            <div className="text-2xl font-black tracking-[-1px]">
-              lores<span className="text-pink">_</span>
-            </div>
+            <BrandWordmark accent="#f0568a" className="text-2xl font-black tracking-[-1px]" />
           </div>
         </footer>
       </article>

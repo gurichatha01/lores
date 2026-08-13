@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandWordmark } from "@/components/BrandWordmark";
 import { WrappedCard } from "@/components/cards/WrappedCard";
 import { ReportPdfDownload } from "@/components/pdf/ReportPdfDownload";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
@@ -207,9 +208,11 @@ export function ModeReport({ report }: ModeReportProps) {
               {formatLocalReportDate(stats.lastMessageDate.slice(0, 10))}
               <br />built from a locally parsed export
             </p>
-            <div className="text-2xl font-black tracking-[-1px]">
-              lores<span style={{ color: preset.accent }}>_</span>
-            </div>
+            <BrandWordmark
+              accent={preset.accent}
+              contrastPlate={dark}
+              className="text-2xl font-black tracking-[-1px]"
+            />
           </div>
         </footer>
         {dark ? <WarningTape accent={preset.accent} /> : null}

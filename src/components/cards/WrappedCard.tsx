@@ -224,10 +224,13 @@ function drawWrappedCard(canvas: HTMLCanvasElement, content: WrappedCardContent)
   context.fillStyle = muted;
   context.font = "400 27px 'Space Mono', monospace";
   context.fillText(content.mode === "roast" ? "get roasted →\nlores.in" : "get yours →\nlores.in", PADDING, 1762);
-  context.fillStyle = foreground;
   context.font = "900 70px Archivo, Arial, sans-serif";
-  context.fillText("lores", 770, 1756);
   const logoWidth = context.measureText("lores").width;
+  const underscoreWidth = context.measureText("_").width;
+  context.fillStyle = foreground;
+  fillRoundRect(context, 748, 1737, logoWidth + underscoreWidth + 44, 96, 4);
+  context.fillStyle = "#0a0a0a";
+  context.fillText("lores", 770, 1756);
   context.fillStyle = preset.accent;
   context.fillText("_", 770 + logoWidth, 1756);
 }
