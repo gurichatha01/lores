@@ -9,6 +9,7 @@ import { computeStats } from "../src/lib/computeStats";
 import { curateSample } from "../src/lib/curateSample";
 import { parseWhatsApp } from "../src/lib/parseWhatsApp";
 import { serializeGenerateReportInput } from "../src/lib/reportTransport";
+import { buildReceiptExchanges } from "../src/lib/receiptExchanges";
 import { parseReportContent } from "../src/lib/reportValidation";
 import { geminiResponse, VALID_REPORT } from "./reportTestData";
 
@@ -28,6 +29,7 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
     const stats = computeStats(parsed);
     const awards = assignAwards(stats, "sweetheart");
     const sample = curateSample(parsed.messages);
+    const receiptExchanges = buildReceiptExchanges(parsed.messages, sample);
     const input = serializeGenerateReportInput({
       mode: "sweetheart",
       subtype: "partners",
@@ -35,16 +37,27 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
       stats,
       awards,
       sample,
+      receiptExchanges,
     });
     const expectedReport = {
       ...VALID_REPORT,
-      highlights: [],
+      highlights:
+        receiptExchanges.length > 0
+          ? [{ ...VALID_REPORT.highlights[0], snippet: receiptExchanges[0] }]
+          : [],
       awardLines: awards.map((award) => ({
         awardId: award.id,
         line: testAwardLine(award.id, award.detail),
       })),
     };
-    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(expectedReport));
+    const providerReport = {
+      ...expectedReport,
+      highlights: expectedReport.highlights.map(({ snippet, ...highlight }) => ({
+        ...highlight,
+        exchangeId: snippet.exchangeId,
+      })),
+    };
+    const fetchMock = vi.fn().mockResolvedValue(geminiResponse(providerReport));
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
@@ -63,7 +76,7 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
     expect(report).toEqual(expectedReport);
     expect(sample.length).toBeLessThan(parsed.messages.length);
     expect(Object.keys(providerInput).sort()).toEqual(
-      ["mode", "subtype", "userContext", "stats", "awards", "sample"].sort(),
+      ["mode", "subtype", "userContext", "stats", "awards", "sample", "receiptExchanges"].sort(),
     );
     expect(providerInput.sample).toHaveLength(sample.length);
     expect(providerRequest.contents[0].parts[0].text).not.toContain("rawChat");

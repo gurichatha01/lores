@@ -98,8 +98,8 @@ FIELD RULES:
 - awardLines — the winner's name is already shown as a heading. Do NOT restate it or start with it. Don't describe the award ("kept us laughing as the Comedian"). State the behavior that earned it. Include the numeric value from the award's detail using digits, and obey the award wiring below. Make it land in one line.
 - narrative — ${NARRATIVE_LENGTH} words. Open with a concrete detail, never a summary. Tell their actual story with their actual specifics. Close on a line that hits.
 - chapters — exactly 4, chronological, forming an arc across the whole span. Use the milestone dates and the by-month data to structure it (quiet start → peak → dip → now, or whatever the data actually shows). Each title is specific to THIS chat (never "The Beginning" — something like "The Meme Era" or "The 2AM Debate Club"). Each body is 2–3 sentences grounded in real details from that stretch.
-- highlights — select only from receiptExchanges. Each highlight must describe the exact 3–6-message exchange selected by exchangeId; the body and label must be impossible to confuse with another exchange. Never pair a description with a merely adjacent or vaguely related exchange.
-- highlight exchangeId — required for every highlight. Copy one supplied receiptExchanges[].exchangeId exactly. The renderer pulls that indexed source range and renders the real consecutive messages; never write, paraphrase, reorder, or splice message text yourself. If no supplied exchange supports a worthwhile highlight, return fewer highlights. If receiptExchanges is empty, return []. Never select an exchange containing ${SLUR_PLACEHOLDER}.
+- highlights — select only from receiptExchanges. When receiptExchanges is non-empty, return 1–3 of the strongest exchanges; an empty highlights array is allowed ONLY when receiptExchanges itself is empty. Each highlight must describe the exact 3–6-message exchange selected by exchangeId; the body and label must be impossible to confuse with another exchange. Never pair a description with a merely adjacent or vaguely related exchange.
+- highlight exchangeId — required for every highlight. Copy one supplied receiptExchanges[].exchangeId exactly. The renderer pulls that indexed source range and renders the real consecutive messages; never write, paraphrase, reorder, or splice message text yourself. Never select an exchange containing ${SLUR_PLACEHOLDER}.
 - heroLine / title / wrappedLine — one punchy line each, specific to them, no mush.
 
 FEW-SHOT: THE FIX, SHOWN
@@ -260,6 +260,14 @@ async function generateWithGemini(input: GenerateReportInput): Promise<ReportCon
       assertAwardLinesMatch(input, content);
       assertAwardLinesUseWinnerMetrics(input, content);
       assertHighlightSnippetsGrounded(requestInput, content);
+      if (process.env.NODE_ENV === "development") {
+        console.info("[lores receipts] Gemini selection", {
+          offeredExchangeCount: requestInput.receiptExchanges.length,
+          selectedExchangeIds: content.highlights.map(
+            (highlight) => highlight.snippet.exchangeId,
+          ),
+        });
+      }
       return content;
     } catch (error) {
       if (!(error instanceof SyntaxError || error instanceof ReportValidationError || error instanceof LlmOutputError)) {
@@ -322,7 +330,9 @@ function buildReportSchema(input: GenerateReportInput): object {
       ...REPORT_SCHEMA.properties,
       highlights: {
         type: "ARRAY",
-        ...(input.receiptExchanges.length === 0 ? { maxItems: 0 } : {}),
+        ...(input.receiptExchanges.length === 0
+          ? { maxItems: 0 }
+          : { minItems: 1, maxItems: Math.min(3, input.receiptExchanges.length) }),
         items: {
           type: "OBJECT",
           properties: highlightProperties,
@@ -623,6 +633,15 @@ function assertHighlightSnippetsGrounded(
   if (ungrounded.length > 0) {
     throw new LlmOutputError(
       "Every highlight snippet must exactly match one supplied indexed receipt exchange.",
+    );
+  }
+  const selectedIds = content.highlights.map((highlight) => highlight.snippet.exchangeId);
+  if (new Set(selectedIds).size !== selectedIds.length) {
+    throw new LlmOutputError("Each highlight must select a different receipt exchange.");
+  }
+  if (input.receiptExchanges.length > 0 && content.highlights.length === 0) {
+    throw new LlmOutputError(
+      "At least one highlight is required when receipt exchanges are available.",
     );
   }
 }

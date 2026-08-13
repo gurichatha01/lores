@@ -62,6 +62,8 @@ describe("generateReport", () => {
     );
     expect(body.generationConfig.responseSchema.properties.highlights.items.properties.exchangeId)
       .toEqual({ type: "STRING", enum: ["exchange-01"] });
+    expect(body.generationConfig.responseSchema.properties.highlights.minItems).toBe(1);
+    expect(body.generationConfig.responseSchema.properties.highlights.maxItems).toBe(1);
     expect(providerInput.userContext).toBe("Together since university.");
     expect(body.contents[0].parts[0].text).toContain(
       '\"userContext\":\"Together since university.\"',
@@ -233,7 +235,16 @@ describe("generateReport", () => {
     const slur = ["n", "igger"].join("");
     input.userContext = `Context containing ${slur} and ordinary damn profanity.`;
     input.sample[0] = { ...input.sample[0], text: `Source used ${slur} here. Damn.` };
-    const cleanReport = { ...VALID_REPORT, highlights: [] };
+    const cleanReport = {
+      ...VALID_REPORT,
+      highlights: [
+        {
+          label: VALID_REPORT.highlights[0].label,
+          body: VALID_REPORT.highlights[0].body,
+          exchangeId: "exchange-01",
+        },
+      ],
+    };
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(geminiSafetyBlockResponse())
@@ -242,7 +253,7 @@ describe("generateReport", () => {
     vi.stubEnv("LLM_API_KEY", "server-secret");
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(generateReport(input)).resolves.toEqual(cleanReport);
+    await expect(generateReport(input)).resolves.toEqual(VALID_REPORT);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(errorSpy).toHaveBeenCalledWith(
       "[lores] Gemini content block",
@@ -331,6 +342,35 @@ describe("generateReport", () => {
     expect(repairRequest.contents[0].role).toBe("user");
     expect(repairRequest.contents[0].parts[0].text).toContain(
       "missing required field: snippet",
+    );
+  });
+
+  it("repairs an empty highlight list when valid receipt exchanges were supplied", async () => {
+    const missingReceipts = { ...VALID_REPORT, highlights: [] };
+    const providerReport = {
+      ...VALID_REPORT,
+      highlights: [
+        {
+          label: VALID_REPORT.highlights[0].label,
+          body: VALID_REPORT.highlights[0].body,
+          exchangeId: "exchange-01",
+        },
+      ],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(missingReceipts))
+      .mockResolvedValueOnce(geminiResponse(providerReport));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    const report = await generateReport(createTestGenerateInput());
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(report.highlights).toHaveLength(1);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "At least one highlight is required",
     );
   });
 

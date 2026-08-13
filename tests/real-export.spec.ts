@@ -7,8 +7,10 @@ import { assignAwards } from "../src/lib/assignAwards";
 import { computeStats } from "../src/lib/computeStats";
 import { curateSample } from "../src/lib/curateSample";
 import { parseWhatsApp } from "../src/lib/parseWhatsApp";
+import { buildReceiptExchanges } from "../src/lib/receiptExchanges";
 import { parseGenerateReportInput } from "../src/lib/reportValidation";
 import { formatLocalDateTime, serializeGenerateReportInput } from "../src/lib/reportTransport";
+import { sanitizeLlmInput, SLUR_PLACEHOLDER } from "../src/lib/sanitizeLlmInput";
 
 const realExportPath = process.env.REAL_WHATSAPP_EXPORT;
 
@@ -19,14 +21,18 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
     const input = Object.assign(new Blob([bytes]), { name: path.basename(resolvedPath) });
     const result = await parseWhatsApp(input);
     const stats = computeStats(result);
+    const sample = curateSample(result.messages);
+    const receiptExchanges = buildReceiptExchanges(result.messages, sample);
     const serialized = serializeGenerateReportInput({
       mode: stats.isGroup ? "group" : "ride-or-die",
       subtype: stats.isGroup ? "friend group" : "close friend",
       userContext: "",
       stats,
       awards: assignAwards(stats, stats.isGroup ? "group" : "ride-or-die"),
-      sample: curateSample(result.messages),
+      sample,
+      receiptExchanges,
     });
+    const sanitized = sanitizeLlmInput(serialized);
     const senders = new Map<string, number>();
 
     for (const message of result.messages) {
@@ -55,6 +61,18 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
         medianReplyTimeMin: person.medianReplyTimeMin,
         qualifyingReplyCount: person.replyCount,
       })),
+      curatedSampleCount: sample.length,
+      receiptExchangeCount: receiptExchanges.length,
+      receiptExchangeRanges: receiptExchanges.map((exchange) => ({
+        exchangeId: exchange.exchangeId,
+        startIndex: exchange.startIndex,
+        endIndex: exchange.endIndex,
+        messageCount: exchange.messages.length,
+      })),
+      sanitizedReceiptExchangeCount: sanitized.receiptExchanges.length,
+      selectableReceiptExchangeCount: sanitized.receiptExchanges.filter((exchange) =>
+        exchange.messages.every((message) => !message.text.includes(SLUR_PLACEHOLDER)),
+      ).length,
       personStatKeys: stats.people.map((person) => ({
         name: person.name,
         keys: Object.keys(person),
@@ -68,6 +86,7 @@ describe.skipIf(!realExportPath)("real WhatsApp export sanity check", () => {
     expect(senders.size).toBeGreaterThanOrEqual(2);
     expect(spanDays).toBeGreaterThan(300);
     expect(result.mediaCount).toBeGreaterThanOrEqual(0);
+    expect(receiptExchanges.length).toBeGreaterThan(0);
     expect(() => parseGenerateReportInput(serialized)).not.toThrow();
   });
 });

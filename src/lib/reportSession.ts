@@ -20,6 +20,14 @@ export function createReportSession(
   input: GenerateReportInput,
   content: ReportContent,
 ): ReportSessionData {
+  if (process.env.NODE_ENV === "development") {
+    console.info("[lores receipts] report session", {
+      highlightCount: content.highlights.length,
+      renderedExchangeIds: content.highlights.map(
+        (highlight) => highlight.snippet.exchangeId,
+      ),
+    });
+  }
   return {
     mode: input.mode,
     subtype: input.subtype,

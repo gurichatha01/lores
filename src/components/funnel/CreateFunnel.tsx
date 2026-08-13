@@ -74,6 +74,19 @@ export function CreateFunnel() {
       const awards = assignAwards(stats, mode);
       const sample = curateSample(parsed.messages);
       const receiptExchanges = buildReceiptExchanges(parsed.messages, sample);
+      if (process.env.NODE_ENV === "development") {
+        console.info("[lores receipts] client extraction", {
+          parsedMessageCount: parsed.messages.length,
+          curatedSampleCount: sample.length,
+          receiptExchangeCount: receiptExchanges.length,
+          exchanges: receiptExchanges.map(({ exchangeId, startIndex, endIndex, messages }) => ({
+            exchangeId,
+            startIndex,
+            endIndex,
+            messageCount: messages.length,
+          })),
+        });
+      }
       const input = serializeGenerateReportInput({
         mode,
         subtype,

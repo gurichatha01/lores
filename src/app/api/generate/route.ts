@@ -16,6 +16,12 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const input = parseGenerateReportInput(body);
+    if (process.env.NODE_ENV === "development") {
+      console.info("[lores receipts] API input", {
+        receiptExchangeCount: input.receiptExchanges.length,
+        exchangeIds: input.receiptExchanges.map((exchange) => exchange.exchangeId),
+      });
+    }
     const report = await generateReport(input);
     return Response.json(report);
   } catch (error) {

@@ -13,6 +13,7 @@ import { parseWhatsApp } from "../src/lib/parseWhatsApp";
 import { type PdfCanvas } from "../src/lib/pdfReport";
 import { createReportSession } from "../src/lib/reportSession";
 import { serializeGenerateReportInput } from "../src/lib/reportTransport";
+import { buildReceiptExchanges } from "../src/lib/receiptExchanges";
 
 const runRealGroup = process.env.RUN_REAL_GROUP_REPORT === "1";
 const exportPath = process.env.REAL_WHATSAPP_EXPORT;
@@ -25,13 +26,16 @@ describe.skipIf(!runRealGroup || !exportPath)("live 9-person group report", () =
     const parsed = await parseWhatsApp(file);
     const stats = computeStats(parsed);
     const awards = assignAwards(stats, "group");
+    const sample = curateSample(parsed.messages);
+    const receiptExchanges = buildReceiptExchanges(parsed.messages, sample);
     const input = serializeGenerateReportInput({
       mode: "group",
       subtype: "friend group",
       userContext: "Nine-person group chat.",
       stats,
       awards,
-      sample: curateSample(parsed.messages),
+      sample,
+      receiptExchanges,
     });
     const content = await generateReport(input);
     const report = createReportSession(input, content);
