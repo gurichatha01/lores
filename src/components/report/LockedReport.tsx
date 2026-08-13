@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { narrativeFirstLine } from "@/lib/funnel";
 import { getModePreset } from "@/lib/modePresets";
+import { ReportBackdrop } from "@/components/report/ReportBackdrop";
 import {
   loadRazorpayScript,
   openRazorpayCheckout,
@@ -175,10 +176,10 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     : `unlock · ${priceDisplay ?? "full lores"}`;
 
   return (
-    <main className="min-h-screen px-0 py-0 sm:px-6 sm:py-10" style={{ background: dark ? "#080706" : "#dcdcd7" }}>
+    <ReportBackdrop accent={preset.accent} accentSoft={preset.accentSoft} background={dark ? "#080706" : "#dcdcd7"}>
       <article
-        className={`relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-6 pb-48 pt-6 shadow-editorial sm:min-h-0 sm:px-7 sm:pt-8 ${soft ? "sm:rounded-[44px]" : "sm:rounded-[8px]"}`}
-        style={{ background: preset.surface, color: preset.text }}
+        className={`relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-6 pb-48 pt-6 shadow-editorial sm:min-h-0 sm:px-7 sm:pt-8 lg:max-w-[760px] lg:border-2 lg:px-12 lg:pt-12 ${soft ? "sm:rounded-[44px]" : "sm:rounded-[8px]"}`}
+        style={{ background: preset.surface, borderColor: preset.border, color: preset.text }}
         data-report-state="teaser"
         data-report-mode={report.mode}
       >
@@ -249,7 +250,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 
         {dark ? <WarningTape accent={preset.accent} /> : null}
 
-        <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)]" aria-label="Unlock report">
+        <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)] lg:bottom-6 lg:max-w-[760px] lg:border-2 lg:px-8 lg:pb-5" aria-label="Unlock report">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-xl font-black tracking-[-0.5px]">unlock the full lores</p>
@@ -285,7 +286,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
           ) : null}
         </aside>
       </article>
-    </main>
+    </ReportBackdrop>
   );
 }
 

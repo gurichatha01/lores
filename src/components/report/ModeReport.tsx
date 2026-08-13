@@ -3,6 +3,7 @@ import Link from "next/link";
 import { WrappedCard } from "@/components/cards/WrappedCard";
 import { ReportPdfDownload } from "@/components/pdf/ReportPdfDownload";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
+import { ReportBackdrop } from "@/components/report/ReportBackdrop";
 import { getModePreset } from "@/lib/modePresets";
 import {
   buildModeStatCards,
@@ -29,15 +30,16 @@ export function ModeReport({ report }: ModeReportProps) {
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
 
   return (
-    <main
-      className="min-h-screen px-0 py-0 sm:px-6 sm:py-10"
-      style={{ background: dark ? "#080706" : "#dcdcd7" }}
+    <ReportBackdrop
+      accent={preset.accent}
+      accentSoft={preset.accentSoft}
+      background={dark ? "#080706" : "#dcdcd7"}
     >
       <article
-        className={`mx-auto min-h-screen max-w-[430px] overflow-hidden px-6 pb-10 pt-6 shadow-editorial sm:min-h-0 sm:px-7 sm:pb-12 sm:pt-8 ${
+        className={`mx-auto min-h-screen max-w-[430px] overflow-hidden px-6 pb-10 pt-6 shadow-editorial sm:min-h-0 sm:px-7 sm:pb-12 sm:pt-8 lg:max-w-[760px] lg:border-2 lg:px-12 lg:pb-16 lg:pt-12 ${
           soft ? "sm:rounded-[44px]" : "sm:rounded-[8px]"
         }`}
-        style={{ background: preset.surface, color: preset.text }}
+        style={{ background: preset.surface, borderColor: preset.border, color: preset.text }}
         data-report-mode={report.mode}
         data-report-treatment={preset.treatment}
       >
@@ -212,7 +214,7 @@ export function ModeReport({ report }: ModeReportProps) {
         </footer>
         {dark ? <WarningTape accent={preset.accent} /> : null}
       </article>
-    </main>
+    </ReportBackdrop>
   );
 }
 

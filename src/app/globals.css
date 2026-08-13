@@ -51,6 +51,17 @@ button {
   animation: lore-generating 1.1s steps(2, end) infinite;
 }
 
+@media (min-width: 1024px) {
+  .report-desktop-backdrop {
+    background-color: var(--report-backdrop);
+    background-image:
+      radial-gradient(circle at 14% 8%, var(--report-accent-soft) 0, transparent 34rem),
+      radial-gradient(circle at 88% 78%, var(--report-accent-soft) 0, transparent 30rem),
+      repeating-linear-gradient(135deg, rgba(10, 10, 10, 0.025) 0 1px, transparent 1px 12px);
+    background-attachment: fixed;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lore-generating-mark {
     animation: none;

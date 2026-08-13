@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AwardBadge, StatCard } from "@/components/ui";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
+import { ReportBackdrop } from "@/components/report/ReportBackdrop";
 import {
   buildSweetheartStatCards,
   formatCount,
@@ -24,8 +25,8 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
 
   return (
-    <main className="min-h-screen bg-[#dcdcd7] px-0 py-0 sm:px-6 sm:py-10">
-      <article className="mx-auto min-h-screen max-w-[430px] overflow-hidden bg-[#f5f2f0] px-6 pb-10 pt-6 shadow-editorial sm:min-h-0 sm:rounded-[44px] sm:px-7 sm:pb-12 sm:pt-8">
+    <ReportBackdrop accent="#f0568a" accentSoft="#fdeef4" background="#dcdcd7">
+      <article className="mx-auto min-h-screen max-w-[430px] overflow-hidden border-[#f2dbe3] bg-[#f5f2f0] px-6 pb-10 pt-6 shadow-editorial sm:min-h-0 sm:rounded-[44px] sm:px-7 sm:pb-12 sm:pt-8 lg:max-w-[760px] lg:border lg:px-12 lg:pb-16 lg:pt-12">
         <header className="flex items-center justify-between pb-2">
           <div className="font-mono text-[11px] font-bold uppercase tracking-[0.1em] text-sweetheart">
             💕 sweetheart · {names}
@@ -136,7 +137,7 @@ export function SweetheartReport({ report }: SweetheartReportProps) {
           </div>
         </footer>
       </article>
-    </main>
+    </ReportBackdrop>
   );
 }
 
