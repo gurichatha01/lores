@@ -1,6 +1,19 @@
 import crypto from "node:crypto";
 
-import type { ReportSessionData } from "./types";
+import { getServiceClient, isSupabaseConfigured, SupabaseRequestError } from "./supabaseServer";
+
+/**
+ * Per-report entitlement store. Durable, serverless-safe: when Supabase is
+ * configured, all state lives in the `reports` / `report_orders` tables so every
+ * instance sees the same thing (a report generated on one Vercel instance is
+ * visible to the order/verify/spend call on another). When Supabase is NOT
+ * configured (local single-instance dev, and tests) it falls back to an
+ * in-memory store with identical semantics.
+ *
+ * By design this holds only a REFERENCE — the report id, order→report bindings,
+ * and the authorized flag. The report CONTENT never touches the server store;
+ * the browser keeps it, so "never your chats, never your reports" stays true.
+ */
 
 export class EntitlementError extends Error {
   constructor(message: string) {
@@ -15,116 +28,186 @@ export interface PackOrderIntent {
   credits: number;
 }
 
-interface EntitlementState {
-  generatedReports: Set<string>;
-  reports: Map<string, ReportSessionData>;
-  orders: Map<string, string>;
-  authorizedReports: Set<string>;
-  packOrders: Map<string, PackOrderIntent>;
+interface OrderRecord {
+  productType: "single" | "pack10";
+  reportId?: string;
+  amount?: number;
+  credits?: number;
 }
 
-const STATE_KEY = "__loresEntitlementState";
+// ---- in-memory fallback (only when Supabase is unconfigured) ----
+interface MemoryState {
+  reports: Map<string, boolean>; // reportId -> authorized
+  orders: Map<string, OrderRecord>; // orderId -> intent
+}
 
-function state(): EntitlementState {
-  const globalState = globalThis as typeof globalThis & { [STATE_KEY]?: EntitlementState };
-  if (!globalState[STATE_KEY]) {
-    globalState[STATE_KEY] = {
-      generatedReports: new Set<string>(),
-      reports: new Map<string, ReportSessionData>(),
-      orders: new Map<string, string>(),
-      authorizedReports: new Set<string>(),
-      packOrders: new Map<string, PackOrderIntent>(),
-    };
+const MEMORY_KEY = "__loresEntitlementMemory";
+
+function memory(): MemoryState {
+  const store = globalThis as typeof globalThis & { [MEMORY_KEY]?: MemoryState };
+  if (!store[MEMORY_KEY]) {
+    store[MEMORY_KEY] = { reports: new Map(), orders: new Map() };
   }
-  return globalState[STATE_KEY];
+  return store[MEMORY_KEY];
 }
 
-/** Issues an opaque server-known identity only after a report was generated. */
+/** Issues an opaque report identity. The row is created by registerReport. */
 export function issueReportId(): string {
-  const reportId = crypto.randomUUID();
-  state().generatedReports.add(reportId);
-  return reportId;
+  return crypto.randomUUID();
 }
 
-/** Stores the complete generated payload server-side before it can be unlocked. */
-export function storeGeneratedReport(reportId: string, report: ReportSessionData): void {
-  if (!state().generatedReports.has(reportId)) {
-    throw new EntitlementError("This report is not available for storage.");
+/** Records that a report was generated (unauthorized). Idempotent. */
+export async function registerReport(reportId: string): Promise<void> {
+  if (!reportId) throw new EntitlementError("Report is missing its identity.");
+  if (!isSupabaseConfigured()) {
+    if (!memory().reports.has(reportId)) memory().reports.set(reportId, false);
+    return;
   }
-  state().reports.set(reportId, report);
+  const { error } = await getServiceClient()
+    .from("reports")
+    .upsert({ id: reportId, authorized: false }, { onConflict: "id", ignoreDuplicates: true });
+  if (error) throw new SupabaseRequestError(error.message);
 }
 
-/** Rejects unknown client-supplied report ids before an external order is created. */
-export function assertReportAvailable(reportId: string): void {
-  if (!state().generatedReports.has(reportId)) {
-    throw new EntitlementError("This report is not available for unlock.");
+/** Rejects unknown report ids before an external order is created. */
+export async function assertReportAvailable(reportId: string): Promise<void> {
+  if (!reportId) throw new EntitlementError("This report is not available for unlock.");
+  if (!isSupabaseConfigured()) {
+    if (!memory().reports.has(reportId)) {
+      throw new EntitlementError("This report is not available for unlock.");
+    }
+    return;
   }
+  const { data, error } = await getServiceClient()
+    .from("reports")
+    .select("id")
+    .eq("id", reportId)
+    .maybeSingle();
+  if (error) throw new SupabaseRequestError(error.message);
+  if (!data) throw new EntitlementError("This report is not available for unlock.");
 }
 
 /** Binds a server-created Razorpay order to exactly one generated report. */
-export function attachOrderToReport(orderId: string, reportId: string): void {
-  assertReportAvailable(reportId);
+export async function attachOrderToReport(orderId: string, reportId: string): Promise<void> {
+  await assertReportAvailable(reportId);
   if (!orderId) throw new EntitlementError("Payment order is missing its identity.");
-  state().orders.set(orderId, reportId);
+  if (!isSupabaseConfigured()) {
+    memory().orders.set(orderId, { productType: "single", reportId });
+    return;
+  }
+  const { error } = await getServiceClient()
+    .from("report_orders")
+    .upsert({ order_id: orderId, product_type: "single", report_id: reportId }, { onConflict: "order_id" });
+  if (error) throw new SupabaseRequestError(error.message);
 }
 
 /** Remembers a server-created pack order so /api/verify can size the credit grant. */
-export function attachPackOrder(orderId: string, intent: PackOrderIntent): void {
+export async function attachPackOrder(orderId: string, intent: PackOrderIntent): Promise<void> {
   if (!orderId) throw new EntitlementError("Payment order is missing its identity.");
-  state().packOrders.set(orderId, intent);
+  if (!isSupabaseConfigured()) {
+    memory().orders.set(orderId, { productType: "pack10", amount: intent.amount, credits: intent.credits });
+    return;
+  }
+  const { error } = await getServiceClient()
+    .from("report_orders")
+    .upsert(
+      { order_id: orderId, product_type: "pack10", amount: intent.amount, credits: intent.credits },
+      { onConflict: "order_id" },
+    );
+  if (error) throw new SupabaseRequestError(error.message);
 }
 
-/** Reads a pack order intent without consuming it. */
-export function getPackOrder(orderId: string): PackOrderIntent | null {
-  return state().packOrders.get(orderId) ?? null;
+/** Reads a pack order intent (idempotent; unique payment_id guards double writes). */
+export async function getPackOrder(orderId: string): Promise<PackOrderIntent | null> {
+  if (!isSupabaseConfigured()) {
+    const record = memory().orders.get(orderId);
+    return record?.productType === "pack10"
+      ? { amount: record.amount ?? 0, credits: record.credits ?? 0 }
+      : null;
+  }
+  const { data, error } = await getServiceClient()
+    .from("report_orders")
+    .select("product_type, amount, credits")
+    .eq("order_id", orderId)
+    .maybeSingle();
+  if (error) throw new SupabaseRequestError(error.message);
+  if (!data || data.product_type !== "pack10") return null;
+  return { amount: data.amount ?? 0, credits: data.credits ?? 0 };
 }
 
-/** Removes a pack order once its credits have been durably recorded. */
-export function consumePackOrder(orderId: string): void {
-  state().packOrders.delete(orderId);
-}
-
-/** Called only after the Razorpay HMAC has been validated. */
-export function authorizeOrder(orderId: string): string {
-  const reportId = state().orders.get(orderId);
-  if (!reportId || !state().generatedReports.has(reportId)) {
+/** Called only after the Razorpay HMAC has been validated (single purchase). */
+export async function authorizeOrder(orderId: string): Promise<string> {
+  if (!isSupabaseConfigured()) {
+    const record = memory().orders.get(orderId);
+    if (!record || record.productType !== "single" || !record.reportId || !memory().reports.has(record.reportId)) {
+      throw new EntitlementError("This payment is not attached to a generated report.");
+    }
+    memory().reports.set(record.reportId, true);
+    return record.reportId;
+  }
+  const client = getServiceClient();
+  const { data: order, error } = await client
+    .from("report_orders")
+    .select("report_id, product_type")
+    .eq("order_id", orderId)
+    .maybeSingle();
+  if (error) throw new SupabaseRequestError(error.message);
+  if (!order || order.product_type !== "single" || !order.report_id) {
     throw new EntitlementError("This payment is not attached to a generated report.");
   }
-  state().authorizedReports.add(reportId);
-  state().orders.delete(orderId);
-  return reportId;
+  const { data: updated, error: updateError } = await client
+    .from("reports")
+    .update({ authorized: true, updated_at: new Date().toISOString() })
+    .eq("id", order.report_id)
+    .select("id")
+    .maybeSingle();
+  if (updateError) throw new SupabaseRequestError(updateError.message);
+  if (!updated) throw new EntitlementError("This payment is not attached to a generated report.");
+  return order.report_id;
 }
 
 /**
  * Authorizes a report without a Razorpay order — used when a pack credit is
  * spent for it. Still requires the report to have been genuinely generated.
  */
-export function authorizeReport(reportId: string): void {
-  if (!state().generatedReports.has(reportId)) {
-    throw new EntitlementError("This report is not available for unlock.");
+export async function authorizeReport(reportId: string): Promise<void> {
+  if (!isSupabaseConfigured()) {
+    if (!memory().reports.has(reportId)) {
+      throw new EntitlementError("This report is not available for unlock.");
+    }
+    memory().reports.set(reportId, true);
+    return;
   }
-  state().authorizedReports.add(reportId);
+  const { data, error } = await getServiceClient()
+    .from("reports")
+    .update({ authorized: true, updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new SupabaseRequestError(error.message);
+  if (!data) throw new EntitlementError("This report is not available for unlock.");
 }
 
-/** The one authoritative check used by report, PDF, and Wrapped surfaces. */
-export function isReportAuthorized(reportId: string): boolean {
-  return Boolean(reportId) && state().generatedReports.has(reportId) && state().authorizedReports.has(reportId);
+/** The one authoritative check used by report-access, PDF, and Wrapped surfaces. */
+export async function isReportAuthorized(reportId: string): Promise<boolean> {
+  if (!reportId) return false;
+  if (!isSupabaseConfigured()) {
+    return memory().reports.get(reportId) === true;
+  }
+  const { data, error } = await getServiceClient()
+    .from("reports")
+    .select("authorized")
+    .eq("id", reportId)
+    .maybeSingle();
+  if (error) throw new SupabaseRequestError(error.message);
+  return data?.authorized === true;
 }
 
-/** Returns a full report only after the same per-report entitlement check passes. */
-export function getAuthorizedReport(reportId: string): ReportSessionData | null {
-  if (!isReportAuthorized(reportId)) return null;
-  return state().reports.get(reportId) ?? null;
-}
-
-/** Test-only reset so isolated route tests cannot leak entitlement state. */
+/** Test-only reset of the in-memory fallback (tests never configure Supabase). */
 export function resetEntitlementsForTests(): void {
   if (process.env.NODE_ENV === "test") {
-    const current = state();
-    current.generatedReports.clear();
+    const current = memory();
     current.reports.clear();
     current.orders.clear();
-    current.authorizedReports.clear();
-    current.packOrders.clear();
   }
 }

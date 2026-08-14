@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { fetchAuthorizedReport } from "@/lib/reportAccess";
+import { checkReportAuthorization } from "@/lib/reportAccess";
 import { parseReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
 import type { ReportSessionData } from "@/lib/types";
 
@@ -25,25 +25,21 @@ export function ReportPageClient() {
     try {
       const parsed = parseReportSession(saved);
       setReport(parsed);
-      void loadAuthorizedReport(parsed.reportId);
+      void refreshAuthorization(parsed.reportId);
     } catch {
       setFailed(true);
     }
   }, []);
 
-  async function loadAuthorizedReport(reportId: string): Promise<void> {
-    const authorizedReport = await fetchAuthorizedReport(reportId);
-    if (!authorizedReport) {
-      setUnlocked(false);
-      return;
-    }
-    setReport(authorizedReport);
-    setUnlocked(true);
+  // The full report content is already in `report` (from sessionStorage). The
+  // server only tells us whether it's unlocked; content never round-trips.
+  async function refreshAuthorization(reportId: string): Promise<void> {
+    setUnlocked(await checkReportAuthorization(reportId));
   }
 
   function handleUnlocked(): void {
     if (!report) return;
-    void loadAuthorizedReport(report.reportId);
+    void refreshAuthorization(report.reportId);
   }
 
   if (report) {

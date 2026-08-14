@@ -30,7 +30,7 @@ export function isSupabaseConfigured(): boolean {
 
 let cachedClient: SupabaseClient | null = null;
 
-function getServiceClient(): SupabaseClient {
+export function getServiceClient(): SupabaseClient {
   if (cachedClient) return cachedClient;
   const url = process.env.SUPABASE_URL?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();

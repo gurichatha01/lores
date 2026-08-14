@@ -5,7 +5,6 @@ import {
 } from "../../../lib/razorpay";
 import {
   authorizeOrder,
-  consumePackOrder,
   EntitlementError,
   getPackOrder,
 } from "../../../lib/entitlements";
@@ -65,7 +64,19 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // Pack purchase: record 10 unclaimed credits keyed by the payment id.
-  const packIntent = getPackOrder(orderId);
+  let packIntent;
+  try {
+    packIntent = await getPackOrder(orderId);
+  } catch (error) {
+    console.error("[lores payment] Could not read the pack order after verification", {
+      orderId,
+      reason: error instanceof Error ? error.message : "unknown error",
+    });
+    return Response.json(
+      { verified: false, paymentId, error: "Payment verified, but we couldn't finish. Please retry verification." },
+      { status: 500 },
+    );
+  }
   if (packIntent) {
     if (!isSupabaseConfigured()) {
       console.error("[lores payment] Verified pack payment but Supabase is not configured", {
@@ -88,7 +99,6 @@ export async function POST(request: Request): Promise<Response> {
         credits: packIntent.credits,
         amount: packIntent.amount,
       });
-      consumePackOrder(orderId);
       return Response.json({
         verified: true,
         productType: "pack10",
@@ -115,7 +125,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // Single purchase: authorize the exact report the order was bound to.
   try {
-    const reportId = authorizeOrder(orderId);
+    const reportId = await authorizeOrder(orderId);
     return Response.json({ verified: true, productType: "single", reportId });
   } catch (error) {
     console.error("[lores payment] Verified Razorpay payment could not authorize its report", {

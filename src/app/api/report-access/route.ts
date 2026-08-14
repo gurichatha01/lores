@@ -14,5 +14,10 @@ export async function POST(request: Request): Promise<Response> {
   if (typeof reportId !== "string" || !reportId) {
     return Response.json({ authorized: false, error: "Missing report identity." }, { status: 400 });
   }
-  return Response.json({ authorized: isReportAuthorized(reportId) });
+  try {
+    return Response.json({ authorized: await isReportAuthorized(reportId) });
+  } catch {
+    // Never fall back to granting access when the store can't be reached.
+    return Response.json({ authorized: false, error: "We couldn't reach your report right now. Please try again." }, { status: 503 });
+  }
 }
