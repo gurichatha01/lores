@@ -9,16 +9,10 @@ import {
 
 export const REPORT_SESSION_KEY = "lore.generated-report.v1";
 
-/**
- * Set only after the server verifies a Razorpay payment signature. The trust
- * boundary is the /api/verify HMAC check; this flag just keeps the report
- * unlocked across refreshes within the same browser session.
- */
-export const REPORT_UNLOCK_KEY = "lore.report-unlocked.v1";
-
 export function createReportSession(
   input: GenerateReportInput,
   content: ReportContent,
+  reportId = "local-report",
 ): ReportSessionData {
   if (process.env.NODE_ENV === "development") {
     console.info("[lores receipts] report session", {
@@ -29,6 +23,7 @@ export function createReportSession(
     });
   }
   return {
+    reportId,
     mode: input.mode,
     subtype: input.subtype,
     stats: input.stats,
@@ -49,18 +44,19 @@ export function parseReportSession(serialized: string): ReportSessionData {
   }
 
   const record = value as Record<string, unknown>;
-  const expectedKeys = ["mode", "subtype", "stats", "awards", "content"];
+  const expectedKeys = ["reportId", "mode", "subtype", "stats", "awards", "content"];
   if (
     Object.keys(record).some((key) => !expectedKeys.includes(key)) ||
     expectedKeys.some((key) => !(key in record))
   ) {
     throw new ReportValidationError("Saved report has an invalid shape.");
   }
-  if (!isReportMode(record.mode) || typeof record.subtype !== "string") {
+  if (!isReportMode(record.mode) || typeof record.subtype !== "string" || typeof record.reportId !== "string" || !record.reportId) {
     throw new ReportValidationError("Saved report has an unsupported mode.");
   }
 
   return {
+    reportId: record.reportId,
     mode: record.mode,
     subtype: record.subtype,
     stats: parseReportStats(record.stats),

@@ -1,23 +1,19 @@
 /**
- * Single source of truth for unlock pricing.
- *
- * India is priced in INR, everyone else in USD. The two prices are NOT a
- * currency conversion of each other ($2.99 ≈ ₹249) · ₹149 is a deliberate
- * India-specific price, not a bug. One unlock unlocks everything (full report
- * + PDF + Wrapped card).
- *
- * Amounts are in the smallest currency unit Razorpay expects: paise for INR,
- * cents for USD.
+ * Single source of truth for unlock pricing. A single purchase authorizes one
+ * report, its keepsake PDF, and its Wrapped card. Amounts use Razorpay's
+ * smallest currency unit: paise for INR and cents for USD.
  */
 export const PRICING = {
   IN: {
     currency: "INR",
-    amount: 14900,
-    display: "₹149",
-    regularDisplay: "₹299",
-    offerLabel: "Launch price",
-  }, // amount in paise
-  US: { currency: "USD", amount: 299, display: "$2.99" }, // amount in cents
+    single: { amount: 9900, label: "₹99" },
+    pack10: { amount: 49900, label: "₹499", perReport: "₹49.90 per report" },
+  },
+  DEFAULT: {
+    currency: "USD",
+    single: { amount: 199, label: "$1.99" },
+    pack10: { amount: 799, label: "$7.99", perReport: "$0.80 per report" },
+  },
 } as const;
 
 export type PriceRegion = keyof typeof PRICING;
@@ -26,35 +22,33 @@ export interface PriceQuote {
   region: PriceRegion;
   currency: (typeof PRICING)[PriceRegion]["currency"];
   amount: number;
-  display: string;
-  regularDisplay?: string;
-  offerLabel?: string;
+  label: string;
   /** Whether the USD/international path is switched on for this deployment. */
   international: boolean;
 }
 
 /**
  * International Payments (accepting non-INR/foreign cards) requires extra KYC
- * and approval on the Razorpay account. Until it's approved, keep this off and
- * everyone is quoted INR · do NOT block launch on international approval.
+ * and approval on the Razorpay account. Until it is approved, keep this off
+ * and everyone is quoted INR.
  */
 export function isInternationalEnabled(): boolean {
   return process.env.RAZORPAY_INTERNATIONAL_ENABLED?.trim().toLowerCase() === "true";
 }
 
-/** India → IN; everyone else → US. When international is off, always IN. */
+/** India maps to IN and everyone else to DEFAULT. When international is off, always IN. */
 export function resolveRegion(countryCode: string | null | undefined): PriceRegion {
-  if (!isInternationalEnabled()) {
-    return "IN";
-  }
-  return countryCode?.trim().toUpperCase() === "IN" ? "IN" : "US";
+  if (!isInternationalEnabled()) return "IN";
+  return countryCode?.trim().toUpperCase() === "IN" ? "IN" : "DEFAULT";
 }
 
 export function resolvePriceQuote(countryCode: string | null | undefined): PriceQuote {
   const region = resolveRegion(countryCode);
   return {
     region,
-    ...PRICING[region],
+    currency: PRICING[region].currency,
+    amount: PRICING[region].single.amount,
+    label: PRICING[region].single.label,
     international: isInternationalEnabled(),
   };
 }

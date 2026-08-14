@@ -3,6 +3,7 @@ import {
   RazorpayConfigError,
   verifyPaymentSignature,
 } from "../../../lib/razorpay";
+import { authorizeOrder, EntitlementError } from "../../../lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -53,5 +54,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ verified: false, error: "Signature verification failed." }, { status: 400 });
   }
 
-  return Response.json({ verified: true });
+  try {
+    const reportId = authorizeOrder(orderId);
+    return Response.json({ verified: true, reportId });
+  } catch (error) {
+    if (error instanceof EntitlementError) {
+      return Response.json({ verified: false, error: "Payment verified, but we could not unlock this report. Please retry verification." }, { status: 500 });
+    }
+    return Response.json({ verified: false, error: "We could not record this unlock. Please retry verification." }, { status: 500 });
+  }
 }

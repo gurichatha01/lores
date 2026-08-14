@@ -5,6 +5,7 @@ import { useState } from "react";
 import { createReportPdf, pdfFileName } from "@/lib/createReportPdf";
 import { getModePreset } from "@/lib/modePresets";
 import { buildPdfDocumentData, type PdfCanvas } from "@/lib/pdfReport";
+import { checkReportAuthorization } from "@/lib/reportAccess";
 import type { ReportSessionData } from "@/lib/types";
 
 interface ReportPdfDownloadProps {
@@ -23,6 +24,10 @@ export function ReportPdfDownload({ report }: ReportPdfDownloadProps) {
     if (status === "building") return;
     setStatus("building");
     try {
+      if (!(await checkReportAuthorization(report.reportId))) {
+        setStatus("failed");
+        return;
+      }
       await document.fonts?.ready;
       const pdf = createReportPdf(report, (width, height) => {
         const canvas = document.createElement("canvas");
@@ -65,7 +70,7 @@ export function ReportPdfDownload({ report }: ReportPdfDownloadProps) {
       </button>
       {status === "failed" ? (
         <p role="alert" className="mt-2 text-xs font-semibold" style={{ color: preset.accent }}>
-          The PDF could not be created in this browser.
+          This keepsake is still locked or could not be created in this browser.
         </p>
       ) : null}
     </section>

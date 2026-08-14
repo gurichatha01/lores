@@ -7,26 +7,30 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("introductory pricing", () => {
-  it("keeps the actual India charge at ₹149 and exposes the genuine ₹299 regular price", async () => {
+describe("single-report pricing", () => {
+  it("uses the final India single price and defines the deferred pack without wiring it", async () => {
     vi.stubEnv("RAZORPAY_INTERNATIONAL_ENABLED", "false");
     const quote = resolvePriceQuote("IN");
 
-    expect(PRICING.IN.amount).toBe(14_900);
-    expect(quote).toMatchObject({
+    expect(PRICING.IN).toEqual({
       currency: "INR",
-      amount: 14_900,
-      display: "₹149",
-      regularDisplay: "₹299",
-      offerLabel: "Launch price",
+      single: { amount: 9900, label: "₹99" },
+      pack10: { amount: 49900, label: "₹499", perReport: "₹49.90 per report" },
     });
+    expect(quote).toMatchObject({ currency: "INR", amount: 9900, label: "₹99" });
 
     const response = GET(new Request("http://localhost/api/pricing"));
-    await expect(response.json()).resolves.toMatchObject({
-      amount: 14_900,
-      display: "₹149",
-      regularDisplay: "₹299",
-      offerLabel: "Launch price",
+    await expect(response.json()).resolves.toMatchObject({ amount: 9900, label: "₹99" });
+  });
+
+  it("uses the default USD single price only when international payments are enabled", () => {
+    vi.stubEnv("RAZORPAY_INTERNATIONAL_ENABLED", "true");
+    expect(resolvePriceQuote("US")).toMatchObject({
+      region: "DEFAULT",
+      currency: "USD",
+      amount: 199,
+      label: "$1.99",
     });
+    expect(PRICING.DEFAULT.pack10.perReport).toBe("$0.80 per report");
   });
 });

@@ -162,6 +162,7 @@ export interface GenerateReportInput {
 }
 
 export interface ReportSessionData {
+  reportId: string;
   mode: ReportMode;
   subtype: string;
   stats: ReportStats;

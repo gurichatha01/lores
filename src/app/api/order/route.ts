@@ -6,6 +6,7 @@ import {
   RazorpayConfigError,
   RazorpayRequestError,
 } from "../../../lib/razorpay";
+import { assertReportAvailable, attachOrderToReport, EntitlementError } from "../../../lib/entitlements";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,24 @@ export const runtime = "nodejs";
  * browser can open Checkout; the key secret never leaves the server.
  */
 export async function POST(request: Request): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  }
+  const reportId = (body as { reportId?: unknown } | null)?.reportId;
+  if (typeof reportId !== "string" || !reportId) {
+    return Response.json({ error: "Missing report identity." }, { status: 400 });
+  }
+  try {
+    assertReportAvailable(reportId);
+  } catch (error) {
+    if (error instanceof EntitlementError) {
+      return Response.json({ error: "This report cannot be unlocked. Please regenerate it and try again." }, { status: 409 });
+    }
+    return Response.json({ error: "We could not securely prepare checkout for this report. Please try again." }, { status: 500 });
+  }
   let keys;
   try {
     keys = getRazorpayKeys();
@@ -33,13 +52,21 @@ export async function POST(request: Request): Promise<Response> {
       amount: quote.amount,
       currency: quote.currency,
       keys,
-      notes: { region: quote.region },
+      notes: { region: quote.region, reportId },
     });
+    try {
+      attachOrderToReport(order.id, reportId);
+    } catch (error) {
+      if (error instanceof EntitlementError) {
+        return Response.json({ error: "This report cannot be unlocked. Please regenerate it and try again." }, { status: 409 });
+      }
+      return Response.json({ error: "We could not securely attach checkout to this report. Please try again." }, { status: 500 });
+    }
     return Response.json({
       orderId: order.id,
       amount: quote.amount,
       currency: quote.currency,
-      display: quote.display,
+      label: quote.label,
       region: quote.region,
       keyId: keys.keyId,
     });

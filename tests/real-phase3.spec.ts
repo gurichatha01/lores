@@ -68,11 +68,13 @@ describe.skipIf(!realExportPath)("Phase 3 real-export route check", () => {
         body: JSON.stringify(input),
       }),
     );
-    const report = parseReportContent(await response.json());
+    const responseBody = (await response.json()) as { content?: unknown; reportId?: unknown };
+    const report = parseReportContent(responseBody.content);
     const providerRequest = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
     const providerInput = JSON.parse(providerRequest.contents[0].parts[0].text);
 
     expect(response.status).toBe(200);
+    expect(responseBody.reportId).toEqual(expect.any(String));
     expect(report).toEqual(expectedReport);
     expect(sample.length).toBeLessThan(parsed.messages.length);
     expect(Object.keys(providerInput).sort()).toEqual(

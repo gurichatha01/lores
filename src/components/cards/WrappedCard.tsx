@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { getModePreset } from "@/lib/modePresets";
+import { checkReportAuthorization } from "@/lib/reportAccess";
 import { buildWrappedCard, type WrappedCardContent } from "@/lib/wrappedCard";
 import type { ReportSessionData } from "@/lib/types";
 
@@ -20,11 +21,13 @@ export function WrappedCard({ report }: WrappedCardProps) {
   const preset = getModePreset(report.mode);
   const [ready, setReady] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setReady(false);
     setDownloaded(false);
+    setLocked(false);
 
     async function render(): Promise<void> {
       await document.fonts?.ready;
@@ -42,6 +45,10 @@ export function WrappedCard({ report }: WrappedCardProps) {
   async function download(): Promise<void> {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (!(await checkReportAuthorization(report.reportId))) {
+      setLocked(true);
+      return;
+    }
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) return;
 
@@ -52,6 +59,7 @@ export function WrappedCard({ report }: WrappedCardProps) {
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
+    setLocked(false);
     setDownloaded(true);
     window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
   }
@@ -86,6 +94,11 @@ export function WrappedCard({ report }: WrappedCardProps) {
         >
           {downloaded ? "downloaded ✓" : "download wrapped card ↓"}
         </button>
+        {locked ? (
+          <p role="alert" className="mt-2 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-red-600">
+            this card is still locked. complete checkout to download it.
+          </p>
+        ) : null}
       </figure>
     </section>
   );

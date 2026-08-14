@@ -31,7 +31,10 @@ describe("POST /api/generate", () => {
     const response = await POST(request(createTestGenerateInput()));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(VALID_REPORT);
+    await expect(response.json()).resolves.toMatchObject({
+      content: VALID_REPORT,
+      reportId: expect.any(String),
+    });
   });
 
   it("defaults an omitted receiptExchanges field to an empty array", async () => {
@@ -51,7 +54,10 @@ describe("POST /api/generate", () => {
     expect(response.status).toBe(200);
     expect(providerInput.receiptExchanges).toEqual([]);
     expect(providerRequest.generationConfig.responseSchema.properties.highlights.maxItems).toBe(0);
-    await expect(response.json()).resolves.toEqual(reportWithoutReceipts);
+    await expect(response.json()).resolves.toMatchObject({
+      content: reportWithoutReceipts,
+      reportId: expect.any(String),
+    });
   });
 
   it("preserves freeform context from the API payload through to the LLM request", async () => {
@@ -79,7 +85,10 @@ describe("POST /api/generate", () => {
     const response = await POST(request(createAlternateGenerateInput()));
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual(ALTERNATE_REPORT);
+    await expect(response.json()).resolves.toMatchObject({
+      content: ALTERNATE_REPORT,
+      reportId: expect.any(String),
+    });
   });
 
   it("rejects an extra raw-chat field before contacting the provider", async () => {

@@ -39,22 +39,18 @@ interface OrderResponse {
   orderId: string;
   amount: number;
   currency: string;
-  display: string;
+  label: string;
   keyId: string;
 }
 
 interface PricingResponse {
-  display: string;
-  regularDisplay?: string;
-  offerLabel?: string;
+  label: string;
 }
 
 export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const [status, setStatus] = useState<UnlockStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [priceDisplay, setPriceDisplay] = useState<string | null>(null);
-  const [regularPriceDisplay, setRegularPriceDisplay] = useState<string | null>(null);
-  const [offerLabel, setOfferLabel] = useState<string | null>(null);
   const { awards, content, stats } = report;
   const preset = getModePreset(report.mode);
   const soft = preset.treatment === "soft";
@@ -71,12 +67,8 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
       .then((response) => (response.ok ? response.json() : null))
       .then((body) => {
         const quote = body as PricingResponse | null;
-        if (active && quote && typeof quote.display === "string") {
-          setPriceDisplay(quote.display);
-          setRegularPriceDisplay(
-            typeof quote.regularDisplay === "string" ? quote.regularDisplay : null,
-          );
-          setOfferLabel(typeof quote.offerLabel === "string" ? quote.offerLabel : null);
+        if (active && quote && typeof quote.label === "string") {
+          setPriceDisplay(quote.label);
         }
       })
       .catch(() => {
@@ -96,9 +88,9 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         body: JSON.stringify(response),
       });
       const verifyBody = (await verifyResponse.json().catch(() => null)) as
-        | { verified?: boolean }
+        | { verified?: boolean; reportId?: string }
         | null;
-      if (verifyResponse.ok && verifyBody?.verified) {
+      if (verifyResponse.ok && verifyBody?.verified && verifyBody.reportId === report.reportId) {
         onUnlocked();
         return;
       }
@@ -117,7 +109,11 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 
     let order: OrderResponse;
     try {
-      const orderResponse = await fetch("/api/order", { method: "POST" });
+      const orderResponse = await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportId: report.reportId }),
+      });
       if (orderResponse.status === 503) {
         setStatus("unavailable");
         setMessage("Payments aren't switched on yet · nothing was charged.");
@@ -257,10 +253,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
               <p className="text-xl font-black tracking-[-0.5px]">unlock the full lores</p>
               {priceDisplay ? (
                 <p className="mt-1 text-sm font-extrabold text-white">
-                  {offerLabel ? `${offerLabel} · ` : ""}{priceDisplay}
-                  {regularPriceDisplay ? (
-                    <> · <span className="text-white/55">regularly <s>{regularPriceDisplay}</s></span></>
-                  ) : null}
+                  {priceDisplay}
                 </p>
               ) : null}
               <p className="mt-1 font-mono text-[9px] leading-relaxed text-white/55">full report · PDF keepsake · Wrapped card</p>

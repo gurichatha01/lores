@@ -122,8 +122,15 @@ export function CreateFunnel() {
         throw new Error(detail);
       }
 
-      const content = parseReportContent(responseBody);
-      window.sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(createReportSession(input, content)));
+      const generated = responseBody as { content?: unknown; reportId?: unknown } | null;
+      if (!generated || typeof generated.reportId !== "string" || !generated.reportId) {
+        throw new Error("The generated report is missing its secure identity. Please try again.");
+      }
+      const content = parseReportContent(generated.content);
+      window.sessionStorage.setItem(
+        REPORT_SESSION_KEY,
+        JSON.stringify(createReportSession(input, content, generated.reportId)),
+      );
       router.push("/report");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Something went wrong while generating the report.");
@@ -250,7 +257,7 @@ function DesktopBrandPanel({ mode }: { mode: ReportMode }) {
         className="max-w-sm border-t-2 pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] opacity-70"
         style={{ borderColor: panelText }}
       >
-        private by design · counted exactly
+        chat stays on your device · counted exactly
       </p>
     </aside>
   );
@@ -412,7 +419,7 @@ function UploadStep({ file, error, onFile }: { file: File | null; error: string 
       </label>
       <div className="mt-5 border-2 border-ink bg-acid p-4">
         <p className="text-sm font-black">🔒 privacy, in plain English</p>
-        <p className="mt-2 text-[12px] font-semibold leading-relaxed text-ink/65">Your full chat is parsed in this browser. Media is never uploaded. Only aggregate stats, awards, and a small curated message and receipt sample go to the report writer.</p>
+        <p className="mt-2 text-[12px] font-semibold leading-relaxed text-ink/65">Your chat is processed entirely on your device. We never upload or store your full chat, only anonymised stats and a short sample are sent to write your report.</p>
       </div>
       {error ? <div role="alert" className="mt-4 border-2 border-roast bg-white px-4 py-3 text-sm font-semibold text-roast">{error}</div> : null}
     </>

@@ -20,7 +20,7 @@ export default function LandingPage() {
             est. your chat · 20XX
           </p>
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-group">
-            private by design
+            chat stays on your device
           </p>
         </header>
 
@@ -43,7 +43,7 @@ export default function LandingPage() {
               get my lores <span className="ml-2 font-mono text-acid">→</span>
             </Link>
             <p className="mt-3 max-w-md text-center font-mono text-[11px] text-ink/50">
-              🔒 your full chat never leaves your phone
+              🔒 your full chat never leaves your phone — we only send anonymised stats
             </p>
           </div>
 

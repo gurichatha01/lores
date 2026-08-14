@@ -13,9 +13,7 @@ export function GET(request: Request): Response {
   return Response.json({
     currency: quote.currency,
     amount: quote.amount,
-    display: quote.display,
-    regularDisplay: quote.regularDisplay,
-    offerLabel: quote.offerLabel,
+    label: quote.label,
     region: quote.region,
     international: quote.international,
   });

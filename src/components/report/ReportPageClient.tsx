@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { parseReportSession, REPORT_SESSION_KEY, REPORT_UNLOCK_KEY } from "@/lib/reportSession";
+import { fetchAuthorizedReport } from "@/lib/reportAccess";
+import { parseReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
 import type { ReportSessionData } from "@/lib/types";
 
 import { LockedReport } from "./LockedReport";
@@ -22,16 +23,27 @@ export function ReportPageClient() {
       return;
     }
     try {
-      setReport(parseReportSession(saved));
-      setUnlocked(window.sessionStorage.getItem(REPORT_UNLOCK_KEY) === "true");
+      const parsed = parseReportSession(saved);
+      setReport(parsed);
+      void loadAuthorizedReport(parsed.reportId);
     } catch {
       setFailed(true);
     }
   }, []);
 
-  function handleUnlocked(): void {
-    window.sessionStorage.setItem(REPORT_UNLOCK_KEY, "true");
+  async function loadAuthorizedReport(reportId: string): Promise<void> {
+    const authorizedReport = await fetchAuthorizedReport(reportId);
+    if (!authorizedReport) {
+      setUnlocked(false);
+      return;
+    }
+    setReport(authorizedReport);
     setUnlocked(true);
+  }
+
+  function handleUnlocked(): void {
+    if (!report) return;
+    void loadAuthorizedReport(report.reportId);
   }
 
   if (report) {
