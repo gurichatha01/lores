@@ -88,14 +88,18 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         body: JSON.stringify(response),
       });
       const verifyBody = (await verifyResponse.json().catch(() => null)) as
-        | { verified?: boolean; reportId?: string }
+        | { verified?: boolean; reportId?: string; error?: string }
         | null;
       if (verifyResponse.ok && verifyBody?.verified && verifyBody.reportId === report.reportId) {
         onUnlocked();
         return;
       }
       setStatus("error");
-      setMessage("We couldn't verify that payment. If you were charged, nothing was unlocked · please contact support.");
+      setMessage(
+        typeof verifyBody?.error === "string"
+          ? verifyBody.error
+          : "We couldn't verify that payment. If you were charged, nothing was unlocked. Please contact support.",
+      );
     } catch {
       setStatus("error");
       setMessage("We couldn't reach the server to verify the payment. Please try again.");

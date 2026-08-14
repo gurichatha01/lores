@@ -51,6 +51,11 @@ export async function POST(request: Request): Promise<Response> {
   });
 
   if (!verified) {
+    console.error("[lores payment] Razorpay signature verification failed", {
+      orderId,
+      paymentId,
+      signatureLength: signature.length,
+    });
     return Response.json({ verified: false, error: "Signature verification failed." }, { status: 400 });
   }
 
@@ -58,6 +63,10 @@ export async function POST(request: Request): Promise<Response> {
     const reportId = authorizeOrder(orderId);
     return Response.json({ verified: true, reportId });
   } catch (error) {
+    console.error("[lores payment] Verified Razorpay payment could not authorize its report", {
+      orderId,
+      reason: error instanceof Error ? error.message : "unknown error",
+    });
     if (error instanceof EntitlementError) {
       return Response.json({ verified: false, error: "Payment verified, but we could not unlock this report. Please retry verification." }, { status: 500 });
     }
