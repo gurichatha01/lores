@@ -80,7 +80,7 @@ export const MODE_VOICE_BLOCKS: Record<ReportMode, string> = {
   work:
     "💼 work / team · Dry, deadpan, office-in-joke. Observe work patterns · who carries the thread, the after-hours pings, the \"quick sync\" that never was. Professional enough to share with the team, witty enough that they screenshot it. Example: \"sent 61 messages after 9pm. work-life balance: a rumor.\" Profanity: match the chat's own language and level; do not sanitize language the source naturally uses. Avoid: warmth or emotion · this one runs cool.",
   roast:
-    "🔥 roast · Savage but precise. The burn always comes from a real receipt or a real number · never from insults, slurs, appearance, or anything cruel about who someone is. You're roasting behavior the data proves, and specific-and-true hits ten times harder than mean-and-generic. Example: \"texts first 71% of the time and still gets left on read for a median of 3 hours. the delusion is the main character here.\" Profanity: match the chat's own language and level; do not sanitize language the source naturally uses. Hard rule: if a line would sting even if it weren't true, cut it. It has to earn the laugh with evidence.",
+    "🔥 roast · You are a prosecutor building a case, not a narrator describing events. The burn always comes from a real receipt or number, never from insults, slurs, appearance, or anything cruel about who someone is. But specificity alone is not enough: take the real detail and FRAME it as evidence in an argument you are making about these people. Techniques: (1) State the accusation, then reveal the proof, not the other way around. (2) Withhold. Imply you know more than you're saying ('I know which one of you it is. So do you.'). (3) Address them directly and put them on trial ('You have forwarded four Airtel documents. You have never once asked how the other person is.'). (4) Let the number land as a verdict, not a stat. The difference: a narrator writes 'Guri sent 182 late-night messages.' A prosecutor writes 'You send your realest thoughts at 3 AM, to a man who replies 'gg' and goes to sleep. 182 times. The court has noticed.' Same fact. One reports, one indicts. Always indict. Hard rule: if a line would sting even if it weren't true, cut it. It has to earn the laugh with evidence.",
 };
 
 // Per-mode chapter length + structural mechanism. Every ceiling below is a
@@ -121,6 +121,20 @@ FIELD RULES:
 - highlights · select only from receiptExchanges. When receiptExchanges is non-empty, return 1-3 of the strongest exchanges; an empty highlights array is allowed ONLY when receiptExchanges itself is empty. Each highlight must describe the exact 3-6-message exchange selected by exchangeId; the body and label must be impossible to confuse with another exchange. Never pair a description with a merely adjacent or vaguely related exchange.
 - highlight exchangeId · required for every highlight. Copy one supplied receiptExchanges[].exchangeId exactly. The renderer pulls that indexed source range and renders the real consecutive messages; never write, paraphrase, reorder, or splice message text yourself. Never select an exchange containing ${SLUR_PLACEHOLDER}.
 - heroLine / title / wrappedLine · one punchy line each, specific to them, no mush.
+
+FRAMING: REPORT vs INDICTMENT (roast/prosecutorial modes)
+
+The specificity rule gets you a true sentence. Framing turns it into a screenshot. Same data, two energies:
+
+Chapter body:
+❌ (reports) "In September 2025, the chat became a customer service portal. Beanie forwarded a 205-word Airtel broadband transfer document, which Guri answered with a formal declaration of liability."
+✅ (indicts) "Exhibit C: a 205-word Airtel transfer document, forwarded with zero context. One of you treats this chat like a government office. The other has never once opened with 'how are you.' I've cross-referenced. It's the same person."
+
+Award line · late-night messages (detail "182 late-night messages"):
+❌ (reports) "182 late-night messages carrying the conversation into the early hours."
+✅ (indicts) "182 messages sent after midnight, most of them gym forms and murder-mystery pitches. Nobody asked. Nobody was awake. You sent them anyway."
+
+The move: don't tell me what happened. Tell me what it PROVES about them, and make me feel caught.
 
 FEW-SHOT: THE FIX, SHOWN
 
