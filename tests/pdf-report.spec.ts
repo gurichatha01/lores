@@ -94,7 +94,7 @@ describe("PDF keepsake", () => {
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
     expect(pdf.getNumberOfPages()).toBe(
       // cover + narrative spread + numbers + awards + receipts/people + story + closing
-      9 + (process.env.PDF_QA_PULL_QUOTE ? 1 : 0) + (process.env.PDF_QA_STORY_TIMELINE ? 1 : 0),
+      10 + (process.env.PDF_QA_PULL_QUOTE ? 1 : 0) + (process.env.PDF_QA_STORY_TIMELINE ? 1 : 0),
     );
     expect(pdf.internal.pageSize.getWidth()).toBeCloseTo(210, 1);
     expect(pdf.internal.pageSize.getHeight()).toBeCloseTo(297, 1);

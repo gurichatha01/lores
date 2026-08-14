@@ -1417,20 +1417,11 @@ function buildDetailPages(
   people: readonly PersonStats[],
 ): PdfDocumentData["detailPages"] {
   const pages: PdfDocumentData["detailPages"] = [];
-  let highlightIndex = 0;
-  while (highlightIndex < highlights.length) {
-    const current = highlights[highlightIndex];
-    const next = highlights[highlightIndex + 1];
-    const canSharePage =
-      next &&
-      !buildReceiptPresentation(current).pullQuote &&
-      !buildReceiptPresentation(next).pullQuote &&
-      receiptLayoutWeight(current) + receiptLayoutWeight(next) <= 1_150;
+  for (const highlight of highlights) {
     pages.push({
-      highlights: canSharePage ? [current, next] : [current],
+      highlights: [highlight],
       people: [],
     });
-    highlightIndex += canSharePage ? 2 : 1;
   }
   for (let personIndex = 0; personIndex < people.length; personIndex += 4) {
     pages.push({ highlights: [], people: people.slice(personIndex, personIndex + 4) });
