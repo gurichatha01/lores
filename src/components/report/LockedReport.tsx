@@ -52,6 +52,7 @@ interface OrderResponse {
 interface PricingResponse {
   label: string;
   pack10?: { label?: string };
+  packAvailable?: boolean;
 }
 
 export function LockedReport({ report, onUnlocked }: LockedReportProps) {
@@ -59,6 +60,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [priceDisplay, setPriceDisplay] = useState<string | null>(null);
   const [packLabel, setPackLabel] = useState<string | null>(null);
+  const [packAvailable, setPackAvailable] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode | null>(null);
   const account = useAccount();
   const { awards, content, stats } = report;
@@ -80,6 +82,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         if (!active || !quote) return;
         if (typeof quote.label === "string") setPriceDisplay(quote.label);
         if (typeof quote.pack10?.label === "string") setPackLabel(quote.pack10.label);
+        setPackAvailable(quote.packAvailable === true);
       })
       .catch(() => {
         /* Price is a nicety on the button; failing to fetch it is non-fatal. */
@@ -394,15 +397,17 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
               >
                 {singleLabel}
               </button>
-              <button
-                type="button"
-                onClick={() => void startCheckout("pack10")}
-                disabled={busy}
-                className={`mt-2 min-h-[44px] w-full border-2 border-white/30 bg-transparent px-4 text-[12px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
-              >
-                or 10 reports for {packLabel ?? "₹499"} →
-              </button>
-              {account.configured ? (
+              {packAvailable ? (
+                <button
+                  type="button"
+                  onClick={() => void startCheckout("pack10")}
+                  disabled={busy}
+                  className={`mt-2 min-h-[44px] w-full border-2 border-white/30 bg-transparent px-4 text-[12px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
+                >
+                  or 10 reports for {packLabel ?? "₹499"} →
+                </button>
+              ) : null}
+              {account.configured && packAvailable ? (
                 <button
                   type="button"
                   onClick={() => setAuthMode("login")}

@@ -1,5 +1,6 @@
 import { resolvePriceQuote } from "../../../lib/pricing";
 import { detectCountry } from "../../../lib/razorpay";
+import { isSupabaseConfigured } from "../../../lib/supabaseServer";
 
 export const runtime = "nodejs";
 
@@ -22,5 +23,9 @@ export function GET(request: Request): Response {
     // Product breakdown for the pack upsell.
     single: { amount: single.amount, label: single.label, credits: single.credits },
     pack10: { amount: pack.amount, label: pack.label, credits: pack.credits },
+    // Packs require Supabase (accounts + credit ledger). If it's not configured
+    // server-side, the client hides the pack option so nobody pays for a pack we
+    // can't fulfill.
+    packAvailable: isSupabaseConfigured(),
   });
 }

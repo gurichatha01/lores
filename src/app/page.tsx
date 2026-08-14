@@ -19,9 +19,17 @@ export default function LandingPage() {
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
             est. your chat · 20XX
           </p>
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-group">
-            chat stays on your device
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-group sm:block">
+              chat stays on your device
+            </p>
+            <Link
+              href="/account"
+              className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-ink/55 underline underline-offset-2 transition-colors hover:text-ink"
+            >
+              log in
+            </Link>
+          </div>
         </header>
 
         <div className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[1.1fr_.9fr] lg:gap-16">
