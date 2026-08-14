@@ -12,6 +12,10 @@ import {
   openRazorpayCheckout,
   type RazorpayHandlerResponse,
 } from "@/lib/razorpayCheckout";
+import { AuthOverlay, type AuthMode } from "@/components/account/AuthOverlay";
+import { useAccount } from "@/components/account/useAccount";
+import { claimPack, spendCreditForReport } from "@/lib/authClient";
+import { clearPendingPack, readPendingPack, stashPendingPack } from "@/lib/packPurchase";
 import {
   buildModeStatCards,
   formatCount,
@@ -41,16 +45,22 @@ interface OrderResponse {
   currency: string;
   label: string;
   keyId: string;
+  productType?: string;
+  credits?: number;
 }
 
 interface PricingResponse {
   label: string;
+  pack10?: { label?: string };
 }
 
 export function LockedReport({ report, onUnlocked }: LockedReportProps) {
   const [status, setStatus] = useState<UnlockStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [priceDisplay, setPriceDisplay] = useState<string | null>(null);
+  const [packLabel, setPackLabel] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode | null>(null);
+  const account = useAccount();
   const { awards, content, stats } = report;
   const preset = getModePreset(report.mode);
   const soft = preset.treatment === "soft";
@@ -67,9 +77,9 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
       .then((response) => (response.ok ? response.json() : null))
       .then((body) => {
         const quote = body as PricingResponse | null;
-        if (active && quote && typeof quote.label === "string") {
-          setPriceDisplay(quote.label);
-        }
+        if (!active || !quote) return;
+        if (typeof quote.label === "string") setPriceDisplay(quote.label);
+        if (typeof quote.pack10?.label === "string") setPackLabel(quote.pack10.label);
       })
       .catch(() => {
         /* Price is a nicety on the button; failing to fetch it is non-fatal. */
@@ -79,7 +89,19 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     };
   }, []);
 
-  async function verifyPayment(response: RazorpayHandlerResponse): Promise<void> {
+  // Same-browser stranded-payment recovery: a buyer who paid for a pack but
+  // closed the tab before finishing signup returns to the "claim your reports"
+  // prompt automatically.
+  useEffect(() => {
+    if (account.configured && account.ready && !account.signedIn && readPendingPack()) {
+      setAuthMode("signup");
+    }
+  }, [account.configured, account.ready, account.signedIn]);
+
+  async function runVerify(
+    response: RazorpayHandlerResponse,
+    productType: "single" | "pack10",
+  ): Promise<void> {
     setStatus("verifying");
     try {
       const verifyResponse = await fetch("/api/verify", {
@@ -88,11 +110,22 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         body: JSON.stringify(response),
       });
       const verifyBody = (await verifyResponse.json().catch(() => null)) as
-        | { verified?: boolean; reportId?: string; error?: string }
+        | { verified?: boolean; reportId?: string; productType?: string; paymentId?: string; error?: string }
         | null;
-      if (verifyResponse.ok && verifyBody?.verified && verifyBody.reportId === report.reportId) {
-        onUnlocked();
-        return;
+      if (verifyResponse.ok && verifyBody?.verified) {
+        if (productType === "pack10" && verifyBody.productType === "pack10" && verifyBody.paymentId) {
+          // The success screen IS the signup step — stash the payment id so the
+          // credits can be claimed to the new account (and recovered on refresh).
+          stashPendingPack(verifyBody.paymentId);
+          setStatus("idle");
+          setMessage(null);
+          setAuthMode("signup");
+          return;
+        }
+        if (productType === "single" && verifyBody.reportId === report.reportId) {
+          onUnlocked();
+          return;
+        }
       }
       setStatus("error");
       setMessage(
@@ -106,7 +139,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     }
   }
 
-  async function startUnlock(): Promise<void> {
+  async function startCheckout(productType: "single" | "pack10"): Promise<void> {
     if (busy) return;
     setStatus("starting");
     setMessage(null);
@@ -116,7 +149,9 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
       const orderResponse = await fetch("/api/order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportId: report.reportId }),
+        body: JSON.stringify(
+          productType === "single" ? { productType, reportId: report.reportId } : { productType },
+        ),
       });
       if (orderResponse.status === 503) {
         setStatus("unavailable");
@@ -154,10 +189,13 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
       amount: order.amount,
       currency: order.currency,
       name: "lores_",
-      description: "Unlock the full report · PDF keepsake · Wrapped card",
+      description:
+        productType === "pack10"
+          ? "10-report pack · 10 unlocks bound to your account"
+          : "Unlock the full report · PDF keepsake · Wrapped card",
       theme: { color: preset.accent },
       handler: (response) => {
-        void verifyPayment(response);
+        void runVerify(response, productType);
       },
       modal: {
         ondismiss: () => {
@@ -175,11 +213,56 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     }
   }
 
-  const buttonLabel = busy
+  /** Spends one pack credit to unlock the report currently being viewed. */
+  async function unlockWithCredit(): Promise<void> {
+    if (busy) return;
+    setStatus("verifying");
+    setMessage(null);
+    const result = await spendCreditForReport(report.reportId);
+    if (result.ok) {
+      onUnlocked();
+      return;
+    }
+    setStatus("error");
+    setMessage(result.error ?? "We couldn't use a credit. Please try again.");
+    await account.refresh();
+  }
+
+  /** After the pack success-screen signup/login: claim the pack, then unlock. */
+  async function handleSignupAuthed(): Promise<void> {
+    const paymentId = readPendingPack();
+    if (paymentId) {
+      const claim = await claimPack(paymentId);
+      if (!claim.ok) {
+        setAuthMode(null);
+        setStatus("error");
+        setMessage(claim.error ?? "We couldn't attach your reports. Please contact support with your payment id.");
+        return;
+      }
+      clearPendingPack();
+    }
+    await account.refresh();
+    setAuthMode(null);
+    // Spend one of the freshly-claimed credits to unlock the report they bought against.
+    const spend = await spendCreditForReport(report.reportId);
+    if (spend.ok) {
+      onUnlocked();
+      return;
+    }
+    await account.refresh();
+  }
+
+  async function handleLoginAuthed(): Promise<void> {
+    await account.refresh();
+    setAuthMode(null);
+  }
+
+  const hasCredits = account.signedIn && (account.credits ?? 0) > 0;
+  const singleLabel = busy
     ? status === "verifying"
-      ? "verifying payment…"
+      ? "working…"
       : "opening checkout…"
-    : `unlock · ${priceDisplay ?? "full lores"}`;
+    : `unlock this report · ${priceDisplay ?? "₹99"}`;
 
   return (
     <ReportBackdrop accent={preset.accent} accentSoft={preset.accentSoft} background={dark ? "#080706" : "#dcdcd7"}>
@@ -256,15 +339,29 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 
         {dark ? <WarningTape accent={preset.accent} /> : null}
 
-        <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)] lg:bottom-6 lg:max-w-[760px] lg:border-2 lg:px-8 lg:pb-5" aria-label="Unlock report">
+        <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)] lg:max-w-[760px] lg:border-x-2 lg:px-8 lg:pb-5" aria-label="Unlock report">
+          {account.signedIn ? (
+            <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[0.08em] text-white/55">
+              <span className="min-w-0 truncate">{account.email}</span>
+              <span className="shrink-0">
+                {typeof account.credits === "number" ? `${account.credits} of 10 left` : "…"}
+                {" · "}
+                <Link href="/account" className="underline">
+                  account
+                </Link>
+                {" · "}
+                <button type="button" onClick={() => void account.signOut()} className="underline">
+                  log out
+                </button>
+              </span>
+            </div>
+          ) : null}
+
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xl font-black tracking-[-0.5px]">unlock the full lores</p>
-              {priceDisplay ? (
-                <p className="mt-1 text-sm font-extrabold text-white">
-                  {priceDisplay}
-                </p>
-              ) : null}
+              <p className="text-xl font-black tracking-[-0.5px]">
+                {hasCredits ? "unlock this report" : "unlock the full lores"}
+              </p>
               <p className="mt-1 font-mono text-[9px] leading-relaxed text-white/55">full report · PDF keepsake · Wrapped card</p>
             </div>
             <BrandWordmark
@@ -273,16 +370,51 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
               className="text-xl font-black tracking-[-0.5px]"
             />
           </div>
-          <button
-            type="button"
-            onClick={startUnlock}
-            disabled={busy}
-            aria-busy={busy}
-            className={`mt-3 min-h-[52px] w-full px-4 py-3 text-[14px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
-            style={{ background: preset.accent }}
-          >
-            {buttonLabel}
-          </button>
+
+          {hasCredits ? (
+            <button
+              type="button"
+              onClick={() => void unlockWithCredit()}
+              disabled={busy}
+              aria-busy={busy}
+              className={`mt-3 min-h-[52px] w-full px-4 py-3 text-[14px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
+              style={{ background: preset.accent }}
+            >
+              {busy ? "unlocking…" : `use 1 credit · ${account.credits} left`}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => void startCheckout("single")}
+                disabled={busy}
+                aria-busy={busy}
+                className={`mt-3 min-h-[52px] w-full px-4 py-3 text-[14px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
+                style={{ background: preset.accent }}
+              >
+                {singleLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => void startCheckout("pack10")}
+                disabled={busy}
+                className={`mt-2 min-h-[44px] w-full border-2 border-white/30 bg-transparent px-4 text-[12px] font-extrabold uppercase text-white disabled:opacity-60 ${soft ? "rounded-full" : "rounded-[3px]"}`}
+              >
+                or 10 reports for {packLabel ?? "₹499"} →
+              </button>
+              {account.configured ? (
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("login")}
+                  disabled={busy}
+                  className="mt-2 w-full text-center font-mono text-[9px] uppercase tracking-[0.08em] text-white/45 underline disabled:opacity-60"
+                >
+                  already have a pack? log in
+                </button>
+              ) : null}
+            </>
+          )}
+
           {message ? (
             <p
               role="status"
@@ -293,6 +425,22 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
           ) : null}
         </aside>
       </article>
+
+      {authMode ? (
+        <AuthOverlay
+          mode={authMode}
+          accent={preset.accent}
+          headline={authMode === "signup" ? "You've got 10 reports." : "Log in to your pack."}
+          subhead={
+            authMode === "signup"
+              ? "Create your account to unlock them — starting with this one."
+              : "Use a credit to unlock this report."
+          }
+          busyLabel="setting up…"
+          onClose={() => setAuthMode(null)}
+          onAuthed={authMode === "signup" ? handleSignupAuthed : handleLoginAuthed}
+        />
+      ) : null}
     </ReportBackdrop>
   );
 }

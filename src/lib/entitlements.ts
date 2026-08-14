@@ -9,11 +9,18 @@ export class EntitlementError extends Error {
   }
 }
 
+/** Server-decided pack purchase, remembered between /api/order and /api/verify. */
+export interface PackOrderIntent {
+  amount: number;
+  credits: number;
+}
+
 interface EntitlementState {
   generatedReports: Set<string>;
   reports: Map<string, ReportSessionData>;
   orders: Map<string, string>;
   authorizedReports: Set<string>;
+  packOrders: Map<string, PackOrderIntent>;
 }
 
 const STATE_KEY = "__loresEntitlementState";
@@ -26,6 +33,7 @@ function state(): EntitlementState {
       reports: new Map<string, ReportSessionData>(),
       orders: new Map<string, string>(),
       authorizedReports: new Set<string>(),
+      packOrders: new Map<string, PackOrderIntent>(),
     };
   }
   return globalState[STATE_KEY];
@@ -60,6 +68,22 @@ export function attachOrderToReport(orderId: string, reportId: string): void {
   state().orders.set(orderId, reportId);
 }
 
+/** Remembers a server-created pack order so /api/verify can size the credit grant. */
+export function attachPackOrder(orderId: string, intent: PackOrderIntent): void {
+  if (!orderId) throw new EntitlementError("Payment order is missing its identity.");
+  state().packOrders.set(orderId, intent);
+}
+
+/** Reads a pack order intent without consuming it. */
+export function getPackOrder(orderId: string): PackOrderIntent | null {
+  return state().packOrders.get(orderId) ?? null;
+}
+
+/** Removes a pack order once its credits have been durably recorded. */
+export function consumePackOrder(orderId: string): void {
+  state().packOrders.delete(orderId);
+}
+
 /** Called only after the Razorpay HMAC has been validated. */
 export function authorizeOrder(orderId: string): string {
   const reportId = state().orders.get(orderId);
@@ -69,6 +93,17 @@ export function authorizeOrder(orderId: string): string {
   state().authorizedReports.add(reportId);
   state().orders.delete(orderId);
   return reportId;
+}
+
+/**
+ * Authorizes a report without a Razorpay order — used when a pack credit is
+ * spent for it. Still requires the report to have been genuinely generated.
+ */
+export function authorizeReport(reportId: string): void {
+  if (!state().generatedReports.has(reportId)) {
+    throw new EntitlementError("This report is not available for unlock.");
+  }
+  state().authorizedReports.add(reportId);
 }
 
 /** The one authoritative check used by report, PDF, and Wrapped surfaces. */
@@ -90,5 +125,6 @@ export function resetEntitlementsForTests(): void {
     current.reports.clear();
     current.orders.clear();
     current.authorizedReports.clear();
+    current.packOrders.clear();
   }
 }

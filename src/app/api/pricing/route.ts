@@ -9,12 +9,18 @@ export const runtime = "nodejs";
  * client never computes or sends an amount.
  */
 export function GET(request: Request): Response {
-  const quote = resolvePriceQuote(detectCountry(request));
+  const country = detectCountry(request);
+  const single = resolvePriceQuote(country, "single");
+  const pack = resolvePriceQuote(country, "pack10");
   return Response.json({
-    currency: quote.currency,
-    amount: quote.amount,
-    label: quote.label,
-    region: quote.region,
-    international: quote.international,
+    // Backward-compatible single-report fields (the teaser unlock bar reads these).
+    currency: single.currency,
+    amount: single.amount,
+    label: single.label,
+    region: single.region,
+    international: single.international,
+    // Product breakdown for the pack upsell.
+    single: { amount: single.amount, label: single.label, credits: single.credits },
+    pack10: { amount: pack.amount, label: pack.label, credits: pack.credits },
   });
 }

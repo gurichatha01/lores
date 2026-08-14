@@ -17,12 +17,25 @@ export const PRICING = {
 } as const;
 
 export type PriceRegion = keyof typeof PRICING;
+export type ProductType = "single" | "pack10";
+
+/** Credits granted per product. A single unlocks one report; a pack grants 10. */
+export const PRODUCT_CREDITS: Record<ProductType, number> = {
+  single: 1,
+  pack10: 10,
+};
+
+export function isProductType(value: unknown): value is ProductType {
+  return value === "single" || value === "pack10";
+}
 
 export interface PriceQuote {
   region: PriceRegion;
   currency: (typeof PRICING)[PriceRegion]["currency"];
+  productType: ProductType;
   amount: number;
   label: string;
+  credits: number;
   /** Whether the USD/international path is switched on for this deployment. */
   international: boolean;
 }
@@ -42,13 +55,19 @@ export function resolveRegion(countryCode: string | null | undefined): PriceRegi
   return countryCode?.trim().toUpperCase() === "IN" ? "IN" : "DEFAULT";
 }
 
-export function resolvePriceQuote(countryCode: string | null | undefined): PriceQuote {
+export function resolvePriceQuote(
+  countryCode: string | null | undefined,
+  productType: ProductType = "single",
+): PriceQuote {
   const region = resolveRegion(countryCode);
+  const tier = PRICING[region][productType];
   return {
     region,
     currency: PRICING[region].currency,
-    amount: PRICING[region].single.amount,
-    label: PRICING[region].single.label,
+    productType,
+    amount: tier.amount,
+    label: tier.label,
+    credits: PRODUCT_CREDITS[productType],
     international: isInternationalEnabled(),
   };
 }
