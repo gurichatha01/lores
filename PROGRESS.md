@@ -1,6 +1,5 @@
 # LORES — Build Progress
-
-Last agent: claude-code   Last updated: 2026-08-14
+Last agent: antigravity   Last updated: 2026-08-14
 
 ## Status
 - [x] Phase 0 — scaffold & design system
@@ -13,12 +12,17 @@ Last agent: claude-code   Last updated: 2026-08-14
 - [x] Phase 7 — PDF
 - [x] Phase 8 — full funnel UX
 - [x] Phase 9 — payments (Razorpay, dynamic currency, test mode)
+- [x] Group-mode leaderboard + session reply-time + scaled receipts
 - [ ] Phase 10 — LATER: landing credibility, launch
 
 ## Where the next agent should start
-Brief 2 (10-report pack: Supabase accounts + credit ledger) is built and verified live — see the Brief 2 decisions below. `.env.local` has Razorpay test keys + Supabase URL/anon/service-role + `DEV_COMP_SECRET`. Remaining nice-to-have: one manual browser clickthrough of the teaser "10 reports for ₹499" button → Razorpay Checkout → signup overlay (the underlying plumbing is already proven via real-HMAC endpoint tests and the `/account` UI). Do not start Phase 10 (real landing credibility, analytics, launch) until the human asks.
+Group-mode Leaderboard page (PDF only), session-based reply-time engine (`SESSION_GAP_MINUTES = 45`), and derived per-person metrics (`soloRate`, `threadKillerCount`, `conversationStartCount`, `ghostStreakCount`, `responseRate`) are complete, tested, and passing. All PDF and stats unit tests pass and `npm run build` succeeds with zero errors. Do not start Phase 10 (landing credibility, analytics, launch) until instructed.
 
 ## Decisions & deviations
+- Step 1 introduces `SESSION_GAP_MINUTES = 45` as a tunable constant in `src/lib/computeStats.ts`. Reply time is measured strictly from an initiating turn to the first different-sender response (suppressing clock resets on self-follow-ups). Exchanges taking >24h are counted as unanswered for `soloRate` and excluded from the reply median. Added `soloRate`, `threadKillerCount`, `conversationStartCount`, `ghostStreakCount`, and `responseRate` to `PersonStats`, `computeStats.ts`, and `reportValidation.ts`.
+- Step 2 adds `drawLeaderboard` to `src/lib/pdfReport.ts` exclusively for Group mode (`report.mode === "group"` and `stats.isGroup`), placed just before `drawClosing`. Deterministically selects and ranks members across 4-6 high-spread categories (Yap Rank, Fastest Trigger, Night Shift, Ghost Rating, Void Screamer, Thread Killer, Conversation Starter, Emoji Economy) with a cobalt scoreboard design, highlight pills, and adaptive row heights for 3-10 participants.
+- Step 3 verifies group receipts scale up to 8 without padding (`getReceiptSelectionCeiling("group") === 8` in `llm.ts`), with clean multi-page PDF pagination.
+- Scope fences honored: no changes to payments, accounts, pricing, single/roast/sweetheart/family/work report content, or web report.
 - The Phase 0 demo follows the locked Round 2 editorial system; the earlier hero-directions file is treated as exploratory context.
 - The unlock button intentionally has no price because pricing is deferred.
 - Used Next.js 16.3.0 with React 19.2.8 after npm flagged older scaffold versions; the final dependency audit reports zero vulnerabilities.

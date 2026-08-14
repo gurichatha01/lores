@@ -6,6 +6,7 @@ import {
   MIN_CAPPED_REPLIES_FOR_MEDIAN,
   NO_REPLY_MEDIAN_MIN,
   REPLY_GAP_CAP_MIN,
+  SESSION_GAP_MINUTES,
 } from "../src/lib/computeStats";
 import { parseWhatsAppText } from "../src/lib/parseWhatsApp";
 import { serializeGenerateReportInput } from "../src/lib/reportTransport";
@@ -59,44 +60,58 @@ describe("computeStats", () => {
     ]).toEqual([2024, 7, 12]);
   });
 
-  it("computes reply medians only on sender changes and caps overnight gaps", () => {
+  it("computes reply medians on initiating turns with 45m session gap and tracks derived metrics", () => {
     const stats = computeStats([
-      message("2024-01-01T09:00:00", "A"),
-      message("2024-01-01T09:02:00", "A"),
-      message("2024-01-01T09:12:00", "B"), // B replies in 10m
-      message("2024-01-01T09:32:00", "A"), // A replies in 20m
-      message("2024-01-01T16:32:01", "B"), // >6h: new conversation, not a reply
-      message("2024-01-01T16:37:01", "A"), // A replies in 5m
-      message("2024-01-01T16:52:01", "B"), // B replies in 15m
+      message("2024-01-01T09:00:00", "A"), // Session 1 start by A
+      message("2024-01-01T09:02:00", "A"), // A follow-up (does not reset clock)
+      message("2024-01-01T09:12:00", "B"), // B replies in 12m to A's turn at 09:00
+      message("2024-01-01T09:32:00", "A"), // Ongoing back-and-forth in Session 1
+      message("2024-01-01T16:32:01", "B"), // >45m gap (7h): Session 1 ended by A (threadKiller). Session 2 started by B
+      message("2024-01-01T16:37:01", "A"), // A replies in 5m to B's turn at 16:32
+      message("2024-01-01T16:52:01", "B"), // Ongoing back-and-forth in Session 2
     ]);
 
-    expect(REPLY_GAP_CAP_MIN).toBe(360);
-    expect(person(stats, "A").medianReplyTimeMin).toBe(12.5);
-    expect(person(stats, "B").medianReplyTimeMin).toBe(15);
-    expect(person(stats, "B").replyCount).toBe(3);
-    expect(person(stats, "A").conversationStarts).toBe(1);
-    expect(person(stats, "B").conversationStarts).toBe(1);
+    expect(SESSION_GAP_MINUTES).toBe(45);
+    expect(person(stats, "A").medianReplyTimeMin).toBe(5);
+    expect(person(stats, "A").replyCount).toBe(1);
+    expect(person(stats, "A").conversationStartCount).toBe(1);
+    expect(person(stats, "A").threadKillerCount).toBe(1);
+    expect(person(stats, "A").soloRate).toBe(0);
+
+    expect(person(stats, "B").medianReplyTimeMin).toBe(12);
+    expect(person(stats, "B").replyCount).toBe(1);
+    expect(person(stats, "B").conversationStartCount).toBe(1);
+    expect(person(stats, "B").threadKillerCount).toBe(1);
+    expect(person(stats, "B").soloRate).toBe(0);
+
     expect(stats.replyTimeDistribution).toEqual([
       { label: "<1m", count: 0 },
       { label: "1-5m", count: 1 },
-      { label: "5-30m", count: 3 },
+      { label: "5-30m", count: 1 },
       { label: "30m-2h", count: 0 },
       { label: "2-4h", count: 0 },
       { label: "4-6h", count: 0 },
     ]);
   });
 
-  it("falls back to slow sender-change replies when too few exchanges fit the cap", () => {
+  it("handles unanswered initiating messages (>24h or chat end) for soloRate and excludes from reply median", () => {
     const stats = computeStats([
-      message("2024-01-01T09:00:00", "A"),
-      message("2024-01-01T17:00:00", "B"),
-      message("2024-01-02T09:00:00", "A"),
-      message("2024-01-02T21:00:00", "B"),
+      message("2024-01-01T09:00:00", "A"), // Session 1 start by A
+      message("2024-01-02T10:00:00", "B"), // 25h gap (>24h): Session 1 unanswered! Session 2 started by B
+      message("2024-01-02T10:10:00", "A"), // A replies in 10m to B
+      message("2024-01-03T12:00:00", "A"), // Session 3 start by A, chat ends with no reply
     ]);
 
-    expect(MIN_CAPPED_REPLIES_FOR_MEDIAN).toBe(3);
-    expect(person(stats, "A")).toMatchObject({ replyCount: 1, medianReplyTimeMin: 960 });
-    expect(person(stats, "B")).toMatchObject({ replyCount: 2, medianReplyTimeMin: 600 });
+    expect(person(stats, "A").conversationStartCount).toBe(2);
+    expect(person(stats, "A").replyCount).toBe(1); // A replied to B at 10:10
+    expect(person(stats, "A").medianReplyTimeMin).toBe(10);
+    expect(person(stats, "A").soloRate).toBe(1); // 2 unanswered / 2 starts = 1.0
+    expect(person(stats, "A").ghostStreakCount).toBe(2); // 2024-01-01 to 2024-01-02 (>24h), and 01-02 to 01-03 (>24h)
+
+    expect(person(stats, "B").conversationStartCount).toBe(1);
+    expect(person(stats, "B").replyCount).toBe(0); // B never replied to an initiation
+    expect(person(stats, "B").medianReplyTimeMin).toBe(0);
+    expect(person(stats, "B").soloRate).toBe(0);
   });
 
   it("returns complete finite defaults for link, media, and blank-only participants", () => {
@@ -151,8 +166,10 @@ describe("computeStats", () => {
       "activeSpanShare",
       "avgWordsPerMessage",
       "conversationStarts",
+      "conversationStartCount",
       "emojiCount",
       "emojisPerMessage",
+      "ghostStreakCount",
       "lastOfDayCount",
       "lateNightCount",
       "laughCount",
@@ -165,7 +182,10 @@ describe("computeStats", () => {
       "name",
       "profanityMessageCount",
       "replyCount",
+      "responseRate",
       "silenceRevivalCount",
+      "soloRate",
+      "threadKillerCount",
       "topEmojis",
       "topWords",
       "weekendMessageCount",

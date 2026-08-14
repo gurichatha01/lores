@@ -35,6 +35,11 @@ export interface PersonStats {
   weekendMessageCount: number;
   weekendShare: number;
   activeSpanShare: number;
+  soloRate: number;
+  threadKillerCount: number;
+  conversationStartCount: number;
+  ghostStreakCount: number;
+  responseRate: number;
   topEmojis: { emoji: string; count: number }[];
   topWords: string[];
 }

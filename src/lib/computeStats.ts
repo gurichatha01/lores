@@ -8,6 +8,8 @@ import type {
 import { sanitizeEvidenceText } from "./evidenceHygiene";
 import { containsProfanityOrSlur } from "./sanitizeLlmInput";
 
+export const SESSION_GAP_MINUTES = 45;
+export const MAX_REPLY_WAIT_MINUTES = 24 * 60;
 export const REPLY_GAP_CAP_MIN = 6 * 60;
 export const NO_REPLY_MEDIAN_MIN = 0;
 export const MIN_CAPPED_REPLIES_FOR_MEDIAN = 3;
@@ -17,8 +19,11 @@ interface MutablePersonStats {
   messageCount: number;
   wordCount: number;
   replyTimesMin: number[];
-  allReplyTimesMin: number[];
   conversationStarts: number;
+  conversationStartCount: number;
+  unansweredInitiations: number;
+  threadKillerCount: number;
+  ghostStreakCount: number;
   lastOfDayCount: number;
   lateNightCount: number;
   laughCount: number;
@@ -30,6 +35,7 @@ interface MutablePersonStats {
   weekendMessageCount: number;
   firstMessageDate: Date | null;
   lastMessageDate: Date | null;
+  lastOwnMessageDate: Date | null;
   emojis: Map<string, number>;
   words: Map<string, number>;
 }
@@ -237,6 +243,7 @@ export function computeStats(
   let previous: Message | undefined;
   let runSender = "";
   let runLength = 0;
+  let currentTurn: { initiator: string; startTimestamp: Date; hasReplied: boolean } | null = null;
 
   // Media-only messages are filtered by the parser, but their senders still
   // belong in the participant list and need a complete zero-default record.
@@ -292,22 +299,66 @@ export function computeStats(
       firstRelationshipTalkDate = new Date(timestamp.getTime());
     }
 
+    if (person.lastOwnMessageDate !== null) {
+      const ownGapMinutes = (timestamp.getTime() - person.lastOwnMessageDate.getTime()) / 60_000;
+      if (ownGapMinutes >= 24 * 60) {
+        person.ghostStreakCount += 1;
+      }
+    }
+    person.lastOwnMessageDate = timestamp;
+
     const gapMinutes = previous ? elapsedMinutes(previous, message) : Number.POSITIVE_INFINITY;
     if (previous && gapMinutes > LONG_SILENCE_MIN) {
       person.silenceRevivalCount += 1;
     }
-    if (previous && previous.sender !== message.sender) {
-      person.allReplyTimesMin.push(gapMinutes);
-    }
     if (!previous || gapMinutes > REPLY_GAP_CAP_MIN) {
       person.conversationStarts += 1;
-    } else if (previous.sender !== message.sender) {
-      const replyTime = gapMinutes;
-      person.replyTimesMin.push(replyTime);
-      replyTimesMin.push(replyTime);
+    }
+
+    if (currentTurn !== null) {
+      if (message.sender === currentTurn.initiator) {
+        // Initiator follow-up before anyone replied; clock remains at initial message.
+      } else {
+        const elapsed = (timestamp.getTime() - currentTurn.startTimestamp.getTime()) / 60_000;
+        if (elapsed <= MAX_REPLY_WAIT_MINUTES) {
+          person.replyTimesMin.push(elapsed);
+          replyTimesMin.push(elapsed);
+          currentTurn = null;
+        } else {
+          getOrCreatePerson(people, currentTurn.initiator).unansweredInitiations += 1;
+          if (previous) {
+            getOrCreatePerson(people, previous.sender).threadKillerCount += 1;
+          }
+          person.conversationStartCount += 1;
+          currentTurn = {
+            initiator: message.sender,
+            startTimestamp: timestamp,
+            hasReplied: false,
+          };
+        }
+      }
+    } else {
+      if (!previous || gapMinutes >= SESSION_GAP_MINUTES) {
+        if (previous) {
+          getOrCreatePerson(people, previous.sender).threadKillerCount += 1;
+        }
+        person.conversationStartCount += 1;
+        currentTurn = {
+          initiator: message.sender,
+          startTimestamp: timestamp,
+          hasReplied: false,
+        };
+      }
     }
 
     previous = message;
+  }
+
+  if (messages.length > 0) {
+    getOrCreatePerson(people, messages.at(-1)!.sender).threadKillerCount += 1;
+  }
+  if (currentTurn !== null) {
+    getOrCreatePerson(people, currentTurn.initiator).unansweredInitiations += 1;
   }
 
   for (const message of lastMessageByDay.values()) {
@@ -319,19 +370,21 @@ export function computeStats(
   const last = messages.at(-1)!.timestamp;
   const spanDays = localDayNumber(last) - localDayNumber(first) + 1;
   const personStats = Array.from(people.values(), (person): PersonStats => {
-    const effectiveReplyTimes =
-      person.replyTimesMin.length >= MIN_CAPPED_REPLIES_FOR_MEDIAN
-        ? person.replyTimesMin
-        : person.allReplyTimesMin;
+    const messagesReceived = messages.length - person.messageCount;
     return completePersonStats({
       name: person.name,
       messageCount: person.messageCount,
       messageShare: safeDivide(person.messageCount, messages.length),
       wordCount: person.wordCount,
       avgWordsPerMessage: safeDivide(person.wordCount, person.messageCount),
-      medianReplyTimeMin: median(effectiveReplyTimes),
-      replyCount: effectiveReplyTimes.length,
+      medianReplyTimeMin: median(person.replyTimesMin),
+      replyCount: person.replyTimesMin.length,
       conversationStarts: person.conversationStarts,
+      conversationStartCount: person.conversationStartCount,
+      soloRate: round(safeDivide(person.unansweredInitiations, person.conversationStartCount), 3),
+      threadKillerCount: person.threadKillerCount,
+      ghostStreakCount: person.ghostStreakCount,
+      responseRate: round(safeDivide(person.messageCount, messagesReceived), 3),
       lastOfDayCount: person.lastOfDayCount,
       lateNightCount: person.lateNightCount,
       laughCount: person.laughCount,
@@ -413,8 +466,11 @@ function getOrCreatePerson(
     messageCount: 0,
     wordCount: 0,
     replyTimesMin: [],
-    allReplyTimesMin: [],
     conversationStarts: 0,
+    conversationStartCount: 0,
+    unansweredInitiations: 0,
+    threadKillerCount: 0,
+    ghostStreakCount: 0,
     lastOfDayCount: 0,
     lateNightCount: 0,
     laughCount: 0,
@@ -426,6 +482,7 @@ function getOrCreatePerson(
     weekendMessageCount: 0,
     firstMessageDate: null,
     lastMessageDate: null,
+    lastOwnMessageDate: null,
     emojis: new Map(),
     words: new Map(),
   };
@@ -489,6 +546,11 @@ function completePersonStats(person: PersonStats): PersonStats {
     weekendMessageCount: safeNonNegativeInteger(person.weekendMessageCount),
     weekendShare: safeShare(person.weekendShare),
     activeSpanShare: safeShare(person.activeSpanShare),
+    soloRate: safeShare(person.soloRate),
+    threadKillerCount: safeNonNegativeInteger(person.threadKillerCount),
+    conversationStartCount: safeNonNegativeInteger(person.conversationStartCount),
+    ghostStreakCount: safeNonNegativeInteger(person.ghostStreakCount),
+    responseRate: safeNonNegativeNumber(person.responseRate),
     topEmojis: person.topEmojis
       .filter((entry) => typeof entry.emoji === "string" && entry.emoji.length > 0)
       .map((entry) => ({ emoji: entry.emoji, count: safeNonNegativeInteger(entry.count) })),
@@ -627,6 +689,7 @@ function buildMonthlyCounts(messages: readonly Message[]): ChatStats["messagesBy
 function buildReplyTimeDistribution(replyTimes: readonly number[]): ReplyTimeBucket[] {
   const buckets = REPLY_BUCKETS.map((bucket) => ({ ...bucket }));
   for (const minutes of replyTimes) {
+    if (minutes > 360) continue;
     const index =
       minutes < 1 ? 0 : minutes <= 5 ? 1 : minutes <= 30 ? 2 : minutes <= 120 ? 3 : minutes <= 240 ? 4 : 5;
     buckets[index].count += 1;
