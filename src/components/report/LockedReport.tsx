@@ -119,6 +119,11 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         setMessage("Payments aren't switched on yet · nothing was charged.");
         return;
       }
+      if (orderResponse.status === 409) {
+        setStatus("error");
+        setMessage("This report session has expired. Regenerate it before checkout so we can unlock the right report.");
+        return;
+      }
       if (!orderResponse.ok) {
         setStatus("error");
         setMessage("We couldn't start checkout. Please try again.");
