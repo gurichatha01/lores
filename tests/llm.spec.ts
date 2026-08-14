@@ -163,6 +163,8 @@ describe("generateReport", () => {
     expect(prompt).toContain("The Whale Phase");
     expect(prompt).toContain("No insults about appearance, identity, intelligence");
     expect(prompt).toContain("Never use em dashes or en dashes");
+    expect(prompt).toContain("If you name a month, year, or date, it MUST come from the supplied milestone dates or messagesByMonth data");
+    expect(prompt).toContain("Every named month, year, or date must come from the supplied milestone dates or messagesByMonth data");
     expect(prompt).not.toMatch(/[—–‑‒―]/u);
     expect(prompt).toContain("exactly 4");
     expect(prompt).toContain('"wrappedLine"');
@@ -397,6 +399,48 @@ describe("generateReport", () => {
     const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(repairRequest.contents[0].parts[0].text).toContain(
       "Certified Ghost line describes the opposite metric direction",
+    );
+  });
+
+  it("repairs a narrative that invents a year outside the chat range", async () => {
+    const inventedYear = {
+      ...VALID_REPORT,
+      narrative: "By May 2019, the chat had already found its rhythm.",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(inventedYear))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "narrative names 2019, outside this chat's 2024-2024 date range",
+    );
+  });
+
+  it("repairs a chapter that invents a year outside the chat range", async () => {
+    const inventedYear = {
+      ...VALID_REPORT,
+      chapters: VALID_REPORT.chapters.map((chapter, index) =>
+        index === 1 ? { ...chapter, body: "In March 2025, the next message arrived." } : chapter,
+      ),
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(geminiResponse(inventedYear))
+      .mockResolvedValueOnce(geminiResponse(VALID_REPORT));
+    vi.stubEnv("LLM_API_KEY", "server-secret");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateReport(createTestGenerateInput())).resolves.toEqual(VALID_REPORT);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const repairRequest = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(repairRequest.contents[0].parts[0].text).toContain(
+      "chapter 2 body names 2025, outside this chat's 2024-2024 date range",
     );
   });
 
