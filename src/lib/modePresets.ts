@@ -54,7 +54,7 @@ export const MODE_PRESETS: Record<ReportMode, ModePreset> = {
     id: "sweetheart",
     label: "Sweetheart",
     emoji: "💕",
-    note: "rose · for the loved ones",
+    note: "rose · for the one",
     descriptor: "for a partner or crush",
     defaultSubtype: "partner",
     treatment: "soft",
