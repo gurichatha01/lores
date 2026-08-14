@@ -14,13 +14,13 @@ describe("single-report pricing", () => {
 
     expect(PRICING.IN).toEqual({
       currency: "INR",
-      single: { amount: 9900, label: "₹99" },
-      pack10: { amount: 49900, label: "₹499", perReport: "₹49.90 per report" },
+      single: { amount: 4900, label: "₹49" },
+      pack10: { amount: 39900, label: "₹399", perReport: "₹39.90 per report" },
     });
-    expect(quote).toMatchObject({ currency: "INR", amount: 9900, label: "₹99" });
+    expect(quote).toMatchObject({ currency: "INR", amount: 4900, label: "₹49" });
 
     const response = GET(new Request("http://localhost/api/pricing"));
-    await expect(response.json()).resolves.toMatchObject({ amount: 9900, label: "₹99" });
+    await expect(response.json()).resolves.toMatchObject({ amount: 4900, label: "₹49" });
   });
 
   it("uses the default USD single price only when international payments are enabled", () => {
@@ -28,8 +28,8 @@ describe("single-report pricing", () => {
     expect(resolvePriceQuote("US")).toMatchObject({
       region: "DEFAULT",
       currency: "USD",
-      amount: 199,
-      label: "$1.99",
+      amount: 100,
+      label: "$1.00",
     });
     expect(PRICING.DEFAULT.pack10.perReport).toBe("$0.80 per report");
   });
