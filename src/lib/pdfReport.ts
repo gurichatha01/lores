@@ -6,6 +6,7 @@ import {
   formatCount,
   formatLocalReportDate,
   formatParticipantTitle,
+  formatReplyTime,
   formatSpanLabel,
   formatWordCountWithNovels,
 } from "./reportPresentation";
@@ -102,6 +103,10 @@ export function renderReportPdfPages(
   }
   for (const [index, chapters] of data.storyPages.entries()) {
     pages.push(renderPage(createCanvas, (context) => drawStory(context, data, chapters, index, pageNumber)));
+    pageNumber += 1;
+  }
+  if (report.mode === "group" && (report.stats.isGroup || report.stats.people.length > 2)) {
+    pages.push(renderPage(createCanvas, (context) => drawLeaderboard(context, data, pageNumber)));
     pageNumber += 1;
   }
   pages.push(renderPage(createCanvas, (context) => drawClosing(context, data, pageNumber)));
@@ -1623,4 +1628,298 @@ function wrapLines(
     lines[lines.length - 1] = `${lines.at(-1)!.replace(/[.,;:!?]?$/u, "")}…`;
   }
   return lines;
+}
+
+interface LeaderboardCategoryDef {
+  id: string;
+  title: string;
+  emoji: string;
+  unitLabel: string;
+  direction: "asc" | "desc";
+  eligible?: (person: PersonStats) => boolean;
+  score: (person: PersonStats) => number;
+  format: (person: PersonStats) => string;
+}
+
+const LEADERBOARD_CATEGORIES: readonly LeaderboardCategoryDef[] = [
+  {
+    id: "yap-rank",
+    title: "YAP RANK",
+    emoji: "🗣️",
+    unitLabel: "BY TOTAL MESSAGES",
+    direction: "desc",
+    score: (person) => person.messageCount,
+    format: (person) => `${formatCount(person.messageCount)} msgs`,
+  },
+  {
+    id: "fastest-trigger",
+    title: "FASTEST TRIGGER",
+    emoji: "⚡",
+    unitLabel: "BY MEDIAN REPLY",
+    direction: "asc",
+    eligible: (person) => person.replyCount > 0,
+    score: (person) => person.medianReplyTimeMin,
+    format: (person) => formatReplyTime(person.medianReplyTimeMin, person.replyCount),
+  },
+  {
+    id: "night-shift",
+    title: "NIGHT SHIFT",
+    emoji: "🌙",
+    unitLabel: "BY 00-04H MESSAGES",
+    direction: "desc",
+    score: (person) => person.lateNightCount,
+    format: (person) => `${formatCount(person.lateNightCount)} msgs`,
+  },
+  {
+    id: "ghost-rating",
+    title: "GHOST RATING",
+    emoji: "👻",
+    unitLabel: "BY 24H+ SILENCES",
+    direction: "desc",
+    score: (person) => person.ghostStreakCount,
+    format: (person) => `${formatCount(person.ghostStreakCount)} streaks`,
+  },
+  {
+    id: "void-screamer",
+    title: "VOID SCREAMER",
+    emoji: "📢",
+    unitLabel: "BY UNANSWERED STARTS",
+    direction: "desc",
+    score: (person) => person.soloRate,
+    format: (person) => `${Math.round(person.soloRate * 100)}% solo`,
+  },
+  {
+    id: "thread-killer",
+    title: "THREAD KILLER",
+    emoji: "🛑",
+    unitLabel: "BY SESSIONS ENDED",
+    direction: "desc",
+    score: (person) => person.threadKillerCount,
+    format: (person) => `${formatCount(person.threadKillerCount)} ended`,
+  },
+  {
+    id: "conversation-starter",
+    title: "CONVO STARTER",
+    emoji: "🚀",
+    unitLabel: "BY SESSIONS OPENED",
+    direction: "desc",
+    score: (person) => person.conversationStartCount,
+    format: (person) => `${formatCount(person.conversationStartCount)} starts`,
+  },
+  {
+    id: "emoji-economy",
+    title: "EMOJI ECONOMY",
+    emoji: "😍",
+    unitLabel: "BY EMOJIS PER MSG",
+    direction: "desc",
+    score: (person) => person.emojisPerMessage,
+    format: (person) => `${person.emojisPerMessage.toFixed(1)} / msg`,
+  },
+];
+
+function selectLeaderboardCategories(people: readonly PersonStats[]): Array<{
+  category: LeaderboardCategoryDef;
+  rankings: Array<{ person: PersonStats; rank: number; formatted: string }>;
+  spread: number;
+}> {
+  const evaluated: Array<{
+    category: LeaderboardCategoryDef;
+    rankings: Array<{ person: PersonStats; rank: number; formatted: string }>;
+    spread: number;
+  }> = [];
+
+  for (const cat of LEADERBOARD_CATEGORIES) {
+    const candidates = people.filter((person) => cat.eligible?.(person) ?? true);
+    if (candidates.length < 2) continue;
+
+    const values = candidates.map((person) => cat.score(person));
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    const uniqueValues = new Set(values);
+
+    if (maxValue === 0 || uniqueValues.size < 2) continue;
+
+    const sorted = [...candidates].sort((left, right) => {
+      const diff = cat.score(left) - cat.score(right);
+      return cat.direction === "desc" ? -diff : diff;
+    });
+
+    const rankings = sorted.map((person, index) => ({
+      person,
+      rank: index + 1,
+      formatted: cat.format(person),
+    }));
+
+    const spreadScore = ((maxValue - minValue) / Math.max(1, maxValue)) * (uniqueValues.size - 1);
+    evaluated.push({ category: cat, rankings, spread: spreadScore });
+  }
+
+  evaluated.sort((left, right) => right.spread - left.spread);
+  const count = evaluated.length >= 6 ? 6 : evaluated.length >= 4 ? 4 : evaluated.length >= 2 ? evaluated.length : 0;
+  return evaluated.slice(0, count);
+}
+
+function drawLeaderboard(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  pageNumber: number,
+): void {
+  fillPage(context, PAPER);
+  drawSectionHeader(context, data, "06 - the standings");
+
+  const categories = selectLeaderboardCategories(data.report.stats.people);
+  const top = 180;
+
+  context.fillStyle = INK;
+  archivo(context, 44, 900);
+  context.fillText("group standings", PAGE_MARGIN, top);
+
+  context.fillStyle = MUTED;
+  mono(context, 16, 700, 1);
+  context.fillText("HEAD-TO-HEAD RANKINGS ACROSS THE GROUP", PAGE_MARGIN, top + 48);
+  context.letterSpacing = "0px";
+
+  if (categories.length === 0) {
+    drawPageNumber(context, pageNumber, data.accent, false);
+    return;
+  }
+
+  const gridTop = top + 80;
+  const bottom = 1630;
+  const totalGridHeight = bottom - gridTop;
+
+  const columns = 2;
+  const gapX = 28;
+  const cardWidth = (PDF_PAGE_WIDTH - PAGE_MARGIN * 2 - gapX) / columns;
+  const rows = Math.ceil(categories.length / columns);
+  const gapY = rows === 3 ? 20 : 28;
+  const cardHeight = (totalGridHeight - (rows - 1) * gapY) / rows;
+
+  categories.forEach((item, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    const x = PAGE_MARGIN + col * (cardWidth + gapX);
+    const y = gridTop + row * (cardHeight + gapY);
+
+    drawLeaderboardCard(context, data, item.category, item.rankings, x, y, cardWidth, cardHeight);
+  });
+
+  drawPageNumber(context, pageNumber, data.accent, false);
+}
+
+function drawLeaderboardCard(
+  context: CanvasRenderingContext2D,
+  data: PdfDocumentData,
+  category: LeaderboardCategoryDef,
+  rankings: Array<{ person: PersonStats; rank: number; formatted: string }>,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): void {
+  const headerHeight = 52;
+  const headerText = "#ffffff";
+
+  // Card background & outline
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = INK;
+  context.lineWidth = 4;
+  context.fillRect(x, y, width, height);
+  context.strokeRect(x, y, width, height);
+
+  // Category Header bar in cobalt/accent
+  context.fillStyle = data.accent;
+  context.fillRect(x + 2, y + 2, width - 4, headerHeight);
+
+  // Category Title
+  context.fillStyle = headerText;
+  archivo(context, 20, 900);
+  fitAndDrawText(
+    context,
+    `${category.emoji}  ${category.title}`,
+    x + 16,
+    y + 14,
+    width - 190,
+    20,
+    16,
+    900,
+  );
+
+  // Category Unit / Subhead
+  context.fillStyle = "rgba(255, 255, 255, 0.85)";
+  mono(context, 11, 700, 0.5);
+  context.textAlign = "right";
+  context.fillText(category.unitLabel, x + width - 16, y + 20);
+  context.textAlign = "left";
+  context.letterSpacing = "0px";
+
+  // Standings rows
+  const visibleRankings = rankings.slice(0, 8);
+  const rowCount = visibleRankings.length;
+  const bodyHeight = height - headerHeight - 8;
+  const rowHeight = Math.min(48, Math.max(34, (bodyHeight - 12) / rowCount));
+  const rowStartTop = y + headerHeight + 6;
+
+  visibleRankings.forEach((entry, idx) => {
+    const rowY = rowStartTop + idx * rowHeight;
+    const isWinner = entry.rank === 1;
+
+    if (isWinner) {
+      context.fillStyle = `${data.accent}12`;
+      context.fillRect(x + 3, rowY, width - 6, rowHeight - 2);
+    }
+
+    // Rank indicator
+    if (isWinner) {
+      context.fillStyle = data.accent;
+      const pillWidth = 32;
+      const pillHeight = 24;
+      const pillY = rowY + (rowHeight - pillHeight) / 2;
+      context.fillRect(x + 14, pillY, pillWidth, pillHeight);
+      context.fillStyle = headerText;
+      mono(context, 13, 700);
+      context.textAlign = "center";
+      context.fillText("#1", x + 14 + pillWidth / 2, pillY + 4);
+      context.textAlign = "left";
+    } else {
+      context.fillStyle = MUTED;
+      mono(context, 13, 700);
+      context.fillText(`#${entry.rank}`, x + 18, rowY + (rowHeight - 16) / 2 + 1);
+    }
+
+    // Person name
+    context.fillStyle = isWinner ? INK : "rgba(10,10,10,.85)";
+    archivo(context, isWinner ? 18 : 16, isWinner ? 800 : 600);
+    fitAndDrawText(
+      context,
+      entry.person.name,
+      x + 58,
+      rowY + (rowHeight - (isWinner ? 20 : 18)) / 2 + 1,
+      width - 240,
+      isWinner ? 18 : 16,
+      13,
+      isWinner ? 800 : 600,
+    );
+
+    // Formatted stat value
+    context.fillStyle = isWinner ? data.accent : MUTED;
+    mono(context, isWinner ? 14 : 13, 700);
+    context.textAlign = "right";
+    context.fillText(
+      entry.formatted,
+      x + width - 16,
+      rowY + (rowHeight - 16) / 2 + 1,
+    );
+    context.textAlign = "left";
+
+    // Divider line
+    if (idx < rowCount - 1) {
+      context.strokeStyle = "rgba(10,10,10,.07)";
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(x + 14, rowY + rowHeight - 1);
+      context.lineTo(x + width - 14, rowY + rowHeight - 1);
+      context.stroke();
+    }
+  });
 }

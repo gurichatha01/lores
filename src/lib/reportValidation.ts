@@ -59,6 +59,11 @@ const PERSON_KEYS = [
   "weekendMessageCount",
   "weekendShare",
   "activeSpanShare",
+  "soloRate",
+  "threadKillerCount",
+  "conversationStartCount",
+  "ghostStreakCount",
+  "responseRate",
   "topEmojis",
   "topWords",
 ] as const;
@@ -387,6 +392,20 @@ function parsePerson(value: unknown, index: number): PersonStats {
       0,
       1,
     ),
+    soloRate: asFiniteNumber(person.soloRate, `stats.people[${index}].soloRate`, 0, 1),
+    threadKillerCount: asNonNegativeInteger(
+      person.threadKillerCount,
+      `stats.people[${index}].threadKillerCount`,
+    ),
+    conversationStartCount: asNonNegativeInteger(
+      person.conversationStartCount,
+      `stats.people[${index}].conversationStartCount`,
+    ),
+    ghostStreakCount: asNonNegativeInteger(
+      person.ghostStreakCount,
+      `stats.people[${index}].ghostStreakCount`,
+    ),
+    responseRate: asFiniteNumber(person.responseRate, `stats.people[${index}].responseRate`, 0),
     topEmojis,
     topWords: asArray(person.topWords, `stats.people[${index}].topWords`).map((word, wordIndex) =>
       asString(word, `stats.people[${index}].topWords[${wordIndex}]`, 100),
