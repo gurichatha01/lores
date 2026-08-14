@@ -164,8 +164,8 @@ export function parseReportContent(value: unknown): ReportContent {
       body: asDisplayString(chapter.body, `report.chapters[${index}].body`, 4_000),
     };
   });
-  if (chapters.length !== 4) {
-    throw new ReportValidationError("report.chapters must contain exactly 4 chapters.");
+  if (chapters.length < 3 || chapters.length > 8) {
+    throw new ReportValidationError("report.chapters must contain between 3 and 8 chapters.");
   }
 
   return {

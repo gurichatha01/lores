@@ -166,7 +166,9 @@ describe("generateReport", () => {
     expect(prompt).toContain("If you name a month, year, or date, it MUST come from the supplied milestone dates or messagesByMonth data");
     expect(prompt).toContain("Every named month, year, or date must come from the supplied milestone dates or messagesByMonth data");
     expect(prompt).not.toMatch(/[—–‑‒―]/u);
-    expect(prompt).toContain("exactly 4");
+    expect(prompt).toContain("3 to 8 chapters");
+    expect(prompt).toContain("A chapter with no specific anchor must not exist");
+    expect(prompt).toContain("Medium-long, up to 6 chapters"); // sweetheart per-mode ceiling
     expect(prompt).toContain('"wrappedLine"');
     expect(prompt).not.toContain("[INJECT");
     expect(prompt).not.toContain("[LENGTH]");
