@@ -22,6 +22,7 @@ export interface PdfChapter {
 export interface PdfDocumentData {
   report: ReportSessionData;
   modeLabel: string;
+  storyLabel: string;
   accent: string;
   accentSoft: string;
   surface: string;
@@ -62,6 +63,7 @@ export function buildPdfDocumentData(report: ReportSessionData): PdfDocumentData
   return {
     report,
     modeLabel: report.mode === "roast" ? "Roast" : preset.label,
+    storyLabel: preset.storyLabel,
     accent: preset.accent,
     accentSoft: preset.accentSoft,
     surface: preset.treatment === "soft" ? preset.surface : PAPER,
@@ -90,9 +92,10 @@ export function renderReportPdfPages(
   const pages: PdfCanvas[] = [];
 
   pages.push(renderPage(createCanvas, (context) => drawCover(context, data)));
+  pages.push(renderPage(createCanvas, (context) => drawNarrative(context, data)));
   pages.push(renderPage(createCanvas, (context) => drawMetrics(context, data)));
   pages.push(renderPage(createCanvas, (context) => drawAwards(context, data)));
-  let pageNumber = 4;
+  let pageNumber = 5;
   for (const [index, details] of data.detailPages.entries()) {
     pages.push(renderPage(createCanvas, (context) => drawDetailsPage(context, data, details, index, pageNumber)));
     pageNumber += 1;
@@ -364,6 +367,51 @@ function drawHazardTape(
   context.restore();
 }
 
+// Page 2: the full narrative prose, styled like the web report's
+// "your story, in full" section. Prose the reader sits with: generous line
+// spacing and a readable measure. Uses the existing content.narrative field.
+function drawNarrative(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
+  fillPage(context, PAPER);
+  drawSectionHeader(context, data, `01 - ${data.storyLabel}`);
+
+  const roast = data.report.mode === "roast";
+  if (roast) {
+    drawHazardTape(context, PAGE_MARGIN, 148, PDF_PAGE_WIDTH - PAGE_MARGIN * 2, 38);
+  }
+
+  const contentWidth = PDF_PAGE_WIDTH - PAGE_MARGIN * 2;
+  const proseWidth = 960; // readable measure, generous right margin
+
+  // Title, big and black, matching the web narrative heading.
+  context.fillStyle = INK;
+  archivo(context, 58, 900);
+  context.letterSpacing = "-1px";
+  const titleBottom = drawTextBlock(
+    context,
+    data.report.content.title,
+    PAGE_MARGIN,
+    roast ? 262 : 224,
+    contentWidth,
+    62,
+    3,
+  );
+  context.letterSpacing = "0px";
+
+  // Narrative prose: line height ~1.6 for a generous, sit-with-it read.
+  context.fillStyle = INK;
+  archivo(context, 30, 500);
+  const paragraphs = data.report.content.narrative
+    .split(/\n+/u)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  let y = titleBottom + 60;
+  for (const paragraph of paragraphs) {
+    y = drawFullTextBlock(context, paragraph, PAGE_MARGIN, y, proseWidth, 48) + 28;
+  }
+
+  drawPageNumber(context, 2, data.accent, false);
+}
+
 function drawMetrics(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
   fillPage(context, PAPER);
   drawSectionHeader(context, data, "02 - the numbers");
@@ -428,7 +476,7 @@ function drawMetrics(context: CanvasRenderingContext2D, data: PdfDocumentData): 
     PAGE_MARGIN + 34,
     1440,
   );
-  drawPageNumber(context, 2, data.accent, false);
+  drawPageNumber(context, 3, data.accent, false);
 }
 
 function drawAwards(context: CanvasRenderingContext2D, data: PdfDocumentData): void {
@@ -480,7 +528,7 @@ function drawAwards(context: CanvasRenderingContext2D, data: PdfDocumentData): v
     context.textAlign = "left";
   });
 
-  drawPageNumber(context, 3, data.accent, false);
+  drawPageNumber(context, 4, data.accent, false);
 }
 
 function drawDetailsPage(
