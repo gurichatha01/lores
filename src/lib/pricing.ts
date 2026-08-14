@@ -6,13 +6,13 @@
 export const PRICING = {
   IN: {
     currency: "INR",
-    single: { amount: 9900, label: "₹99" },
-    pack10: { amount: 49900, label: "₹499", perReport: "₹49.90 per report" },
+    single: { amount: 4900, label: "₹49" },
+    pack10: { amount: 39900, label: "₹399", perReport: "₹39.90 per report" },
   },
   DEFAULT: {
     currency: "USD",
     single: { amount: 199, label: "$1.99" },
-    pack10: { amount: 799, label: "$7.99", perReport: "$0.80 per report" },
+    pack10: { amount: 599, label: "$5.99", perReport: "$0.80 per report" },
   },
 } as const;
 
