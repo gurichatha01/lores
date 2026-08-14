@@ -3,32 +3,32 @@ import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { POST as checkAccess } from "../src/app/api/report-access/route";
-import { POST as getReport } from "../src/app/api/report/route";
 import { POST as verifyPayment } from "../src/app/api/verify/route";
 import {
   attachOrderToReport,
   authorizeOrder,
   isReportAuthorized,
   issueReportId,
+  registerReport,
   resetEntitlementsForTests,
-  storeGeneratedReport,
 } from "../src/lib/entitlements";
-import type { ReportSessionData } from "../src/lib/types";
 
 afterEach(() => {
   resetEntitlementsForTests();
   vi.unstubAllEnvs();
 });
 
-describe("per-report entitlements", () => {
+describe("per-report entitlements (durable store, in-memory fallback)", () => {
   it("authorizes exactly the report bound to a verified payment", async () => {
     const firstReport = issueReportId();
     const secondReport = issueReportId();
-    attachOrderToReport("order_for_first", firstReport);
+    await registerReport(firstReport);
+    await registerReport(secondReport);
+    await attachOrderToReport("order_for_first", firstReport);
 
-    expect(authorizeOrder("order_for_first")).toBe(firstReport);
-    expect(isReportAuthorized(firstReport)).toBe(true);
-    expect(isReportAuthorized(secondReport)).toBe(false);
+    expect(await authorizeOrder("order_for_first")).toBe(firstReport);
+    expect(await isReportAuthorized(firstReport)).toBe(true);
+    expect(await isReportAuthorized(secondReport)).toBe(false);
 
     const firstAccess = await checkAccess(jsonRequest({ reportId: firstReport }));
     const secondAccess = await checkAccess(jsonRequest({ reportId: secondReport }));
@@ -38,7 +38,8 @@ describe("per-report entitlements", () => {
 
   it("defaults to locked for missing, unknown, and unbound identities", async () => {
     const unbound = issueReportId();
-    expect(isReportAuthorized(unbound)).toBe(false);
+    await registerReport(unbound);
+    expect(await isReportAuthorized(unbound)).toBe(false);
 
     const missing = await checkAccess(jsonRequest({}));
     const unknown = await checkAccess(jsonRequest({ reportId: "not-a-real-report" }));
@@ -50,7 +51,8 @@ describe("per-report entitlements", () => {
     const reportId = issueReportId();
     const orderId = "order_bound_to_one_report";
     const paymentId = "pay_valid";
-    attachOrderToReport(orderId, reportId);
+    await registerReport(reportId);
+    await attachOrderToReport(orderId, reportId);
     vi.stubEnv("RAZORPAY_KEY_ID", "test_key");
     vi.stubEnv("RAZORPAY_KEY_SECRET", "test_secret");
     const signature = createHmac("sha256", "test_secret")
@@ -62,13 +64,14 @@ describe("per-report entitlements", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ verified: true, reportId });
-    expect(isReportAuthorized(reportId)).toBe(true);
+    await expect(response.json()).resolves.toEqual({ verified: true, productType: "single", reportId });
+    expect(await isReportAuthorized(reportId)).toBe(true);
   });
 
   it("never unlocks an order with an invalid signature", async () => {
     const reportId = issueReportId();
-    attachOrderToReport("order_invalid_signature", reportId);
+    await registerReport(reportId);
+    await attachOrderToReport("order_invalid_signature", reportId);
     vi.stubEnv("RAZORPAY_KEY_ID", "test_key");
     vi.stubEnv("RAZORPAY_KEY_SECRET", "test_secret");
 
@@ -81,22 +84,21 @@ describe("per-report entitlements", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(isReportAuthorized(reportId)).toBe(false);
+    expect(await isReportAuthorized(reportId)).toBe(false);
   });
 
-  it("does not return a full report until its exact order is authorized", async () => {
+  it("keeps report access locked until the exact order is authorized", async () => {
     const reportId = issueReportId();
-    const storedReport = { reportId, mode: "sweetheart" } as ReportSessionData;
-    storeGeneratedReport(reportId, storedReport);
+    await registerReport(reportId);
 
-    const locked = await getReport(jsonRequest({ reportId }));
-    expect(locked.status).toBe(403);
+    const lockedBefore = await checkAccess(jsonRequest({ reportId }));
+    await expect(lockedBefore.json()).resolves.toEqual({ authorized: false });
 
-    attachOrderToReport("order_for_stored_report", reportId);
-    authorizeOrder("order_for_stored_report");
-    const unlocked = await getReport(jsonRequest({ reportId }));
-    expect(unlocked.status).toBe(200);
-    await expect(unlocked.json()).resolves.toEqual({ report: storedReport });
+    await attachOrderToReport("order_for_report", reportId);
+    await authorizeOrder("order_for_report");
+
+    const unlockedAfter = await checkAccess(jsonRequest({ reportId }));
+    await expect(unlockedAfter.json()).resolves.toEqual({ authorized: true });
   });
 });
 

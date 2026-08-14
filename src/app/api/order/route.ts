@@ -44,7 +44,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: "Missing report identity." }, { status: 400 });
     }
     try {
-      assertReportAvailable(reportId);
+      await assertReportAvailable(reportId);
     } catch (error) {
       if (error instanceof EntitlementError) {
         return Response.json(
@@ -84,9 +84,9 @@ export async function POST(request: Request): Promise<Response> {
 
     try {
       if (productType === "single") {
-        attachOrderToReport(order.id, reportId);
+        await attachOrderToReport(order.id, reportId);
       } else {
-        attachPackOrder(order.id, { amount: quote.amount, credits: quote.credits });
+        await attachPackOrder(order.id, { amount: quote.amount, credits: quote.credits });
       }
     } catch (error) {
       if (error instanceof EntitlementError) {

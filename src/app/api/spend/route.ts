@@ -43,13 +43,13 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    assertReportAvailable(reportId);
+    await assertReportAvailable(reportId);
   } catch {
     return Response.json({ authorized: false, error: "This report isn't available to unlock." }, { status: 404 });
   }
 
   // Already unlocked (e.g. a retried request): return success without spending.
-  if (isReportAuthorized(reportId)) {
+  if (await isReportAuthorized(reportId)) {
     try {
       const credits = await totalCredits(user.id);
       return Response.json({ authorized: true, creditsRemaining: credits });
@@ -78,7 +78,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    authorizeReport(reportId);
+    await authorizeReport(reportId);
   } catch (error) {
     // The report vanished between the availability check and here — extremely
     // rare. The credit was spent; surface a retryable error.

@@ -5,8 +5,7 @@ import {
   LlmRequestError,
 } from "../../../lib/llm";
 import { parseGenerateReportInput, ReportValidationError } from "../../../lib/reportValidation";
-import { issueReportId, storeGeneratedReport } from "../../../lib/entitlements";
-import { createReportSession } from "../../../lib/reportSession";
+import { issueReportId, registerReport } from "../../../lib/entitlements";
 
 export async function POST(request: Request): Promise<Response> {
   let body: unknown;
@@ -26,7 +25,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     const report = await generateReport(input);
     const reportId = issueReportId();
-    storeGeneratedReport(reportId, createReportSession(input, report, reportId));
+    await registerReport(reportId);
     return Response.json({ content: report, reportId });
   } catch (error) {
     if (error instanceof ReportValidationError) {
