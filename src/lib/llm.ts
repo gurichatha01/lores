@@ -18,12 +18,15 @@ export const GEMINI_SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
 ] as const;
 
-/** A group earns more receipt slots only as its active participant set grows. */
-export function getReceiptSelectionCeiling(mode: ReportMode, participantCount: number): number {
-  if (mode !== "group") return 4;
-  if (participantCount <= 3) return 3;
-  if (participantCount <= 6) return 5;
-  return 6;
+/** Group reports can carry a wider receipt set; other modes stay tighter. */
+export function getReceiptSelectionCeiling(mode: ReportMode, _participantCount: number): number {
+  if (mode !== "group") return 5;
+  return 8;
+}
+
+export function getReceiptSelectionMinimum(mode: ReportMode, exchangeCount: number): number {
+  if (exchangeCount === 0) return 0;
+  return Math.min(3, exchangeCount);
 }
 
 const MAX_GENERATION_ATTEMPTS = 3;
@@ -126,7 +129,7 @@ FIELD RULES:
 - narrative · ${NARRATIVE_LENGTH} words. Open with a concrete detail, never a summary. Tell their actual story with their actual specifics. Close on a line that hits. If you name a month, year, or date, it MUST come from the supplied milestone dates or messagesByMonth data, never memory or invention.
 - chapters · 3 to 8 chapters, chronological, as many as the chat genuinely supports. Do NOT pad to reach a number: fewer real chapters always beats more padded ones. A short or sparse chat gets 3-4; a long, eventful one earns more, up to the ceiling for this mode (below). But do NOT under-count a rich chat either: when the sample and by-month data reveal many distinct topics, phases, or milestones, give each real one its own chapter and reach toward this mode's ceiling. A long, multi-topic, multi-year chat compressed into 4 chapters is leaving real scenes on the table, that is as wrong as padding a thin one. Merge two stretches only when they are genuinely the same scene. Use the milestone dates and the by-month data to structure the arc (quiet start → peak → dip → now, or whatever the data actually shows). EVERY chapter must anchor to a SPECIFIC moment from the data: a milestone date, a named topic actually present in the sample, or a real exchange. A chapter with no specific anchor must not exist, delete it. The longer the report runs, the STRICTER this gets: every added chapter needs its own real anchor, and the BANNED WORDS list applies to each chapter. Each chapter body should carry the reveal rhythm and land on a turn (in this mode's direction). Model of a good, anchored chapter: "The Whale Phase · for six weeks the chat was 40% Sanj's whale-communication project and 60% Guri pretending to understand it. Peak hit here, 199 in one day, May 19th." Banned generic chapters (never write these): "Steady Rhythms", "The Beginning", "A Comfortable Back-and-Forth", "Laughter and Sweet Comforts" · they anchor to nothing. Each title is specific to THIS chat and is the title ONLY: do NOT prefix it with "Ch. N", "Chapter N", or any number, the renderer adds the number. Each body is 2-3 sentences grounded in real details from that stretch. Every named month, year, or date must come from the supplied milestone dates or messagesByMonth data, never invented.
 - chapter length + mechanism for this mode · ${MODE_CHAPTER_GUIDANCE[input.mode]}
-- highlights · select only from receiptExchanges. When receiptExchanges is non-empty, return 1-${getReceiptSelectionCeiling(input.mode, input.stats.people.length)} of the strongest exchanges; this is a ceiling, NEVER a target. A quiet group with only one or two exchanges that genuinely land must return only those, never padding to the ceiling. An empty highlights array is allowed ONLY when receiptExchanges itself is empty. Each highlight must describe the exact 3-6-message exchange selected by exchangeId; the body and label must be impossible to confuse with another exchange. Never pair a description with a merely adjacent or vaguely related exchange.
+- highlights · select only from receiptExchanges. When receiptExchanges is non-empty, return ${getReceiptSelectionMinimum(input.mode, input.receiptExchanges.length)}-${getReceiptSelectionCeiling(input.mode, input.stats.people.length)} of the strongest exchanges. Group reports with at least 3 valid exchanges should return 3-8; all other modes should return 3-5. When fewer than 3 valid exchanges exist, return only those, never padding to the ceiling. An empty highlights array is allowed ONLY when receiptExchanges itself is empty. Each highlight must describe the exact 3-6-message exchange selected by exchangeId; the body and label must be impossible to confuse with another exchange. Never pair a description with a merely adjacent or vaguely related exchange.
 - highlight exchangeId · required for every highlight. Copy one supplied receiptExchanges[].exchangeId exactly. The renderer pulls that indexed source range and renders the real consecutive messages; never write, paraphrase, reorder, or splice message text yourself. Never select an exchange containing ${SLUR_PLACEHOLDER}.
 - heroLine / title / wrappedLine · one punchy line each, specific to them, no mush. The heroLine and wrappedLine both reward the reveal rhythm: a short setup and a turn.
 
@@ -402,7 +405,7 @@ function buildReportSchema(input: GenerateReportInput): object {
         ...(input.receiptExchanges.length === 0
           ? { maxItems: 0 }
           : {
-              minItems: 1,
+              minItems: getReceiptSelectionMinimum(input.mode, input.receiptExchanges.length),
               maxItems: Math.min(
                 getReceiptSelectionCeiling(input.mode, input.stats.people.length),
                 input.receiptExchanges.length,
