@@ -6,6 +6,7 @@ import {
   buildSystemPrompt,
   generateReport,
   getReceiptSelectionCeiling,
+  getReceiptSelectionMinimum,
   LlmConfigurationError,
   LlmOutputError,
   LlmRequestError,
@@ -30,14 +31,17 @@ afterEach(() => {
 });
 
 describe("generateReport", () => {
-  it("scales Group receipt ceilings by active participant count without changing other modes", () => {
-    expect(getReceiptSelectionCeiling("group", 2)).toBe(3);
-    expect(getReceiptSelectionCeiling("group", 3)).toBe(3);
-    expect(getReceiptSelectionCeiling("group", 4)).toBe(5);
-    expect(getReceiptSelectionCeiling("group", 6)).toBe(5);
-    expect(getReceiptSelectionCeiling("group", 7)).toBe(6);
-    expect(getReceiptSelectionCeiling("group", 12)).toBe(6);
-    expect(getReceiptSelectionCeiling("sweetheart", 12)).toBe(4);
+  it("gives Group reports a simple 3-8 receipt range and other modes 3-5 slots", () => {
+    expect(getReceiptSelectionCeiling("group", 2)).toBe(8);
+    expect(getReceiptSelectionCeiling("group", 3)).toBe(8);
+    expect(getReceiptSelectionCeiling("group", 4)).toBe(8);
+    expect(getReceiptSelectionCeiling("group", 6)).toBe(8);
+    expect(getReceiptSelectionCeiling("group", 7)).toBe(8);
+    expect(getReceiptSelectionCeiling("group", 12)).toBe(8);
+    expect(getReceiptSelectionCeiling("sweetheart", 12)).toBe(5);
+    expect(getReceiptSelectionMinimum("sweetheart", 6)).toBe(3);
+    expect(getReceiptSelectionMinimum("sweetheart", 2)).toBe(2);
+    expect(getReceiptSelectionMinimum("group", 6)).toBe(3);
   });
 
   it("calls Gemini Flash server-side and returns strictly validated fenced JSON", async () => {
@@ -115,17 +119,27 @@ describe("generateReport", () => {
     }
   });
 
-  it("tells larger Group reports that receipt count is a quality ceiling, not a quota", () => {
+  it("tells Group reports to use the simple 3-8 receipt range without padding", () => {
     const input = createTestGenerateInput("group");
+    input.receiptExchanges = Array.from({ length: 3 }, () => input.receiptExchanges[0]);
     input.stats.people = Array.from({ length: 7 }, (_, index) => ({
       ...input.stats.people[index % input.stats.people.length],
       name: `Person ${index + 1}`,
     }));
     const prompt = buildSystemPrompt(input);
 
-    expect(prompt).toContain("return 1-6 of the strongest exchanges");
-    expect(prompt).toContain("this is a ceiling, NEVER a target");
+    expect(prompt).toContain("return 3-8 of the strongest exchanges");
+    expect(prompt).toContain("Group reports with at least 3 valid exchanges should return 3-8");
     expect(prompt).toContain("never padding to the ceiling");
+  });
+
+  it("asks non-Group reports for 3-5 strong receipts when enough exchanges exist", () => {
+    const input = createTestGenerateInput("sweetheart");
+    input.receiptExchanges = Array.from({ length: 3 }, () => input.receiptExchanges[0]);
+    const prompt = buildSystemPrompt(input);
+
+    expect(prompt).toContain("return 3-5 of the strongest exchanges");
+    expect(prompt).toContain("all other modes should return 3-5");
   });
 
   it("keeps gift modes cleaner while other modes match the chat's language", () => {
