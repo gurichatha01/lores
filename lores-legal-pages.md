@@ -38,9 +38,9 @@ to make the writing specific. We do not retain this payload after your report is
 
 ## What we store
 
-- **Single reports (₹99):** No account is required and we store no personal information
+- **Single reports (₹49):** No account is required and we store no personal information
   about you. The generated report is held in your browser, not in our database.
-- **10-report packs (₹499):** To let you return and use your remaining reports, a pack
+- **10-report packs (₹399):** To let you return and use your remaining reports, a pack
   creates an account. For that account we store your email address and the number of
   reports you have left. We do not store your chats or your generated reports.
 - **Payments:** Payments are processed by Razorpay. We receive confirmation that a payment
