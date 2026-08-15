@@ -20,7 +20,7 @@ interface PrivacyBadgeProps {
 export function PrivacyBadge({ accent, tint, textColor = "#0a0a0a", className = "" }: PrivacyBadgeProps) {
   return (
     <div
-      className={`inline-flex max-w-full items-center gap-2 rounded-[6px] border px-3.5 py-2.5 ${className}`}
+      className={`flex items-center gap-2 border px-3.5 py-2.5 ${className}`}
       style={{ borderColor: accent, backgroundColor: tint, color: textColor }}
     >
       <Lock className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={2.5} />

@@ -48,7 +48,7 @@ export default function LandingPage() {
             >
               get my lores <span className="ml-2 font-mono text-acid">→</span>
             </Link>
-            <PrivacyBadge accent="#ff2d78" tint="#fdeef4" className="mt-4" />
+            <PrivacyBadge accent="#ff2d78" tint="#fdeef4" className="mt-4 w-full max-w-md" />
           </div>
 
           <div>
