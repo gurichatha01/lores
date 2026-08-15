@@ -38,6 +38,7 @@ export function ModeReport({ report }: ModeReportProps) {
       accent={preset.accent}
       accentSoft={preset.accentSoft}
       background={dark ? "#080706" : "#dcdcd7"}
+      railMode={report.mode}
     >
       <article
         className={`mx-auto min-h-screen max-w-[430px] overflow-hidden px-6 pb-10 pt-6 shadow-editorial sm:min-h-0 sm:px-7 sm:pb-12 sm:pt-8 lg:max-w-[760px] lg:border-2 lg:px-12 lg:pb-16 lg:pt-12 ${

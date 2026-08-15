@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { BrandRail } from "@/components/BrandRail";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { ModeIcon } from "@/components/ModeIcon";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -239,36 +240,7 @@ function StepIntro({ eyebrow, title, body }: { eyebrow: string; title: string; b
 }
 
 function DesktopBrandPanel({ mode }: { mode: ReportMode }) {
-  const preset = getModePreset(mode);
-  const panelText = mode === "family" ? "#0a0a0a" : "#ffffff";
-
-  return (
-    <aside
-      className="create-brand-panel hidden min-h-screen flex-col justify-between border-r-2 border-ink p-12 lg:flex xl:p-16"
-      style={{ background: preset.accent, color: panelText }}
-      aria-label={`${preset.label} edition`}
-    >
-      <Link href="/" className="w-fit text-[54px] font-black leading-none tracking-[-4px]">
-        <BrandWordmark accent={preset.accent} contrastPlate />
-      </Link>
-      <div className="max-w-[32rem]">
-        <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">
-          <ModeIcon mode={mode} className="size-4" />
-          {plainModeLabel(mode)} edition
-        </p>
-        <p className="mt-5 text-[clamp(3.25rem,5vw,5.8rem)] font-black leading-[0.84] tracking-[-5px]">
-          the story hiding in your messages
-        </p>
-        <div className="mt-8 h-2 w-24" style={{ background: panelText }} aria-hidden="true" />
-      </div>
-      <p
-        className="max-w-sm border-t-2 pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] opacity-70"
-        style={{ borderColor: panelText }}
-      >
-        chat stays on your device · counted exactly
-      </p>
-    </aside>
-  );
+  return <BrandRail mode={mode} className="hidden min-h-screen lg:flex" />;
 }
 
 function ModeStep({ mode, subtype, onMode, onSubtype }: { mode: ReportMode; subtype: string; onMode: (mode: ReportMode) => void; onSubtype: (subtype: string) => void }) {
