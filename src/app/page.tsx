@@ -1,9 +1,9 @@
-import { Lock } from "lucide-react";
 import Link from "next/link";
 
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { HeaderAccountLink } from "@/components/account/HeaderAccountLink";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getModePreset, REPORT_MODES } from "@/lib/modePresets";
 
@@ -48,10 +48,7 @@ export default function LandingPage() {
             >
               get my lores <span className="ml-2 font-mono text-acid">→</span>
             </Link>
-            <p className="mt-3 flex max-w-md items-center justify-center gap-1.5 text-center font-mono text-[11px] text-ink/50">
-              <Lock className="size-3.5 shrink-0" aria-hidden="true" strokeWidth={2.5} />
-              your full chat never leaves your phone — we only send anonymised stats
-            </p>
+            <PrivacyBadge accent="#ff2d78" tint="#fdeef4" className="mt-4" />
           </div>
 
           <div>
