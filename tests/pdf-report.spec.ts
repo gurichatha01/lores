@@ -105,32 +105,37 @@ describe("PDF keepsake", () => {
     }
   }, 15_000);
 
-  it("includes the leaderboard page for group reports and excludes it for two-person modes", () => {
-    const groupInput = createTestGenerateInput("group");
-    groupInput.stats.isGroup = true;
-    groupInput.stats.people = [
-      ...groupInput.stats.people,
-      {
-        ...groupInput.stats.people[0],
-        name: "Person 3",
-        messageCount: 50,
-        messageShare: 0.25,
-        wordCount: 300,
-        medianReplyTimeMin: 15,
-        replyCount: 10,
-        conversationStarts: 10,
-        conversationStartCount: 10,
-        soloRate: 0.1,
-        threadKillerCount: 5,
-        ghostStreakCount: 2,
-        responseRate: 0.33,
-      },
-    ];
-    const groupReport = createReportSession(groupInput, VALID_REPORT);
-    const groupPdf = createReportPdf(
-      groupReport,
-      (width, height) => createCanvas(width, height) as unknown as PdfCanvas,
-    );
+  it("includes the leaderboard page for group and work reports and excludes it for two-person modes", () => {
+    const buildMultiPersonPdf = (mode: Parameters<typeof createTestGenerateInput>[0]) => {
+      const input = createTestGenerateInput(mode);
+      input.stats.isGroup = true;
+      input.stats.people = [
+        ...input.stats.people,
+        {
+          ...input.stats.people[0],
+          name: "Person 3",
+          messageCount: 50,
+          messageShare: 0.25,
+          wordCount: 300,
+          medianReplyTimeMin: 15,
+          replyCount: 10,
+          conversationStarts: 10,
+          conversationStartCount: 10,
+          soloRate: 0.1,
+          threadKillerCount: 5,
+          ghostStreakCount: 2,
+          responseRate: 0.33,
+        },
+      ];
+      const report = createReportSession(input, VALID_REPORT);
+      return createReportPdf(
+        report,
+        (width, height) => createCanvas(width, height) as unknown as PdfCanvas,
+      );
+    };
+
+    const groupPdf = buildMultiPersonPdf("group");
+    const workPdf = buildMultiPersonPdf("work");
 
     const sweetheartReport = createReportSession(createTestGenerateInput("sweetheart"), VALID_REPORT);
     const sweetheartPdf = createReportPdf(
@@ -138,9 +143,10 @@ describe("PDF keepsake", () => {
       (width, height) => createCanvas(width, height) as unknown as PdfCanvas,
     );
 
-    // Group mode has the extra leaderboard page before closing
-    // Sweetheart has 7 pages (cover, narrative, metrics, awards, detail, story, closing)
-    // Group mode with 3 people has the leaderboard page
+    // Sweetheart has 7 pages (cover, narrative, metrics, awards, detail, story, closing).
+    // Group and work reports with 3+ people gain the extra leaderboard page before closing.
     expect(groupPdf.getNumberOfPages()).toBeGreaterThan(sweetheartPdf.getNumberOfPages());
-  }, 25_000);
+    expect(workPdf.getNumberOfPages()).toBeGreaterThan(sweetheartPdf.getNumberOfPages());
+    expect(workPdf.getNumberOfPages()).toBe(groupPdf.getNumberOfPages());
+  }, 30_000);
 });

@@ -71,7 +71,7 @@ export function PeoplePlayerCards({ report }: PeoplePlayerCardsProps) {
                     className={`min-w-0 px-1.5 py-2.5 lg:px-3 lg:py-4 ${index > 0 ? "border-l-2 border-ink" : ""}`}
                   >
                     <div
-                      className="break-words text-[18px] font-black leading-none tracking-[-0.5px] lg:text-[27px]"
+                      className="overflow-hidden text-ellipsis whitespace-nowrap text-[18px] font-black leading-none tracking-[-0.5px] tabular-nums lg:text-[24px]"
                       style={{ color: preset.accent }}
                     >
                       {stat.value}

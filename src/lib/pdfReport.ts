@@ -10,7 +10,7 @@ import {
   formatSpanLabel,
   formatWordCountWithNovels,
 } from "./reportPresentation";
-import type { Award, PersonStats, ReportContent, ReportSessionData } from "./types";
+import type { Award, PersonStats, ReportContent, ReportMode, ReportSessionData } from "./types";
 
 export const PDF_PAGE_WIDTH = 1240;
 export const PDF_PAGE_HEIGHT = 1754;
@@ -105,7 +105,10 @@ export function renderReportPdfPages(
     pages.push(renderPage(createCanvas, (context) => drawStory(context, data, chapters, index, pageNumber)));
     pageNumber += 1;
   }
-  if (report.mode === "group" && (report.stats.isGroup || report.stats.people.length > 2)) {
+  // Multi-person standings suit the group scoreboard and work teams alike —
+  // work reports are mostly team/work-group chats, so they get it too.
+  const LEADERBOARD_MODES: readonly ReportMode[] = ["group", "work"];
+  if (LEADERBOARD_MODES.includes(report.mode) && (report.stats.isGroup || report.stats.people.length > 2)) {
     pages.push(renderPage(createCanvas, (context) => drawLeaderboard(context, data, pageNumber)));
     pageNumber += 1;
   }
@@ -513,7 +516,9 @@ function drawAwards(context: CanvasRenderingContext2D, data: PdfDocumentData): v
     drawTextBlock(context, award.detail.toUpperCase(), x + 24, y + 108, 480, 22, 2);
     context.fillStyle = highlighted ? "#ffffff" : INK;
     archivo(context, 19, 600);
-    drawTextBlock(context, line, x + 24, y + 157, 480, 25, 3);
+    // Start higher and tighten the leading so a full 3-line verdict clears the
+    // card's bottom edge (y + 226) with comfortable breathing room.
+    drawTextBlock(context, line, x + 24, y + 150, 480, 23, 3);
   });
 
   const awardRows = Math.ceil(awardCards.length / 2);
