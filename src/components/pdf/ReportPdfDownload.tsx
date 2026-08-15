@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 
-import { createReportPdf, pdfFileName } from "@/lib/createReportPdf";
 import { getModePreset } from "@/lib/modePresets";
-import { buildPdfDocumentData, type PdfCanvas } from "@/lib/pdfReport";
-import { checkReportAuthorization } from "@/lib/reportAccess";
+import { buildPdfDocumentData } from "@/lib/pdfReport";
+import { downloadReportPdf } from "@/lib/reportPdfDownload";
 import type { ReportSessionData } from "@/lib/types";
 
 interface ReportPdfDownloadProps {
@@ -24,19 +23,7 @@ export function ReportPdfDownload({ report }: ReportPdfDownloadProps) {
     if (status === "building") return;
     setStatus("building");
     try {
-      if (!(await checkReportAuthorization(report.reportId))) {
-        setStatus("failed");
-        return;
-      }
-      await document.fonts?.ready;
-      const pdf = createReportPdf(report, (width, height) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        return canvas as PdfCanvas;
-      });
-      pdf.save(pdfFileName(report));
-      setStatus("downloaded");
+      setStatus((await downloadReportPdf(report)) ? "downloaded" : "failed");
     } catch {
       setStatus("failed");
     }
