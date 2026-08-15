@@ -291,7 +291,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
     : `unlock this report · ${priceDisplay ?? "₹99"}`;
 
   return (
-    <ReportBackdrop accent={preset.accent} accentSoft={preset.accentSoft} background={dark ? "#080706" : "#dcdcd7"}>
+    <ReportBackdrop accent={preset.accent} accentSoft={preset.accentSoft} background={dark ? "#080706" : "#dcdcd7"} railMode={report.mode}>
       <article
         className={`relative mx-auto min-h-screen max-w-[430px] overflow-hidden px-6 pb-48 pt-6 shadow-editorial sm:min-h-0 sm:px-7 sm:pt-8 lg:max-w-[760px] lg:border-2 lg:px-12 lg:pt-12 ${soft ? "sm:rounded-[44px]" : "sm:rounded-[8px]"}`}
         style={{ background: preset.surface, borderColor: preset.border, color: preset.text }}
@@ -368,7 +368,7 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 
         {dark ? <WarningTape accent={preset.accent} /> : null}
 
-        <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)] lg:max-w-[760px] lg:border-x-2 lg:px-8 lg:pb-5" aria-label="Unlock report">
+        <aside className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] border-t-2 border-ink bg-ink px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-16px_30px_rgba(0,0,0,.18)] lg:left-[var(--rail-w)] lg:max-w-[760px] lg:border-x-2 lg:px-8 lg:pb-5" aria-label="Unlock report">
           {account.signedIn ? (
             <div className="mb-2 flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[0.08em] text-white/55">
               <span className="min-w-0 truncate">{account.email}</span>
