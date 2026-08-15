@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { LegalBackLink } from "@/components/legal/LegalBackLink";
 
 interface LegalPageProps {
   title: string;
@@ -19,7 +20,8 @@ export function LegalPage({ title, children }: LegalPageProps) {
     <main className="min-h-screen bg-surface px-5 py-6 text-ink sm:px-10 sm:py-10 lg:px-14">
       <article className="mx-auto max-w-3xl border-2 border-ink bg-white p-6 shadow-editorial sm:p-10 lg:p-12">
         <header className="border-b-2 border-ink pb-5">
-          <div className="flex items-center justify-between gap-5">
+          <LegalBackLink />
+          <div className="mt-4 flex items-center justify-between gap-5">
             <Link href="/" aria-label="Back to lores home">
               <BrandWordmark accent="#ff2d78" className="text-3xl font-black tracking-[-1px]" />
             </Link>

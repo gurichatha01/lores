@@ -3,9 +3,10 @@ import Link from "next/link";
 import { BrandWordmark } from "@/components/BrandWordmark";
 import { HeaderAccountLink } from "@/components/account/HeaderAccountLink";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { ModeIcon } from "@/components/ModeIcon";
 import { PrivacyBadge } from "@/components/PrivacyBadge";
 import { SiteFooter } from "@/components/SiteFooter";
-import { getModePreset, REPORT_MODES } from "@/lib/modePresets";
+import { getModePreset, plainModeLabel, REPORT_MODES } from "@/lib/modePresets";
 
 const credibilitySlots = [
   "real customer story",
@@ -69,12 +70,13 @@ export default function LandingPage() {
                     }}
                   >
                     <p
-                      className="font-mono text-[9px] font-bold uppercase tracking-[0.08em]"
+                      className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.08em]"
                       style={{ color: index === 2 ? "#ccff00" : preset.accent }}
                     >
-                      {preset.emoji} edition {String(index + 1).padStart(2, "0")}
+                      <ModeIcon mode={mode} className="size-3.5" />
+                      edition {String(index + 1).padStart(2, "0")}
                     </p>
-                    <p className="mt-4 text-lg font-black leading-none tracking-[-0.5px]">{preset.label}</p>
+                    <p className="mt-4 text-lg font-black leading-none tracking-[-0.5px]">{plainModeLabel(mode)}</p>
                     <p className="mt-2 text-[11px] font-semibold opacity-60">{preset.note}</p>
                   </div>
                 );
