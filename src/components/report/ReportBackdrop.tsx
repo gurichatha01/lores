@@ -22,7 +22,9 @@ const BACKDROP_VARS = (accent: string, accentSoft: string, background: string): 
     "--report-accent": accent,
     "--report-accent-soft": accentSoft,
     "--report-backdrop": background,
-    "--rail-w": "clamp(300px, 36vw, 460px)",
+    // Match the /create left column (a 42fr grid track ≈ 42% of the viewport)
+    // so the brand rail is the same width across the whole journey.
+    "--rail-w": "max(360px, 42vw)",
     backgroundColor: background,
   }) as CSSProperties;
 
