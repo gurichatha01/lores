@@ -17,12 +17,14 @@ interface ReportBackdropProps {
   railMode?: ReportMode;
 }
 
-/** Horizontal padding that clears the fixed rail on desktop and keeps a gutter
- *  on both sides of the report column. Kept in sync with the fixed unlock bar's
- *  `lg:left-[var(--rail-w)]` offset in LockedReport so the two stay aligned. */
-const RAIL_PADDING =
-  "lg:pl-[calc(var(--rail-w)+clamp(1.5rem,4vw,4rem))] lg:pr-[clamp(1.5rem,4vw,4rem)] lg:py-16 xl:py-20";
-const PLAIN_PADDING = "lg:px-12 lg:py-16 xl:px-16 xl:py-20";
+const BACKDROP_VARS = (accent: string, accentSoft: string, background: string): CSSProperties =>
+  ({
+    "--report-accent": accent,
+    "--report-accent-soft": accentSoft,
+    "--report-backdrop": background,
+    "--rail-w": "clamp(300px, 36vw, 460px)",
+    backgroundColor: background,
+  }) as CSSProperties;
 
 export function ReportBackdrop({
   accent,
@@ -32,30 +34,35 @@ export function ReportBackdrop({
   centered = false,
   railMode,
 }: ReportBackdropProps) {
-  const desktopPadding = railMode ? RAIL_PADDING : PLAIN_PADDING;
+  // With a rail, lay the page out as [sticky rail | report column]. The rail is
+  // sticky (not viewport-fixed) so it's bounded by this main's height and
+  // scrolls away before any following footer instead of bleeding over it, while
+  // still reading as a pinned full-height panel throughout the report.
+  if (railMode) {
+    return (
+      <main
+        className="report-desktop-backdrop min-h-screen lg:flex lg:items-stretch"
+        style={BACKDROP_VARS(accent, accentSoft, background)}
+      >
+        <div className="hidden lg:block lg:sticky lg:top-0 lg:h-screen lg:w-[var(--rail-w)] lg:shrink-0 lg:self-start">
+          <BrandRail mode={railMode} className="flex h-full" />
+        </div>
+        <div className="min-w-0 flex-1 px-0 py-0 sm:px-6 sm:py-10 lg:px-12 lg:py-16 xl:px-16 xl:py-20">
+          {children}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
       className={`report-desktop-backdrop min-h-screen ${
         centered
-          ? `flex items-center justify-center px-6 py-12 ${desktopPadding}`
-          : `px-0 py-0 sm:px-6 sm:py-10 ${desktopPadding}`
+          ? "flex items-center justify-center px-6 py-12 lg:px-12 lg:py-16 xl:px-16 xl:py-20"
+          : "px-0 py-0 sm:px-6 sm:py-10 lg:px-12 lg:py-16 xl:px-16 xl:py-20"
       }`}
-      style={
-        {
-          "--report-accent": accent,
-          "--report-accent-soft": accentSoft,
-          "--report-backdrop": background,
-          "--rail-w": "clamp(300px, 36vw, 460px)",
-          backgroundColor: background,
-        } as CSSProperties
-      }
+      style={BACKDROP_VARS(accent, accentSoft, background)}
     >
-      {railMode ? (
-        <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-20 lg:block lg:w-[var(--rail-w)]">
-          <BrandRail mode={railMode} className="flex h-full" />
-        </div>
-      ) : null}
       {children}
     </main>
   );
