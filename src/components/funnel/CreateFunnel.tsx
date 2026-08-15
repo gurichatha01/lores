@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { ModeIcon } from "@/components/ModeIcon";
 import { SiteFooter } from "@/components/SiteFooter";
 import { assignAwards } from "@/lib/assignAwards";
 import { readableTextColor } from "@/lib/colorContrast";
@@ -17,7 +18,7 @@ import {
   type ExportPlatform,
   PARTNER_SUBTYPES,
 } from "@/lib/funnel";
-import { getModePreset, REPORT_MODES } from "@/lib/modePresets";
+import { getModePreset, plainModeLabel, REPORT_MODES } from "@/lib/modePresets";
 import { parseWhatsApp } from "@/lib/parseWhatsApp";
 import { createReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
 import { serializeGenerateReportInput } from "@/lib/reportTransport";
@@ -163,8 +164,9 @@ export function CreateFunnel() {
             <Link href="/" className="text-2xl font-black tracking-[-1px] lg:hidden">
               <BrandWordmark accent={preset.accent} />
             </Link>
-            <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink/45 lg:block">
-              {preset.emoji} {preset.label} edition
+            <span className="hidden items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink/45 lg:inline-flex">
+              <ModeIcon mode={mode} className="size-3.5" style={{ color: preset.accent }} />
+              {plainModeLabel(mode)} edition
             </span>
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: preset.accent }}>
               {String(STEP_NUMBER[step]).padStart(2, "0")} / 05
@@ -210,7 +212,7 @@ export function CreateFunnel() {
             ) : null}
             {step === "upload" ? (
               <FunnelButton accent={preset.accent} disabled={!file} onClick={generate}>
-                make my {preset.label.toLowerCase()} lores →
+                make my {plainModeLabel(mode).toLowerCase()} lores →
               </FunnelButton>
             ) : null}
             {step !== "mode" ? (
@@ -250,8 +252,9 @@ function DesktopBrandPanel({ mode }: { mode: ReportMode }) {
         <BrandWordmark accent={preset.accent} contrastPlate />
       </Link>
       <div className="max-w-[32rem]">
-        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">
-          {preset.emoji} {preset.label} edition
+        <p className="inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] opacity-70">
+          <ModeIcon mode={mode} className="size-4" />
+          {plainModeLabel(mode)} edition
         </p>
         <p className="mt-5 text-[clamp(3.25rem,5vw,5.8rem)] font-black leading-[0.84] tracking-[-5px]">
           the story hiding in your messages
@@ -293,8 +296,13 @@ function ModeStep({ mode, subtype, onMode, onSubtype }: { mode: ReportMode; subt
                 color: selected ? readableTextColor(option.accent) : option.text,
               }}
             >
-              <span className="block text-base" aria-hidden="true">{option.emoji}</span>
-              <span className="mt-1 block text-[12px] font-extrabold leading-tight">{option.label}</span>
+              <span
+                className="block"
+                style={{ color: selected ? readableTextColor(option.accent) : option.accent }}
+              >
+                <ModeIcon mode={modeId} className="size-5" strokeWidth={2.25} />
+              </span>
+              <span className="mt-1.5 block text-[12px] font-extrabold leading-tight">{plainModeLabel(modeId)}</span>
               <span className="mt-1 block text-[10px] font-semibold leading-tight opacity-65">
                 {option.descriptor}
               </span>
@@ -447,7 +455,7 @@ function GeneratingScreen({ mode, stage }: { mode: ReportMode; stage: Generation
         <div className="mx-auto grid size-24 place-items-center border-2 bg-white shadow-[8px_8px_0_var(--generating-accent)]" style={{ "--generating-accent": preset.accent, borderColor: preset.text } as React.CSSProperties}>
           <span className="lore-generating-mark text-5xl font-black" style={{ color: preset.accent }}>_</span>
         </div>
-        <p className="mt-9 font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: preset.accent }}>{preset.emoji} {preset.label} edition</p>
+        <p className="mt-9 inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: preset.accent }}><ModeIcon mode={mode} className="size-3.5" />{plainModeLabel(mode)} edition</p>
         <h1 className="mt-3 text-[42px] font-black leading-[0.92] tracking-[-2px]">{stage === "reading" ? "counting everything." : "writing your lores."}</h1>
         <p className="mx-auto mt-4 max-w-sm text-sm font-medium leading-relaxed" style={{ color: preset.muted }}>{stage === "reading" ? "Messages, streaks, replies, late nights, and every tiny pattern the chat forgot." : "The numbers are locked. The writer is turning them into a story now."}</p>
         <div className="mx-auto mt-8 max-w-xs border-y-2 py-3 font-mono text-[9px] uppercase leading-loose tracking-[0.08em]" style={{ borderColor: preset.text, color: preset.muted }}>parsed on this device<br />full chat never sent<br />please keep this tab open</div>

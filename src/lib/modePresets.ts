@@ -173,3 +173,12 @@ export function isReportMode(value: unknown): value is ReportMode {
 export function getModePreset(mode: ReportMode): ModePreset {
   return MODE_PRESETS[mode];
 }
+
+/**
+ * The edition label with any decorative trailing emoji stripped (e.g.
+ * "Roast 🔥" -> "Roast"), for icon-led surfaces like the /create flow and the
+ * landing edition cards where the emoji would double up with the Lucide icon.
+ */
+export function plainModeLabel(mode: ReportMode): string {
+  return MODE_PRESETS[mode].label.replace(/\s*\p{Extended_Pictographic}+$/u, "").trimEnd();
+}

@@ -49,21 +49,26 @@ button {
   }
 }
 
-@keyframes create-panel-drift {
-  0%, 100% {
-    transform: translate(0, 0) rotate(0deg) scale(1);
+@keyframes create-panel-flow {
+  0% {
+    background-position: 0% 50%;
   }
   50% {
-    transform: translate(4%, -3%) rotate(4deg) scale(1.08);
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-@keyframes create-panel-drift-reverse {
+@keyframes create-panel-glow {
   0%, 100% {
-    transform: translate(0, 0) rotate(0deg) scale(1);
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
   }
   50% {
-    transform: translate(-5%, 4%) rotate(-3deg) scale(1.05);
+    transform: translate(6%, -5%) scale(1.15);
+    opacity: 0.9;
   }
 }
 
@@ -528,19 +533,32 @@ button {
 .create-brand-panel::after {
   content: "";
   position: absolute;
-  inset: -25%;
   pointer-events: none;
   z-index: 0;
 }
 
+/* The flow: a wide diagonal light/dark band that slides continuously across
+   the accent fill. Subtle in tone but with real, noticeable motion. */
 .create-brand-panel::before {
-  background-image: radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.24) 0, transparent 46%);
-  animation: create-panel-drift 22s ease-in-out infinite;
+  inset: 0;
+  background-image: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 8%,
+    rgba(255, 255, 255, 0.22) 26%,
+    rgba(255, 255, 255, 0) 44%,
+    rgba(0, 0, 0, 0.16) 62%,
+    rgba(255, 255, 255, 0.14) 80%,
+    rgba(255, 255, 255, 0) 96%
+  );
+  background-size: 260% 260%;
+  animation: create-panel-flow 11s ease-in-out infinite;
 }
 
+/* A soft breathing glow behind the flow for depth. */
 .create-brand-panel::after {
-  background-image: radial-gradient(circle at 74% 72%, rgba(255, 255, 255, 0.16) 0, transparent 42%);
-  animation: create-panel-drift-reverse 26s ease-in-out infinite;
+  inset: -30%;
+  background-image: radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.28) 0, transparent 48%);
+  animation: create-panel-glow 9s ease-in-out infinite;
 }
 
 .create-brand-panel > * {
