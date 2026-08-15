@@ -96,6 +96,33 @@ export async function fetchCredits(): Promise<number | null> {
   }
 }
 
+/**
+ * Server-verified check for a locally-stashed pending pack payment id. Never
+ * trust `readPendingPack()` (localStorage) on its own — it can be stale
+ * (already claimed elsewhere, or left over from earlier testing/another
+ * account on this browser) or simply wrong. This is unauthenticated: it's
+ * called before we know whether the visitor is signed in at all.
+ */
+export async function checkPendingPack(
+  paymentId: string,
+): Promise<{ pending: boolean; credits: number } | null> {
+  try {
+    const response = await fetch("/api/pack-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId }),
+      cache: "no-store",
+    });
+    const body = (await response.json().catch(() => null)) as
+      | { pending?: boolean; credits?: number }
+      | null;
+    if (!response.ok || typeof body?.pending !== "boolean") return null;
+    return { pending: body.pending, credits: body.credits ?? 0 };
+  } catch {
+    return null;
+  }
+}
+
 /** Binds a stashed pack payment to the signed-in account. */
 export async function claimPack(paymentId: string): Promise<{ ok: boolean; credits?: number; error?: string }> {
   const token = await getAccessToken();

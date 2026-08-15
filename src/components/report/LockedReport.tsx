@@ -14,7 +14,7 @@ import {
 } from "@/lib/razorpayCheckout";
 import { AuthOverlay, type AuthMode } from "@/components/account/AuthOverlay";
 import { useAccount } from "@/components/account/useAccount";
-import { claimPack, spendCreditForReport } from "@/lib/authClient";
+import { checkPendingPack, claimPack, spendCreditForReport } from "@/lib/authClient";
 import { clearPendingPack, readPendingPack, stashPendingPack } from "@/lib/packPurchase";
 import {
   buildModeStatCards,
@@ -94,11 +94,33 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 
   // Same-browser stranded-payment recovery: a buyer who paid for a pack but
   // closed the tab before finishing signup returns to the "claim your reports"
-  // prompt automatically.
+  // prompt automatically. The local stash only PROPOSES a payment id — it is
+  // never sufficient on its own (it can be stale: already claimed on another
+  // device, left over from an earlier session on this browser, or simply
+  // unrelated to whatever the visitor is doing right now, e.g. signing out or
+  // paying for an unrelated single report). The server must confirm the
+  // payment id is a real, still-unclaimed pack before the prompt shows; if the
+  // server says otherwise, the stash is cleared so it can never resurface.
   useEffect(() => {
-    if (account.configured && account.ready && !account.signedIn && readPendingPack()) {
-      setAuthMode("signup");
-    }
+    if (!account.configured || !account.ready) return;
+    const paymentId = readPendingPack();
+    if (!paymentId) return;
+
+    let cancelled = false;
+    void checkPendingPack(paymentId).then((result) => {
+      if (cancelled) return;
+      if (!result) return; // Couldn't reach the server — don't guess either way.
+      if (!result.pending) {
+        clearPendingPack();
+        return;
+      }
+      if (!account.signedIn) {
+        setAuthMode("signup");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [account.configured, account.ready, account.signedIn]);
 
   async function runVerify(

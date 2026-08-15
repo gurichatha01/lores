@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { HeaderAccountLink } from "@/components/account/HeaderAccountLink";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { getModePreset, REPORT_MODES } from "@/lib/modePresets";
 
@@ -23,12 +24,7 @@ export default function LandingPage() {
             <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-group sm:block">
               chat stays on your device
             </p>
-            <Link
-              href="/account"
-              className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-ink/55 underline underline-offset-2 transition-colors hover:text-ink"
-            >
-              log in
-            </Link>
+            <HeaderAccountLink className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-ink/55 underline underline-offset-2 transition-colors hover:text-ink" />
           </div>
         </header>
 

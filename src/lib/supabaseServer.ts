@@ -81,6 +81,28 @@ export async function writeUnclaimedPack(params: {
   }
 }
 
+/**
+ * Read-only, unauthenticated status check for a stashed pending-pack payment
+ * id. Used to verify a client-side localStorage stash before trusting it for
+ * anything (e.g. showing the "you've got 10 reports" signup prompt) — a stash
+ * that is stale, already claimed, or unknown must never be treated as a live
+ * unclaimed purchase. Returns only a boolean + credit count, never the owner.
+ */
+export async function getPendingPackStatus(
+  paymentId: string,
+): Promise<{ pending: boolean; credits: number }> {
+  const { data, error } = await getServiceClient()
+    .from("pack_credits")
+    .select("user_id, credits_remaining")
+    .eq("payment_id", paymentId)
+    .maybeSingle();
+  if (error) throw new SupabaseRequestError(error.message);
+  if (!data || data.user_id !== null) {
+    return { pending: false, credits: 0 };
+  }
+  return { pending: true, credits: data.credits_remaining ?? 0 };
+}
+
 export type ClaimResult =
   | { status: "claimed" | "already_claimed"; credits: number }
   | { status: "not_found" | "claimed_by_other" };
