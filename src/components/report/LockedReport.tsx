@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -334,8 +335,8 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
             ))}
           </div>
           <div className="absolute inset-x-0 top-5 flex flex-col items-center gap-11" aria-hidden="true">
-            <LockPill>{cards.length} stat cards 🔒</LockPill>
-            <LockPill>{awards.length} computed awards 🔒</LockPill>
+            <LockPill>{cards.length} stat cards</LockPill>
+            <LockPill>{awards.length} computed awards</LockPill>
           </div>
         </section>
 
@@ -352,7 +353,10 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
         <section className="mt-5 border-2 border-dashed p-4 text-center" style={{ background: preset.card, borderColor: dark ? preset.border : preset.text }} aria-label="Locked receipt">
           <p className="text-[15px] font-bold leading-snug">we found one of your receipts 👀</p>
           <div className="mx-auto mt-3 w-fit max-w-[90%] rounded-[14px_14px_14px_3px] px-3 py-2 text-[13px] font-semibold text-white blur-[5px]" style={{ background: preset.accent }} aria-hidden="true">{receipt?.snippet.messages[0]?.text ?? receipt?.body ?? content.title}</div>
-          <p className="mt-3 font-mono text-[10px] font-bold" style={{ color: preset.accent }}>🔒 unlock to read it</p>
+          <p className="mt-3 flex items-center justify-center gap-1.5 font-mono text-[10px] font-bold" style={{ color: preset.accent }}>
+            <Lock className="size-3 shrink-0" aria-hidden="true" strokeWidth={2.5} />
+            unlock to read it
+          </p>
         </section>
 
         <section className="mt-6" aria-labelledby="narrative-teaser-title">
@@ -473,7 +477,12 @@ export function LockedReport({ report, onUnlocked }: LockedReportProps) {
 }
 
 function LockPill({ children }: { children: React.ReactNode }) {
-  return <div className="bg-ink px-3 py-2 font-mono text-[10px] font-bold text-white">{children}</div>;
+  return (
+    <div className="flex items-center gap-1.5 bg-ink px-3 py-2 font-mono text-[10px] font-bold text-white">
+      <Lock className="size-3 shrink-0" aria-hidden="true" strokeWidth={2.5} />
+      {children}
+    </div>
+  );
 }
 
 function WarningTape({ accent }: { accent: string }) {

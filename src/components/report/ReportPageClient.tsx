@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { checkReportAuthorization } from "@/lib/reportAccess";
+import { downloadReportPdf } from "@/lib/reportPdfDownload";
+import { cacheReportLocally, readCachedReport } from "@/lib/reportPersistence";
 import { parseReportSession, REPORT_SESSION_KEY } from "@/lib/reportSession";
 import type { ReportSessionData } from "@/lib/types";
 
@@ -15,31 +17,56 @@ export function ReportPageClient() {
   const [report, setReport] = useState<ReportSessionData | null>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [failed, setFailed] = useState(false);
+  const autoDownloadedRef = useRef(false);
 
   useEffect(() => {
+    // sessionStorage is the primary, tab-local copy written at generation
+    // time. It's cleared when the tab closes, so a same-browser localStorage
+    // mirror (content only — see reportPersistence.ts) covers a refresh, a
+    // reopened tab, or a restarted browser losing the keepsake. Whichever
+    // source has it, we resync both so they never drift apart.
     const saved = window.sessionStorage.getItem(REPORT_SESSION_KEY);
-    if (!saved) {
+    let parsed: ReportSessionData | null = null;
+    try {
+      parsed = saved ? parseReportSession(saved) : null;
+    } catch {
+      parsed = null;
+    }
+    if (!parsed) {
+      parsed = readCachedReport();
+      if (parsed) {
+        window.sessionStorage.setItem(REPORT_SESSION_KEY, JSON.stringify(parsed));
+      }
+    }
+    if (!parsed) {
       setFailed(true);
       return;
     }
-    try {
-      const parsed = parseReportSession(saved);
-      setReport(parsed);
-      void refreshAuthorization(parsed.reportId);
-    } catch {
-      setFailed(true);
-    }
+    setReport(parsed);
+    cacheReportLocally(parsed);
+    void refreshAuthorization(parsed.reportId);
   }, []);
 
-  // The full report content is already in `report` (from sessionStorage). The
-  // server only tells us whether it's unlocked; content never round-trips.
+  // The full report content is already in `report` (from session/local
+  // storage). The server only tells us whether it's unlocked; content never
+  // round-trips.
   async function refreshAuthorization(reportId: string): Promise<void> {
     setUnlocked(await checkReportAuthorization(reportId));
   }
 
+  // Fires only on the live unlock transition (a real payment/credit spend
+  // just verified server-side), never on a routine revisit of an
+  // already-unlocked report — so a paying customer gets their keepsake
+  // immediately without a second click, but reopening the report later
+  // doesn't re-trigger a surprise download every time. downloadReportPdf
+  // re-checks authorization itself before building anything.
   function handleUnlocked(): void {
     if (!report) return;
     void refreshAuthorization(report.reportId);
+    if (!autoDownloadedRef.current) {
+      autoDownloadedRef.current = true;
+      void downloadReportPdf(report);
+    }
   }
 
   if (report) {
@@ -60,7 +87,7 @@ export function ReportPageClient() {
         {failed ? (
           <>
             <p className="mt-3 text-sm font-medium leading-relaxed text-ink/60">
-              Generate a report in this tab first. Saved reports stay only for this browser session.
+              Generate a report first. Saved reports stay only on this device and browser.
             </p>
             <Link
               href="/create"

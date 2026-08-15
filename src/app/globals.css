@@ -49,6 +49,24 @@ button {
   }
 }
 
+@keyframes create-panel-drift {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(4%, -3%) rotate(4deg) scale(1.08);
+  }
+}
+
+@keyframes create-panel-drift-reverse {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(-5%, 4%) rotate(-3deg) scale(1.05);
+  }
+}
+
 @keyframes how-chat-one {
   0%, 6%, 92%, 100% {
     opacity: 0;
@@ -498,6 +516,38 @@ button {
   animation: lore-generating 1.1s steps(2, end) infinite;
 }
 
+/* /create desktop brand panel: two soft glows drift slowly over the flat
+   mode-accent background so it stays alive without competing with the copy.
+   White-based so it works over any per-mode accent color unchanged. */
+.create-brand-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.create-brand-panel::before,
+.create-brand-panel::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.create-brand-panel::before {
+  background-image: radial-gradient(circle at 28% 24%, rgba(255, 255, 255, 0.24) 0, transparent 46%);
+  animation: create-panel-drift 22s ease-in-out infinite;
+}
+
+.create-brand-panel::after {
+  background-image: radial-gradient(circle at 74% 72%, rgba(255, 255, 255, 0.16) 0, transparent 42%);
+  animation: create-panel-drift-reverse 26s ease-in-out infinite;
+}
+
+.create-brand-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
 @media (min-width: 1024px) {
   .report-desktop-backdrop {
     background-color: var(--report-backdrop);
@@ -529,5 +579,10 @@ button {
 
   .report-demo {
     transform: none;
+  }
+
+  .create-brand-panel::before,
+  .create-brand-panel::after {
+    animation: none;
   }
 }

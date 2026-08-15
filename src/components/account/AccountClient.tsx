@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { SiteFooter } from "@/components/SiteFooter";
 import { deleteAccount, signIn } from "@/lib/authClient";
 
 import { useAccount } from "./useAccount";
@@ -43,6 +44,7 @@ export function AccountClient() {
   }
 
   return (
+    <>
     <main className="flex min-h-screen items-center justify-center bg-[#dcdcd7] px-6 py-12">
       <section className="w-full max-w-[420px] rounded-[20px] border-2 border-ink bg-surface p-7 shadow-editorial">
         <div className="flex items-center justify-between">
@@ -176,5 +178,7 @@ export function AccountClient() {
         )}
       </section>
     </main>
+    <SiteFooter />
+    </>
   );
 }

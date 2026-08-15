@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState } from "react";
 
 import { signIn, signUpAndSignIn } from "@/lib/authClient";
@@ -77,10 +78,10 @@ export function AuthOverlay({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="font-mono text-[11px] font-bold text-ink/45 disabled:opacity-40"
+              className="text-ink/45 disabled:opacity-40"
               aria-label="Close"
             >
-              ✕
+              <X className="size-4" aria-hidden="true" strokeWidth={2.5} />
             </button>
           </div>
 
