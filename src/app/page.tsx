@@ -18,7 +18,7 @@ export default function LandingPage() {
       <section className="mx-auto flex min-h-[760px] max-w-6xl flex-col px-5 pb-12 pt-6 sm:px-10 sm:pt-10 lg:px-14">
         <header className="flex items-center justify-between border-b-2 border-ink pb-3">
           <p className="font-mono text-[10px] font-bold uppercase tracking-[0.12em]">
-            est. your chat · 20XX
+            upload your chat
           </p>
           <div className="flex items-center gap-4">
             <p className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-group sm:block">
@@ -42,7 +42,7 @@ export default function LandingPage() {
             </p>
             <Link
               href="/create"
-              className="mt-8 flex min-h-16 w-full max-w-md items-center justify-center bg-ink px-6 text-[17px] font-extrabold uppercase tracking-[0.02em] text-surface transition-transform hover:-translate-y-0.5"
+              className="mt-8 flex min-h-16 w-full max-w-md items-center justify-center bg-ink px-6 text-[17px] font-extrabold uppercase tracking-[0.02em] text-surface transition-colors transition-transform hover:-translate-y-0.5 hover:bg-pink"
             >
               get my lores <span className="ml-2 font-mono text-acid">→</span>
             </Link>
