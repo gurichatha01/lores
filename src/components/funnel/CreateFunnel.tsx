@@ -1,10 +1,12 @@
 "use client";
 
+import { Lock, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { BrandWordmark } from "@/components/BrandWordmark";
+import { SiteFooter } from "@/components/SiteFooter";
 import { assignAwards } from "@/lib/assignAwards";
 import { readableTextColor } from "@/lib/colorContrast";
 import { computeStats } from "@/lib/computeStats";
@@ -143,81 +145,84 @@ export function CreateFunnel() {
   }
 
   return (
-    <main
-      className="min-h-screen px-0 py-0 sm:flex sm:items-center sm:justify-center sm:px-8 sm:py-12 lg:grid lg:grid-cols-[minmax(360px,42fr)_minmax(600px,58fr)] lg:items-stretch lg:px-0 lg:py-0"
-      style={{
-        backgroundColor: preset.surface,
-        backgroundImage: `radial-gradient(circle at 50% 12%, ${preset.accentSoft} 0, transparent 42rem), repeating-linear-gradient(135deg, rgba(10,10,10,.025) 0 1px, transparent 1px 12px)`,
-      }}
-    >
-      <DesktopBrandPanel mode={mode} />
-      <section
-        className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-hidden px-6 pb-8 pt-6 shadow-editorial sm:min-h-[760px] sm:rounded-[8px] sm:border-2 sm:px-8 sm:pb-10 sm:pt-8 lg:mx-0 lg:min-h-screen lg:max-w-none lg:rounded-none lg:border-0 lg:px-[clamp(3.5rem,7vw,9rem)] lg:pb-12 lg:pt-12 lg:shadow-none"
-        style={{ background: "#f3f3ef", color: "#0a0a0a" }}
-        data-funnel-step={step}
+    <>
+      <main
+        className="min-h-screen px-0 py-0 sm:flex sm:items-center sm:justify-center sm:px-8 sm:py-12 lg:grid lg:grid-cols-[minmax(360px,42fr)_minmax(600px,58fr)] lg:items-stretch lg:px-0 lg:py-0"
+        style={{
+          backgroundColor: preset.surface,
+          backgroundImage: `radial-gradient(circle at 50% 12%, ${preset.accentSoft} 0, transparent 42rem), repeating-linear-gradient(135deg, rgba(10,10,10,.025) 0 1px, transparent 1px 12px)`,
+        }}
       >
-        <header className="flex items-center justify-between border-b-2 pb-3" style={{ borderColor: preset.text }}>
-          <Link href="/" className="text-2xl font-black tracking-[-1px] lg:hidden">
-            <BrandWordmark accent={preset.accent} />
-          </Link>
-          <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink/45 lg:block">
-            {preset.emoji} {preset.label} edition
-          </span>
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: preset.accent }}>
-            {String(STEP_NUMBER[step]).padStart(2, "0")} / 05
-          </span>
-        </header>
+        <DesktopBrandPanel mode={mode} />
+        <section
+          className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col overflow-hidden px-6 pb-8 pt-6 shadow-editorial sm:min-h-[760px] sm:rounded-[8px] sm:border-2 sm:px-8 sm:pb-10 sm:pt-8 lg:mx-0 lg:min-h-screen lg:max-w-none lg:rounded-none lg:border-0 lg:px-[clamp(3.5rem,7vw,9rem)] lg:pb-12 lg:pt-12 lg:shadow-none"
+          style={{ background: "#f3f3ef", color: "#0a0a0a" }}
+          data-funnel-step={step}
+        >
+          <header className="flex items-center justify-between border-b-2 pb-3" style={{ borderColor: preset.text }}>
+            <Link href="/" className="text-2xl font-black tracking-[-1px] lg:hidden">
+              <BrandWordmark accent={preset.accent} />
+            </Link>
+            <span className="hidden font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink/45 lg:block">
+              {preset.emoji} {preset.label} edition
+            </span>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: preset.accent }}>
+              {String(STEP_NUMBER[step]).padStart(2, "0")} / 05
+            </span>
+          </header>
 
-        <div className="flex-1">
-          {step === "mode" ? (
-            <ModeStep mode={mode} subtype={subtype} onMode={chooseMode} onSubtype={setSubtype} />
-          ) : null}
-          {step === "context" ? (
-            <ContextStep value={userContext} onChange={setUserContext} />
-          ) : null}
-          {step === "source" ? <SourceStep /> : null}
-          {step === "instructions" ? (
-            <InstructionsStep platform={platform} onPlatform={setPlatform} />
-          ) : null}
-          {step === "upload" ? (
-            <UploadStep file={file} error={error} onFile={(nextFile) => { setFile(nextFile); setError(null); }} />
-          ) : null}
-        </div>
+          <div className="flex-1">
+            {step === "mode" ? (
+              <ModeStep mode={mode} subtype={subtype} onMode={chooseMode} onSubtype={setSubtype} />
+            ) : null}
+            {step === "context" ? (
+              <ContextStep value={userContext} onChange={setUserContext} />
+            ) : null}
+            {step === "source" ? <SourceStep /> : null}
+            {step === "instructions" ? (
+              <InstructionsStep platform={platform} onPlatform={setPlatform} />
+            ) : null}
+            {step === "upload" ? (
+              <UploadStep file={file} error={error} onFile={(nextFile) => { setFile(nextFile); setError(null); }} />
+            ) : null}
+          </div>
 
-        <div className="mt-8">
-          {step === "mode" ? (
-            <FunnelButton accent={preset.accent} onClick={() => setStep("context")}>
-              next · add context →
-            </FunnelButton>
-          ) : null}
-          {step === "context" ? (
-            <FunnelButton accent={preset.accent} onClick={() => setStep("source")}>
-              {userContext.trim() ? "save context →" : "skip for now →"}
-            </FunnelButton>
-          ) : null}
-          {step === "source" ? (
-            <FunnelButton accent={preset.accent} onClick={() => setStep("instructions")}>
-              show me how to export →
-            </FunnelButton>
-          ) : null}
-          {step === "instructions" ? (
-            <FunnelButton accent={preset.accent} onClick={() => setStep("upload")}>
-              I’ve got the export →
-            </FunnelButton>
-          ) : null}
-          {step === "upload" ? (
-            <FunnelButton accent={preset.accent} disabled={!file} onClick={generate}>
-              make my {preset.label.toLowerCase()} lores →
-            </FunnelButton>
-          ) : null}
-          {step !== "mode" ? (
-            <button type="button" onClick={goBack} className="mt-4 w-full font-mono text-[10px] font-bold uppercase tracking-[0.1em] opacity-45">
-              ← back
-            </button>
-          ) : null}
-        </div>
-      </section>
-    </main>
+          <div className="mt-8">
+            {step === "mode" ? (
+              <FunnelButton accent={preset.accent} onClick={() => setStep("context")}>
+                next · add context →
+              </FunnelButton>
+            ) : null}
+            {step === "context" ? (
+              <FunnelButton accent={preset.accent} onClick={() => setStep("source")}>
+                {userContext.trim() ? "save context →" : "skip for now →"}
+              </FunnelButton>
+            ) : null}
+            {step === "source" ? (
+              <FunnelButton accent={preset.accent} onClick={() => setStep("instructions")}>
+                show me how to export →
+              </FunnelButton>
+            ) : null}
+            {step === "instructions" ? (
+              <FunnelButton accent={preset.accent} onClick={() => setStep("upload")}>
+                I’ve got the export →
+              </FunnelButton>
+            ) : null}
+            {step === "upload" ? (
+              <FunnelButton accent={preset.accent} disabled={!file} onClick={generate}>
+                make my {preset.label.toLowerCase()} lores →
+              </FunnelButton>
+            ) : null}
+            {step !== "mode" ? (
+              <button type="button" onClick={goBack} className="mt-4 w-full font-mono text-[10px] font-bold uppercase tracking-[0.1em] opacity-45">
+                ← back
+              </button>
+            ) : null}
+          </div>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
   );
 }
 
@@ -237,7 +242,7 @@ function DesktopBrandPanel({ mode }: { mode: ReportMode }) {
 
   return (
     <aside
-      className="hidden min-h-screen flex-col justify-between border-r-2 border-ink p-12 lg:flex xl:p-16"
+      className="create-brand-panel hidden min-h-screen flex-col justify-between border-r-2 border-ink p-12 lg:flex xl:p-16"
       style={{ background: preset.accent, color: panelText }}
       aria-label={`${preset.label} edition`}
     >
@@ -416,13 +421,16 @@ function UploadStep({ file, error, onFile }: { file: File | null; error: string 
     <>
       <StepIntro eyebrow="last step · the file stays here" title="bring the chat back." body="Upload the WhatsApp export you just made. ZIP and TXT both work." />
       <label htmlFor="whatsapp-export" className="mt-7 block cursor-pointer border-2 border-dashed border-ink bg-white p-6 text-center transition-shadow hover:shadow-[7px_7px_0_#ccff00]">
-        <span className="text-3xl" aria-hidden="true">↑</span>
+        <Upload className="mx-auto size-8" aria-hidden="true" strokeWidth={2.5} />
         <span className="mt-3 block break-all text-lg font-black">{file ? file.name : "choose your export"}</span>
         <span className="mt-2 block font-mono text-[9px] uppercase tracking-[0.08em] text-ink/40">WhatsApp · .zip or .txt</span>
         <input id="whatsapp-export" type="file" accept=".zip,.txt,text/plain,application/zip" className="sr-only" onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
       </label>
       <div className="mt-5 border-2 border-ink bg-acid p-4">
-        <p className="text-sm font-black">🔒 privacy, in plain English</p>
+        <p className="flex items-center gap-1.5 text-sm font-black">
+          <Lock className="size-4 shrink-0" aria-hidden="true" strokeWidth={2.5} />
+          privacy, in plain English
+        </p>
         <p className="mt-2 text-[12px] font-semibold leading-relaxed text-ink/65">Your chat is processed entirely on your device. We never upload or store your full chat, only anonymised stats and a short sample are sent to write your report.</p>
       </div>
       {error ? <div role="alert" className="mt-4 border-2 border-roast bg-white px-4 py-3 text-sm font-semibold text-roast">{error}</div> : null}

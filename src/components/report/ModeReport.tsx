@@ -6,6 +6,7 @@ import { ReportPdfDownload } from "@/components/pdf/ReportPdfDownload";
 import { ReceiptSnippet } from "@/components/report/ReceiptSnippet";
 import { PeoplePlayerCards } from "@/components/report/PeoplePlayerCards";
 import { ReportBackdrop } from "@/components/report/ReportBackdrop";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getModePreset } from "@/lib/modePresets";
 import {
   buildModeStatCards,
@@ -32,6 +33,7 @@ export function ModeReport({ report }: ModeReportProps) {
   const novelsComparison = formatNovelsComparison(stats.novelsEquivalent);
 
   return (
+    <>
     <ReportBackdrop
       accent={preset.accent}
       accentSoft={preset.accentSoft}
@@ -221,6 +223,8 @@ export function ModeReport({ report }: ModeReportProps) {
         {dark ? <WarningTape accent={preset.accent} /> : null}
       </article>
     </ReportBackdrop>
+    <SiteFooter />
+    </>
   );
 }
 
