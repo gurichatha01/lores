@@ -11,8 +11,8 @@ export const PRICING = {
   },
   DEFAULT: {
     currency: "USD",
-    single: { amount: 199, label: "$1.99" },
-    pack10: { amount: 599, label: "$5.99", perReport: "$0.80 per report" },
+    single: { amount: 149, label: "$1.49" },
+    pack10: { amount: 599, label: "$5.99", perReport: "$0.60 per report" },
   },
 } as const;
 

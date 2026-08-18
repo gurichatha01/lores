@@ -28,9 +28,9 @@ describe("single-report pricing", () => {
     expect(resolvePriceQuote("US")).toMatchObject({
       region: "DEFAULT",
       currency: "USD",
-      amount: 100,
-      label: "$1.00",
+      amount: 149,
+      label: "$1.49",
     });
-    expect(PRICING.DEFAULT.pack10.perReport).toBe("$0.80 per report");
+    expect(PRICING.DEFAULT.pack10.perReport).toBe("$0.60 per report");
   });
 });
