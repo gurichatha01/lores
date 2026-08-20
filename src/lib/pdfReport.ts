@@ -954,7 +954,7 @@ function layoutSnippetMessages(
   archivo(context, fontSize, 600);
   const items = messages.map((message) => {
     const horizontalPadding = compact ? 24 : 30;
-    const lines = wrapLines(
+    const lines = wrapPdfTextLines(
       context,
       message.text,
       width * (compact ? 0.88 : 0.9) - horizontalPadding * 2,
@@ -1567,7 +1567,7 @@ function drawTextBlock(
   lineHeight: number,
   maxLines: number,
 ): number {
-  const lines = wrapLines(context, text, maxWidth, maxLines);
+  const lines = wrapPdfTextLines(context, text, maxWidth, maxLines);
   lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
   return y + lines.length * lineHeight;
 }
@@ -1580,7 +1580,7 @@ function drawFullTextBlock(
   maxWidth: number,
   lineHeight: number,
 ): number {
-  const lines = wrapLines(context, text, maxWidth, Number.POSITIVE_INFINITY);
+  const lines = wrapPdfTextLines(context, text, maxWidth, Number.POSITIVE_INFINITY);
   lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
   return y + lines.length * lineHeight;
 }
@@ -1595,18 +1595,21 @@ function drawCenteredTextBlock(
   maxLines: number,
 ): number {
   context.textAlign = "center";
-  const lines = wrapLines(context, text, maxWidth, maxLines);
+  const lines = wrapPdfTextLines(context, text, maxWidth, maxLines);
   lines.forEach((line, index) => context.fillText(line, x, y + index * lineHeight));
   return y + lines.length * lineHeight;
 }
 
-function wrapLines(
+export function wrapPdfTextLines(
   context: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
   maxLines: number,
 ): string[] {
-  const words = text.replace(/\s+/gu, " ").trim().split(" ");
+  const normalized = text.replace(/\s+/gu, " ").trim();
+  if (!normalized || maxLines <= 0) return [];
+
+  const words = normalized.split(" ");
   const lines: string[] = [];
   let line = "";
   for (const word of words) {
@@ -1618,7 +1621,6 @@ function wrapLines(
 
     if (line) {
       lines.push(line);
-      if (lines.length === maxLines - 1) break;
       line = "";
     }
 
@@ -1634,19 +1636,29 @@ function wrapLines(
         line = chunk;
       } else {
         lines.push(chunk);
-        if (lines.length === maxLines - 1) {
-          line = chunks.slice(chunkIndex + 1).join("");
-          break;
-        }
       }
     }
-    if (lines.length === maxLines - 1) break;
   }
-  if (line && lines.length < maxLines) lines.push(line);
-  if (Number.isFinite(maxLines) && lines.join(" ").length < text.trim().length && lines.length > 0) {
-    lines[lines.length - 1] = `${lines.at(-1)!.replace(/[.,;:!?]?$/u, "")}…`;
+  if (line) lines.push(line);
+
+  if (Number.isFinite(maxLines) && lines.length > maxLines) {
+    const visibleLines = lines.slice(0, maxLines);
+    visibleLines[maxLines - 1] = appendEllipsis(context, visibleLines[maxLines - 1], maxWidth);
+    return visibleLines;
   }
   return lines;
+}
+
+function appendEllipsis(
+  context: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string {
+  let value = text.replace(/[.,;:!?…]?$/u, "").trimEnd();
+  while (value.length > 1 && context.measureText(`${value}…`).width > maxWidth) {
+    value = value.slice(0, -1).trimEnd();
+  }
+  return `${value}…`;
 }
 
 function splitOverlongToken(

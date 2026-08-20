@@ -4,12 +4,42 @@ import { writeFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import { createReportPdf, pdfFileName } from "../src/lib/createReportPdf";
-import { buildPdfDocumentData, type PdfCanvas } from "../src/lib/pdfReport";
+import { buildPdfDocumentData, type PdfCanvas, wrapPdfTextLines } from "../src/lib/pdfReport";
 import { createReportSession } from "../src/lib/reportSession";
 import { isReportMode } from "../src/lib/modePresets";
 import { createTestGenerateInput, VALID_REPORT } from "./reportTestData";
 
 describe("PDF keepsake", () => {
+  it("truncates award copy without repeating the final visible line", () => {
+    const context = createCanvas(600, 400).getContext("2d") as unknown as CanvasRenderingContext2D;
+    context.font = "19px Arial";
+    const lines = wrapPdfTextLines(
+      context,
+      "Sent a flood of visuals to keep the group updated. 12 links and 222 media shares. Mostly spoiler pictures and trip plans, with every update arriving before anyone asked.",
+      300,
+      3,
+    );
+
+    expect(lines).toHaveLength(3);
+    expect(lines[2]).not.toBe(lines[1]);
+    expect(lines[2]).toMatch(/…$/u);
+    expect(lines.every((line) => context.measureText(line).width <= 300)).toBe(true);
+  });
+
+  it("hard-wraps long URLs without crossing the available width", () => {
+    const context = createCanvas(600, 400).getContext("2d") as unknown as CanvasRenderingContext2D;
+    context.font = "19px Arial";
+    const lines = wrapPdfTextLines(
+      context,
+      "https://www.instagram.com/reel/DOn7Ix4D7Nh/?igsh=MWpsZDRidTUxbXk4AuddYkeMWpsZDRidTUxbXk4AuddYke",
+      300,
+      Number.POSITIVE_INFINITY,
+    );
+
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.every((line) => context.measureText(line).width <= 300)).toBe(true);
+  });
+
   it("maps every chart and milestone to deterministic report data", () => {
     const report = createReportSession(createTestGenerateInput("sweetheart"), VALID_REPORT);
     const data = buildPdfDocumentData(report);
@@ -50,6 +80,8 @@ describe("PDF keepsake", () => {
         body: VALID_REPORT.chapters[index % VALID_REPORT.chapters.length].body,
       }));
     }
+    report.content.awardLines[0].line =
+      "Sent a flood of visuals to keep the group updated. 12 links and 222 media shares. Mostly spoiler pictures and trip plans, with every update arriving before anyone asked.";
     report.content.highlights[0].snippet.messages[0].text = Array.from(
       { length: 90 },
       (_, index) => `receipt-word-${index + 1}`,
