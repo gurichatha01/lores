@@ -54,6 +54,8 @@ describe("PDF keepsake", () => {
       { length: 90 },
       (_, index) => `receipt-word-${index + 1}`,
     ).join(" ");
+    report.content.highlights[0].snippet.messages[1].text =
+      "https://www.instagram.com/reel/DOn7Ix4D7Nh/?igsh=MWpsZDRidTUxbXk4AuddYkeMWpsZDRidTUxbXk4AuddYkeMWpsZDRidTUxbXk4AuddYke party scenes";
     report.content.highlights = [
       report.content.highlights[0],
       {

@@ -1611,19 +1611,62 @@ function wrapLines(
   let line = "";
   for (const word of words) {
     const candidate = line ? `${line} ${word}` : word;
-    if (!line || context.measureText(candidate).width <= maxWidth) {
+    if (context.measureText(candidate).width <= maxWidth) {
       line = candidate;
-    } else {
-      lines.push(line);
-      line = word;
-      if (lines.length === maxLines - 1) break;
+      continue;
     }
+
+    if (line) {
+      lines.push(line);
+      if (lines.length === maxLines - 1) break;
+      line = "";
+    }
+
+    if (context.measureText(word).width <= maxWidth) {
+      line = word;
+      continue;
+    }
+
+    const chunks = splitOverlongToken(context, word, maxWidth);
+    for (const [chunkIndex, chunk] of chunks.entries()) {
+      const isLastChunk = chunkIndex === chunks.length - 1;
+      if (isLastChunk) {
+        line = chunk;
+      } else {
+        lines.push(chunk);
+        if (lines.length === maxLines - 1) {
+          line = chunks.slice(chunkIndex + 1).join("");
+          break;
+        }
+      }
+    }
+    if (lines.length === maxLines - 1) break;
   }
   if (line && lines.length < maxLines) lines.push(line);
   if (Number.isFinite(maxLines) && lines.join(" ").length < text.trim().length && lines.length > 0) {
     lines[lines.length - 1] = `${lines.at(-1)!.replace(/[.,;:!?]?$/u, "")}…`;
   }
   return lines;
+}
+
+function splitOverlongToken(
+  context: CanvasRenderingContext2D,
+  token: string,
+  maxWidth: number,
+): string[] {
+  const chunks: string[] = [];
+  let chunk = "";
+  for (const character of Array.from(token)) {
+    const candidate = `${chunk}${character}`;
+    if (chunk && context.measureText(candidate).width > maxWidth) {
+      chunks.push(chunk);
+      chunk = character;
+    } else {
+      chunk = candidate;
+    }
+  }
+  if (chunk) chunks.push(chunk);
+  return chunks;
 }
 
 interface LeaderboardCategoryDef {
